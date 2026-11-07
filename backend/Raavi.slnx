@@ -1,0 +1,16 @@
+<Solution>
+  <Project Path="Raavi.AI/Raavi.AI.csproj" />
+  <Project Path="Raavi.Api/Raavi.Api.csproj" />
+  <Project Path="Raavi.Application/Raavi.Application.csproj" />
+  <Project Path="Raavi.Domain/Raavi.Domain.csproj" />
+  <Project Path="Raavi.Identity/Raavi.Identity.csproj" />
+  <Project Path="Raavi.Infrastructure/Raavi.Infrastructure.csproj" />
+  <Project Path="Raavi.Integrations/Raavi.Integrations.csproj" />
+  <Project Path="Raavi.Migration/Raavi.Migration.csproj" />
+  <Project Path="Raavi.Migrator/Raavi.Migrator.csproj" />
+  <Project Path="Raavi.Search/Raavi.Search.csproj" />
+  <Project Path="Raavi.Tenancy/Raavi.Tenancy.csproj" />
+  <Project Path="Raavi.Tests/Raavi.Tests.csproj" />
+  <Project Path="Raavi.Wiki/Raavi.Wiki.csproj" />
+  <Project Path="Raavi.Workers/Raavi.Workers.csproj" />
+</Solution>

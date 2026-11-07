@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Raavi.Infrastructure\Raavi.Infrastructure.csproj" />
+    <ProjectReference Include="..\Raavi.Application\Raavi.Application.csproj" />
+    <ProjectReference Include="..\Raavi.Domain\Raavi.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DnsClient" />
+  </ItemGroup>
+
+  <PropertyGroup>
+  </PropertyGroup>
+
+</Project>

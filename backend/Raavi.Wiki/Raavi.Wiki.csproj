@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Raavi.Infrastructure\Raavi.Infrastructure.csproj" />
+    <ProjectReference Include="..\Raavi.Application\Raavi.Application.csproj" />
+    <ProjectReference Include="..\Raavi.Domain\Raavi.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="HtmlSanitizer" />
+    <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Shared editor contract (ADR-010): the same manifests drive the frontend registry. -->
+    <EmbeddedResource Include="../../schema/editor/registry.json" LogicalName="editor/registry.json" />
+    <EmbeddedResource Include="../../schema/editor/extensions/*.json" LogicalName="editor/extensions/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,99 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Options;
+using Raavi.Application.Abstractions.Authorization;
+using Raavi.Application.Abstractions.Tenancy;
+using Raavi.Domain.Common;
+using Raavi.Infrastructure.Http;
+using Raavi.Tenancy.Application;
+using Raavi.Tenancy.Persistence;
+using Raavi.Tenancy.Resolution;
+using Microsoft.EntityFrameworkCore;
+
+namespace Raavi.Tenancy.Api;
+
+public static class TenancyEndpoints
+{
+    public const string DiscoveryRateLimitPolicy = "raavi.discovery";
+
+    public static void MapTenancyEndpoints(this RouteGroupBuilder api)
+    {
+        ArgumentNullException.ThrowIfNull(api);
+
+        // ── Any host: SPA bootstrap. Tenancy: anonymous-tenant / system. ─────────────────────────────
+        api.MapGet("/host/context", async (HttpContext http, TenantConfigurationService config, CancellationToken ct) =>
+            http.GetHostKind() == RaaviHostKind.Tenant
+                ? Results.Ok(new HostContextDto("tenant", await config.GetPublicContextAsync(ct).ConfigureAwait(false)))
+                : Results.Ok(new HostContextDto("system", null)))
+            .WithName("GetHostContext")
+            .AllowAnonymous();
+
+        // ── System host, anonymous, rate-limited: login discovery by tenant code. ───────────────────
+        api.MapGet("/discovery/tenants/{code}", async (string code, ITenantDirectory directory, ITenantUrlResolver urls, CancellationToken ct) =>
+            {
+                var tenant = await directory.FindByCodeAsync(code, ct).ConfigureAwait(false);
+                var url = tenant is { IsActive: true } ? await urls.GetCanonicalUrlAsync(tenant.Id, ct).ConfigureAwait(false) : null;
+                return url is null
+                    ? Results.Problem(statusCode: StatusCodes.Status404NotFound, title: "Workspace not found", extensions: new Dictionary<string, object?> { ["code"] = "tenant.unavailable" })
+                    : Results.Ok(new DiscoveryResultDto(url));
+            })
+            .WithName("DiscoverTenant")
+            .RequireHostKind(RaaviHostKind.System)
+            .RequireRateLimiting(DiscoveryRateLimitPolicy)
+            .AllowAnonymous();
+
+        // ── System host, system administrators only. ─────────────────────────────────────────────
+        var system = api.MapGroup("/system/tenants")
+            .RequireHostKind(RaaviHostKind.System)
+            .RequireAuthorization(RaaviPolicies.SystemAdministrator);
+
+        system.MapPost("/", async (CreateTenantRequest body, TenantAdministrationService svc, CancellationToken ct) =>
+            (await svc.CreateAsync(body, ct).ConfigureAwait(false)).ToHttp(t => Results.Created($"/api/v1/system/tenants/{t.Id}", t)));
+
+        system.MapGet("/", async (TenantStatus? status, int? skip, int? take, TenantAdministrationService svc, CancellationToken ct) =>
+            Results.Ok(await svc.ListAsync(status, skip ?? 0, take ?? 50, ct).ConfigureAwait(false)));
+
+        system.MapGet("/{tenantId:guid}", async (Guid tenantId, TenantAdministrationService svc, CancellationToken ct) =>
+            (await svc.GetAsync(tenantId, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+
+        system.MapPost("/{tenantId:guid}/provision", async (Guid tenantId, TenantAdministrationService svc, CancellationToken ct) =>
+            (await svc.ProvisionAsync(tenantId, null, null, null, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+
+        system.MapPost("/{tenantId:guid}/activate", async (Guid tenantId, TenantAdministrationService svc, CancellationToken ct) =>
+            (await svc.ActivateAsync(tenantId, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+
+        system.MapPost("/{tenantId:guid}/suspend", async (Guid tenantId, ChangeStatusRequest body, TenantAdministrationService svc, CancellationToken ct) =>
+            (await svc.SuspendAsync(tenantId, body.Reason, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+
+        system.MapPost("/{tenantId:guid}/deactivate", async (Guid tenantId, ChangeStatusRequest body, TenantAdministrationService svc, CancellationToken ct) =>
+            (await svc.DeactivateAsync(tenantId, body.Reason, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+
+        system.MapGet("/{tenantId:guid}/domains", async (Guid tenantId, TenantDomainService svc, CancellationToken ct) =>
+            (await svc.ListAsync(tenantId, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+
+        system.MapPost("/{tenantId:guid}/domains", async (Guid tenantId, AddDomainRequest body, TenantDomainService svc, CancellationToken ct) =>
+            (await svc.AddAsync(tenantId, body.Host, ct).ConfigureAwait(false)).ToHttp(d => Results.Created($"/api/v1/system/tenants/{tenantId}/domains/{d.Id}", d)));
+
+        system.MapPost("/{tenantId:guid}/domains/{domainId:guid}/verify", async (Guid tenantId, Guid domainId, TenantDomainService svc, CancellationToken ct) =>
+            (await svc.VerifyAsync(tenantId, domainId, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+
+        system.MapPost("/{tenantId:guid}/domains/{domainId:guid}/primary", async (Guid tenantId, Guid domainId, TenantDomainService svc, CancellationToken ct) =>
+            (await svc.MakePrimaryAsync(tenantId, domainId, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+
+        system.MapDelete("/{tenantId:guid}/domains/{domainId:guid}", async (Guid tenantId, Guid domainId, TenantDomainService svc, CancellationToken ct) =>
+            (await svc.RemoveAsync(tenantId, domainId, ct).ConfigureAwait(false)).ToHttp());
+
+        system.MapGet("/{tenantId:guid}/settings", (Guid tenantId, IServiceProvider sp, CancellationToken ct) =>
+            Run(sp, tenantId, s => s.GetSettingsAsync(ct), ct));
+
+        system.MapPut("/{tenantId:guid}/settings", (Guid tenantId, UpdateSettingsRequest body, IServiceProvider sp, CancellationToken ct) =>
+            Run(sp, tenantId, s => s.UpdateSettingsAsync(body, ct), ct));
+
+        system.MapPut("/{tenantId:guid}/branding", (Guid tenantId, UpdateBrandingRequest body, IServiceProvider sp, CancellationToken ct) =>
+            Run(sp, tenantId, s => s.UpdateBrandingAsync(body, ct), ct));
+    }
+
+    private static async Task<IResult> Run<T>(IServiceProvider sp, Guid tenantId, Func<TenantConfigurationService, Task<Raavi.Application.Common.Result<T>>> action, CancellationToken ct) =>
+        (await TenantConfigurationService.ForTenantAsync(sp, tenantId, action, ct).ConfigureAwait(false)).ToHttp(v => Results.Ok(v));
+}

@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <UserSecretsId>dotnet-Raavi.Workers-9227aa6d-02d5-472f-9d9a-d6887fd7afd1</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Raavi.Domain\Raavi.Domain.csproj" />
+    <ProjectReference Include="..\Raavi.Application\Raavi.Application.csproj" />
+    <ProjectReference Include="..\Raavi.Infrastructure\Raavi.Infrastructure.csproj" />
+    <ProjectReference Include="..\Raavi.Tenancy\Raavi.Tenancy.csproj" />
+    <ProjectReference Include="..\Raavi.Identity\Raavi.Identity.csproj" />
+    <ProjectReference Include="..\Raavi.Migration\Raavi.Migration.csproj" />
+    <ProjectReference Include="..\Raavi.Search\Raavi.Search.csproj" />
+    <ProjectReference Include="..\Raavi.AI\Raavi.AI.csproj" />
+    <ProjectReference Include="..\Raavi.Integrations\Raavi.Integrations.csproj" />
+    <ProjectReference Include="..\Raavi.Wiki\Raavi.Wiki.csproj" />
+  </ItemGroup>
+</Project>
