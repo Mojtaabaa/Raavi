@@ -1,0 +1,948 @@
+{
+  "app": {
+    "name": "Raavi",
+    "tagline": "Enterprise knowledge platform"
+  },
+  "shell": {
+    "language": "Language",
+    "skipToContent": "Skip to main content"
+  },
+  "host": {
+    "loading": "Loading…",
+    "systemBadge": "System administration",
+    "notFound": {
+      "title": "Workspace not found",
+      "description": "This address does not belong to an active workspace. Check the address or contact your organization administrator."
+    }
+  },
+  "nav": {
+    "home": "Home",
+    "members": "Members",
+    "groups": "Groups",
+    "tenants": "Workspaces",
+    "signOut": "Sign out",
+    "administration": "Administration",
+    "providers": "Sign-in methods",
+    "switchWorkspace": "Switch workspace",
+    "spaces": "Spaces",
+    "permissions": "Global permissions",
+    "migrations": "Migration"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "create": "Create",
+    "delete": "Delete",
+    "close": "Close",
+    "copy": "Copy",
+    "copied": "Copied",
+    "email": "E-mail",
+    "password": "Password",
+    "displayName": "Display name",
+    "status": "Status",
+    "actions": "Actions",
+    "yes": "Yes",
+    "no": "No",
+    "loading": "Loading…",
+    "confirmTitle": "Confirm",
+    "empty": "Nothing here yet.",
+    "saved": "Saved",
+    "edit": "Edit"
+  },
+  "auth": {
+    "signInTitle": "Sign in to {name}",
+    "signIn": "Sign in",
+    "signingIn": "Signing in…",
+    "noProviders": "No sign-in method is enabled for this workspace.",
+    "otherMethodsSoon": "Corporate sign-in (LDAP, OIDC, Jira) arrives in the next release.",
+    "systemTitle": "System administrator sign-in",
+    "code": "6-digit verification code",
+    "findWorkspace": "Find your workspace",
+    "workspaceCode": "Workspace code",
+    "go": "Go",
+    "adminSignIn": "System administrator sign-in",
+    "notFound": "No workspace found with this code.",
+    "continueWith": "Continue with {name}",
+    "or": "or",
+    "username": "Username"
+  },
+  "invitation": {
+    "title": "Accept invitation",
+    "invitedAs": "You were invited as {email}.",
+    "asAdmin": "as workspace administrator",
+    "newAccount": "Create a new account",
+    "existingAccount": "I already have a Raavi account",
+    "accept": "Accept and sign in",
+    "invalid": "This invitation link is invalid or has expired.",
+    "passwordHint": "At least 12 characters"
+  },
+  "setup": {
+    "title": "Set up your system administrator account",
+    "scan": "Scan this code with an authenticator app (e.g. Google Authenticator or Microsoft Authenticator).",
+    "manual": "Or enter this key manually:",
+    "start": "Start setup",
+    "complete": "Complete and sign in",
+    "existingNote": "If you already have an account with this address, enter its current password."
+  },
+  "members": {
+    "title": "Workspace members",
+    "invite": "Invite member",
+    "inviteAdmin": "As administrator",
+    "inviteLinkTitle": "Invitation link",
+    "inviteLinkHint": "This link is shown only once. Send it securely to the invitee.",
+    "admin": "Admin",
+    "suspend": "Suspend",
+    "activate": "Activate",
+    "remove": "Remove from workspace",
+    "confirmRemove": "Remove this member from the workspace?",
+    "lastLogin": "Last sign-in",
+    "invitations": "Invitations",
+    "revoke": "Revoke",
+    "statuses": {
+      "Active": "Active",
+      "Suspended": "Suspended",
+      "PendingApproval": "Pending approval",
+      "pending": "Pending",
+      "accepted": "Accepted",
+      "revoked": "Revoked",
+      "expired": "Expired"
+    },
+    "approve": "Approve"
+  },
+  "groups": {
+    "title": "Groups",
+    "create": "New group",
+    "name": "Group name",
+    "description": "Description",
+    "members": "Members",
+    "confirmDelete": "Delete this group?",
+    "addMember": "Add member"
+  },
+  "tenants": {
+    "title": "Workspaces",
+    "create": "New workspace",
+    "code": "Code",
+    "slug": "Subdomain",
+    "nameFa": "Persian name",
+    "nameEn": "English name",
+    "defaultLocale": "Default language",
+    "suspend": "Suspend",
+    "activate": "Activate",
+    "reason": "Reason",
+    "inviteAdmin": "Invite administrator",
+    "statuses": {
+      "Provisioning": "Provisioning",
+      "Active": "Active",
+      "Suspended": "Suspended",
+      "Deactivated": "Deactivated",
+      "PendingDeletion": "Pending deletion",
+      "Deleted": "Deleted"
+    },
+    "created": "Created"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "auth": {
+      "invalid_credentials": "The e-mail or password is incorrect, or you do not have access to this workspace.",
+      "not_provisioned": "You have no account in this workspace. Ask a workspace administrator to invite you.",
+      "account_link_required": "A Raavi account already exists for this e-mail. Sign in with it and link this sign-in method from “My account”.",
+      "pending_approval": "Your access request was recorded and awaits approval by a workspace administrator.",
+      "not_member": "You are not an active member of this workspace.",
+      "email_not_verified": "Your identity provider did not confirm your e-mail address.",
+      "domain_not_allowed": "Your e-mail domain is not allowed for this workspace.",
+      "group_not_allowed": "Your groups are not allowed to sign in to this workspace.",
+      "state_invalid": "The sign-in attempt expired or is invalid. Please try again.",
+      "provider_error": "Sign-in through the identity provider failed.",
+      "provider_denied": "Sign-in was cancelled at the identity provider.",
+      "provider_unavailable": "This sign-in method is not available.",
+      "provider_disabled": "This sign-in method is not enabled for this workspace.",
+      "identity_in_use": "This external account is already linked to another account.",
+      "external_account_inactive": "Your account is inactive in the source system.",
+      "user_disabled": "Your account is disabled."
+    },
+    "invitation": {
+      "account_exists": "An account already exists for this address. Choose “I already have a Raavi account”.",
+      "invalid": "This invitation link is invalid or has expired."
+    },
+    "password": {
+      "length": "Password must be at least 12 characters.",
+      "too_simple": "Password is too simple.",
+      "contains_email": "Password must not contain your e-mail name."
+    },
+    "member": {
+      "last_administrator": "A workspace must keep at least one active administrator.",
+      "cannot_remove_self": "You cannot remove yourself.",
+      "cannot_suspend_self": "You cannot suspend yourself."
+    },
+    "group": {
+      "name_taken": "A group with this name already exists."
+    },
+    "tenant": {
+      "code_taken": "This code is already in use.",
+      "slug_taken": "This subdomain is already in use.",
+      "slug_reserved": "This subdomain is reserved.",
+      "slug_invalid": "Subdomain: lower-case letters, digits and hyphens only.",
+      "code_invalid": "Code must start with a letter and be 3–16 characters.",
+      "reason_required": "A reason is required."
+    },
+    "setup": {
+      "bad_code": "The verification code is incorrect.",
+      "invalid": "This setup link is invalid or has expired."
+    },
+    "user": {
+      "email_invalid": "Enter a valid e-mail address.",
+      "display_name_invalid": "Display name is required."
+    },
+    "csrf": {
+      "invalid": "Your session changed. Please reload the page."
+    },
+    "identity": {
+      "last_sign_in_method": "You cannot remove your only way to sign in."
+    },
+    "provider_policy": {
+      "none_enabled": "At least one sign-in method must stay enabled."
+    },
+    "space": {
+      "not_found": "Space not found.",
+      "key_taken": "This space key is already in use.",
+      "key_invalid": "Use 2–32 Latin capital letters or digits, starting with a letter.",
+      "name_invalid": "Enter a name (up to 200 characters).",
+      "archived": "The space is archived and read-only.",
+      "last_administrator": "A space needs at least one administrator (a user or a group).",
+      "home_page_invalid": "The home page must be a page of this space.",
+      "not_archived": "The space is not archived.",
+      "type_invalid": "Unknown space type.",
+      "description_too_long": "The description is too long."
+    },
+    "content": {
+      "not_found": "Page not found, or you do not have permission to view it.",
+      "title_invalid": "Enter a title (up to 255 characters).",
+      "body_invalid": "The page content is not valid.",
+      "schema_unsupported": "This page uses a newer format.",
+      "move_into_descendant": "A page cannot be moved below itself.",
+      "parent_invalid": "The selected parent cannot contain pages.",
+      "parent_not_current": "The parent page is archived or deleted.",
+      "is_home_page": "The space home page cannot be archived, deleted or moved to another space.",
+      "not_current": "Archived content is read-only.",
+      "not_archived": "The page is not archived.",
+      "type_unknown": "Unknown content type.",
+      "change_summary_too_long": "The change summary is too long.",
+      "approval_required": "This space requires approval: publish from the draft to send a request.",
+      "no_draft": "There is no draft to publish.",
+      "not_trashed": "The page is not in the trash.",
+      "schedule_in_past": "Choose a time in the future.",
+      "not_versioned": "Folders have no versions.",
+      "has_children": "Move or delete the child pages first."
+    },
+    "permission": {
+      "denied": "You do not have permission to do this.",
+      "subject_not_found": "A user or group in the list does not belong to this workspace.",
+      "action_invalid": "This permission cannot be granted here.",
+      "subject_invalid": "Invalid user or group."
+    },
+    "restriction": {
+      "excludes_self": "You must stay included, otherwise you would lose access.",
+      "subject_invalid": "Restrictions can list users or groups."
+    },
+    "label": {
+      "invalid": "Labels have no spaces and none of , # / \\ ? &.",
+      "too_many": "A page can have at most 100 labels."
+    },
+    "template": {
+      "not_found": "Template not found.",
+      "name_invalid": "Enter a template name.",
+      "description_too_long": "The description is too long."
+    },
+    "precondition": {
+      "failed": "Someone else changed this in the meantime. Reload and try again.",
+      "required": "The request is missing its version information. Reload and try again."
+    },
+    "attachment": {
+      "too_large": "The file is too large.",
+      "empty": "The file is empty.",
+      "not_found": "File not found."
+    },
+    "version": {
+      "not_found": "Version not found."
+    },
+    "publish_request": {
+      "not_found": "Request not found.",
+      "not_pending": "This request has already been decided.",
+      "comment_too_long": "The comment is too long."
+    },
+    "collaboration": {
+      "unavailable": "Real-time editing is not available."
+    },
+    "source": {
+      "host_not_allowed": "This address is not in the list of sources your installation allows. Ask the system administrator to allow it.",
+      "host_forbidden": "This address cannot be used as a migration source.",
+      "url_invalid": "Enter a valid http(s) address without a user name or password.",
+      "unauthorized": "The source rejected the access token.",
+      "forbidden": "The access token may not read this content.",
+      "not_confluence": "The address did not identify itself as a Confluence server.",
+      "version_unsupported": "This Confluence version is not supported (6.0 or later is required).",
+      "unreachable": "The source could not be reached.",
+      "timeout": "The source did not answer in time.",
+      "not_found": "The source has no such resource.",
+      "error": "The source reported an error.",
+      "response_invalid": "The source returned an unexpected response.",
+      "versions_unavailable": "This Confluence build offers no version history endpoint."
+    },
+    "migration": {
+      "token_required": "The source access token is required.",
+      "not_found": "Migration not found.",
+      "already_running": "This migration is already running.",
+      "not_running": "This migration is not running.",
+      "no_report": "There is no report yet."
+    }
+  },
+  "profile": {
+    "title": "My account",
+    "linkedAccounts": "Linked accounts",
+    "linked": "External account linked.",
+    "linkedOn": "Linked on {date}",
+    "unlink": "Unlink",
+    "noLinked": "No external accounts are linked.",
+    "link": "Link {name}",
+    "notifications": {
+      "title": "Notifications",
+      "email": "Also send my notifications by e-mail",
+      "emailHelp": "Mentions, replies, comments and new versions of pages you watch. E-mail is sent to your verified address only.",
+      "emailUnavailable": "E-mail delivery is not configured for this installation; notifications are shown in Raavi only.",
+      "saved": "Notification preferences saved."
+    }
+  },
+  "providers": {
+    "title": "Sign-in methods",
+    "intro": "Enable or disable the sign-in methods that the system administrator defined for this workspace. Addresses and secrets live only in the system configuration.",
+    "default": "Default",
+    "test": "Test connection",
+    "provisioning": "New users",
+    "domains": "Allowed e-mail domains",
+    "groups": "Allowed (and synchronized) groups",
+    "saved": "Saved.",
+    "modes": {
+      "ExistingUsersOnly": "Existing users only",
+      "AutomaticCreation": "Create automatically",
+      "AdministratorApproval": "Require administrator approval"
+    }
+  },
+  "wiki": {
+    "unknownUser": "Former member",
+    "home": {
+      "greeting": "Welcome, {name}",
+      "spaces": "Your spaces",
+      "allSpaces": "All spaces",
+      "noSpaces": "You do not have access to any space yet.",
+      "recentActivity": "Recent activity",
+      "myDrafts": "My drafts"
+    },
+    "spaces": {
+      "title": "Spaces",
+      "create": "Create space",
+      "filter": "Filter spaces",
+      "includeArchived": "Show archived",
+      "administration": "All spaces (administration)",
+      "empty": "No spaces found.",
+      "name": "Name",
+      "key": "Key",
+      "keyHelp": "2–32 Latin capital letters or digits, starting with a letter. Used in links; cannot be changed.",
+      "type": "Type",
+      "description": "Description",
+      "visibility": "Access",
+      "archived": "Archived"
+    },
+    "spaceTypes": {
+      "Team": "Team",
+      "Project": "Project",
+      "Documentation": "Documentation",
+      "KnowledgeBase": "Knowledge base",
+      "Personal": "Personal"
+    },
+    "visibility": {
+      "Open": "All members",
+      "Private": "Only me",
+      "OpenHelp": "Every member can view, create and edit pages. You administer the space.",
+      "PrivateHelp": "Only you can see the space until you grant access."
+    },
+    "space": {
+      "sidebar": "Space navigation",
+      "settings": "Space settings",
+      "notFound": "Space not found",
+      "hideSidebar": "Hide sidebar",
+      "showSidebar": "Show sidebar",
+      "openHome": "Open the home page",
+      "recent": "Recently updated",
+      "archivedNotice": "This space is archived and read-only.",
+      "adminOnly": "You administer this space but cannot read its content. Grant yourself View to read it."
+    },
+    "tree": {
+      "title": "Pages",
+      "label": "Page tree",
+      "empty": "No pages yet.",
+      "failed": "The page tree could not be loaded."
+    },
+    "page": {
+      "create": "Create",
+      "createChild": "Child page",
+      "edit": "Edit",
+      "more": "More actions",
+      "move": "Move…",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "restrictions": "Restrictions…",
+      "history": "Page history",
+      "archive": "Archive",
+      "unarchive": "Restore from archive",
+      "delete": "Delete",
+      "confirmDelete": "Delete “{title}” and all pages below it?",
+      "restricted": "Restricted",
+      "archived": "Archived",
+      "archivedNotice": "This page is archived and read-only.",
+      "updatedBy": "Updated by {name}, {date}",
+      "versionN": "v{n}",
+      "children": "Child pages",
+      "breadcrumbs": "Breadcrumbs",
+      "notFound": "Page not found",
+      "notFoundHelp": "The page does not exist, was deleted, or you do not have permission to view it.",
+      "historyNote": "Comparing and restoring versions arrives with version management.",
+      "type": "Type",
+      "typePage": "Page",
+      "typeFolder": "Folder",
+      "titleLabel": "Title"
+    },
+    "edit": {
+      "createTitle": "Create content",
+      "editTitle": "Edit page",
+      "body": "Content",
+      "changeSummary": "What changed? (optional)",
+      "conflict": "Someone else changed this page while you were editing. Copy your text, reload the page and apply your changes again.",
+      "discard": "Discard your unsaved changes?",
+      "attachmentsAfterSave": "Images and files can be added after the page is saved for the first time."
+    },
+    "move": {
+      "title": "Move “{title}”",
+      "space": "Space",
+      "parent": "New parent",
+      "topLevel": "Top level of the space",
+      "submit": "Move"
+    },
+    "restrictions": {
+      "title": "Restrictions",
+      "none": "No restrictions",
+      "viewTitle": "Who can view",
+      "editTitle": "Who can edit",
+      "viewHelp": "If anyone is listed, only they can view this page and all pages below it.",
+      "editHelp": "If anyone is listed, only they can edit this page (child pages are not affected).",
+      "inherited": "Viewing is also restricted by: {pages}"
+    },
+    "permissions": {
+      "principal": "User or group",
+      "allMembers": "All members",
+      "searchPrincipal": "Search users and groups",
+      "addPrincipal": "Add a user or group",
+      "denyRules": "Deny rules ({n})",
+      "denyHelp": "A deny rule always wins over any allow.",
+      "action": "Action"
+    },
+    "actions": {
+      "View": "View",
+      "Create": "Create",
+      "Edit": "Edit",
+      "Move": "Move",
+      "Archive": "Archive",
+      "Delete": "Delete",
+      "Comment": "Comment",
+      "ManageTemplates": "Templates",
+      "ManagePermissions": "Administer"
+    },
+    "settings": {
+      "title": "Settings — {name}",
+      "details": "Details",
+      "permissions": "Permissions",
+      "templates": "Templates",
+      "archive": "Archive space",
+      "restore": "Restore space",
+      "confirmArchive": "Archive this space? It becomes read-only.",
+      "confirmRestore": "Restore this space?",
+      "permissionsHelp": "Space permissions apply to all content; page restrictions can narrow them further.",
+      "publishing": "Publishing",
+      "trash": "Trash"
+    },
+    "templates": {
+      "create": "New template",
+      "edit": "Edit template",
+      "name": "Name",
+      "none": "No templates in this space yet.",
+      "use": "Start from a template",
+      "blank": "Blank page"
+    },
+    "labels": {
+      "title": "Labels",
+      "none": "No labels",
+      "add": "Add label",
+      "remove": "Remove label {name}",
+      "noContent": "No pages you can view carry this label."
+    },
+    "quickFind": {
+      "button": "Search",
+      "label": "Quick find",
+      "placeholder": "Find spaces and pages by title…",
+      "none": "Nothing found.",
+      "space": "Space",
+      "hint": "Ctrl/⌘+K to open · ↑↓ to choose · Enter to open. Full-text search arrives later."
+    },
+    "activity": {
+      "empty": "No activity yet.",
+      "kinds": {
+        "space": {
+          "created": "created the space",
+          "updated": "updated the space",
+          "archived": "archived the space",
+          "restored": "restored the space",
+          "permissions_changed": "changed permissions of"
+        },
+        "content": {
+          "created": "created",
+          "updated": "updated",
+          "moved": "moved",
+          "archived": "archived",
+          "restored": "restored",
+          "trashed": "deleted",
+          "restrictions_changed": "changed restrictions of",
+          "published": "published",
+          "publish_requested": "requested publication of",
+          "publish_approved": "approved",
+          "publish_rejected": "rejected a change to",
+          "purged": "permanently deleted"
+        }
+      }
+    },
+    "globalPermissions": {
+      "title": "Global permissions",
+      "help": "Workspace administrators can always create spaces. Choose who else may create spaces."
+    },
+    "draft": {
+      "saving": "Saving draft…",
+      "savedAt": "Draft saved {time}",
+      "noChanges": "No unpublished changes",
+      "conflict": "Not saved — the draft was changed elsewhere",
+      "error": "Draft could not be saved",
+      "reload": "Load the latest draft",
+      "preview": "Preview",
+      "previewTitle": "Preview — {title}",
+      "discard": "Discard draft",
+      "close": "Close",
+      "confirmDiscard": "Discard all unpublished changes? The published version stays as it is.",
+      "confirmDiscardNew": "This page was never published. Delete it?",
+      "stale": "Version {version} was published after this draft was started. Review the changes before publishing.",
+      "unpublishedPage": "This page has not been published yet. Only you can see it.",
+      "unpublished": "Unpublished",
+      "contributors": "Edited by {names}",
+      "create": "Create draft",
+      "createHelp": "The page is created as a private draft; publish it when it is ready.",
+      "pendingChanges": "There are unpublished changes (last saved {time}).",
+      "continue": "Continue editing"
+    },
+    "publish": {
+      "button": "Publish",
+      "request": "Request publication",
+      "title": "Publish",
+      "schedule": "Publish later",
+      "at": "Publish at",
+      "scheduleButton": "Schedule",
+      "approvalNote": "This space requires approval: a space administrator will review your changes before they are published.",
+      "scheduledFor": "Scheduled to publish {time} {name}",
+      "cancelSchedule": "Cancel schedule",
+      "pending": "Waiting for approval (requested by {name}, {time}).",
+      "pendingShort": "A change to this page is waiting for approval.",
+      "outcome": {
+        "Published": "Published",
+        "Scheduled": "Publication scheduled",
+        "PendingApproval": "Sent for approval",
+        "RestoredToDraft": "Copied into the draft — publish it to complete the restore"
+      }
+    },
+    "history": {
+      "title": "History — {title}",
+      "from": "From",
+      "to": "To",
+      "version": "Version",
+      "details": "Details",
+      "draft": "Draft",
+      "draftHint": "Unpublished changes",
+      "current": "Current",
+      "restoredFrom": "Restored from v{n}",
+      "imported": "Imported",
+      "view": "View",
+      "restore": "Restore",
+      "confirmRestore": "Restore version {n}? A new version is created; nothing is lost.",
+      "comparison": "Comparison",
+      "comparing": "Changes from v{from} to {to}",
+      "noChanges": "No differences.",
+      "viewing": "Version {n}",
+      "compareFrom": "Compare from version {n}",
+      "compareTo": "Compare to {n}",
+      "ops": {
+        "Equal": "unchanged",
+        "Insert": "added",
+        "Delete": "removed",
+        "Change": "changed"
+      }
+    },
+    "approvals": {
+      "require": "Require approval before publishing",
+      "help": "Editors’ changes are sent as requests; space administrators approve them. Approval publishes exactly the requested version.",
+      "pending": "Pending requests",
+      "none": "No pending requests.",
+      "approve": "Approve and publish",
+      "reject": "Reject",
+      "comment": "Comment (optional)",
+      "approved": "Approved and published",
+      "rejected": "Request rejected"
+    },
+    "trash": {
+      "help": "Deleted pages stay here until they are restored or deleted permanently.",
+      "empty": "The trash is empty.",
+      "deleted": "deleted by {name}, {time}",
+      "children": "{n} child pages",
+      "restore": "Restore",
+      "purge": "Delete permanently",
+      "confirmPurge": "Permanently delete “{title}” and {n} child pages with all versions and files? This cannot be undone."
+    }
+  },
+  "editor": {
+    "label": "Page content",
+    "placeholder": "Type / for commands, {'@'} to mention someone…",
+    "slashHint": "Type / for more",
+    "incompatible": "This editor version does not match the server. Reload the page before editing.",
+    "toolbar": {
+      "label": "Formatting",
+      "undo": "Undo",
+      "redo": "Redo",
+      "blockType": "Text style",
+      "paragraph": "Paragraph",
+      "heading": "Heading {level}",
+      "bold": "Bold",
+      "italic": "Italic",
+      "underline": "Underline",
+      "strike": "Strikethrough",
+      "code": "Inline code",
+      "link": "Link",
+      "highlight": "Highlight",
+      "alignStart": "Align to start",
+      "alignCenter": "Center",
+      "alignEnd": "Align to end",
+      "ltr": "Left-to-right paragraph",
+      "rtl": "Right-to-left paragraph"
+    },
+    "table": {
+      "label": "Table",
+      "addRow": "Add row",
+      "addColumn": "Add column",
+      "deleteRow": "Delete row",
+      "deleteColumn": "Delete column",
+      "toggleHeader": "Header row",
+      "delete": "Delete table"
+    },
+    "link": {
+      "title": "Link",
+      "url": "Address",
+      "invalid": "Only http, https, mailto and links inside Raavi are allowed.",
+      "remove": "Remove link"
+    },
+    "slash": {
+      "label": "Insert",
+      "none": "No matching command",
+      "heading1": "Heading 1",
+      "heading2": "Heading 2",
+      "heading3": "Heading 3",
+      "bulletList": "Bulleted list",
+      "orderedList": "Numbered list",
+      "taskList": "Task list",
+      "quote": "Quote",
+      "codeBlock": "Code block",
+      "divider": "Divider",
+      "table": "Table",
+      "panel": {
+        "info": "Info panel",
+        "note": "Note panel",
+        "warning": "Warning panel",
+        "success": "Success panel",
+        "error": "Error panel"
+      },
+      "expand": "Expand",
+      "status": "Status",
+      "toc": "Table of contents",
+      "mermaid": "Mermaid diagram",
+      "mathInline": "Inline formula",
+      "mathBlock": "Formula block",
+      "image": "Image",
+      "file": "File",
+      "children": "Child pages",
+      "contentByLabel": "Pages with label"
+    },
+    "panel": {
+      "type": "Panel type",
+      "types": {
+        "info": "Info",
+        "note": "Note",
+        "warning": "Warning",
+        "success": "Success",
+        "error": "Error"
+      }
+    },
+    "expand": {
+      "title": "Title",
+      "titlePlaceholder": "Click to add a title",
+      "untitled": "Details",
+      "expand": "Expand",
+      "collapse": "Collapse"
+    },
+    "status": {
+      "placeholder": "STATUS",
+      "text": "Status text",
+      "color": "Colour",
+      "colors": {
+        "neutral": "Grey",
+        "blue": "Blue",
+        "green": "Green",
+        "yellow": "Yellow",
+        "red": "Red",
+        "purple": "Purple"
+      }
+    },
+    "toc": {
+      "title": "Contents",
+      "empty": "Add headings to build the table of contents.",
+      "maxLevel": "Levels"
+    },
+    "mermaid": {
+      "empty": "Empty diagram — double-click to edit",
+      "source": "Mermaid source"
+    },
+    "mathInline": {
+      "empty": "Empty formula",
+      "source": "LaTeX"
+    },
+    "mathBlock": {
+      "empty": "Empty formula — double-click to edit",
+      "source": "LaTeX"
+    },
+    "source": {
+      "invalid": "Could not render this source.",
+      "editHint": "Double-click to edit"
+    },
+    "image": {
+      "missing": "Image unavailable",
+      "alt": "Alternative text",
+      "width": "Width",
+      "original": "Original size"
+    },
+    "attachment": {
+      "label": "Attached file"
+    },
+    "mention": {
+      "none": "No matching member",
+      "label": "Mention someone"
+    },
+    "unsupported": {
+      "title": "Unsupported content ({type})"
+    },
+    "live": {
+      "connecting": "Connecting…",
+      "live": "Live",
+      "offline": "Offline",
+      "revoked": "Access removed",
+      "reset": "Reloading…",
+      "revokedNotice": "Your access to edit this page was removed. Copy any text you still need; changes are no longer saved.",
+      "offlineNotice": "You are offline. Your changes are kept on this device and merged when the connection returns."
+    },
+    "children": {
+      "title": "Child pages",
+      "placeholder": "Lists the child pages of the page it is shown on.",
+      "empty": "This page has no child pages.",
+      "error": "The list could not be loaded.",
+      "depth": "Levels"
+    },
+    "byLabel": {
+      "title": "Pages with label",
+      "empty": "No pages have this label.",
+      "error": "The list could not be loaded.",
+      "labels": "Labels (comma separated)",
+      "currentSpaceOnly": "This space only"
+    }
+  },
+  "comments": {
+    "title": "Comments ({n})",
+    "thread": "Comment thread",
+    "none": "No comments yet.",
+    "add": "Add a comment",
+    "readOnly": "You can read the discussion but not comment in this space.",
+    "showResolved": "Show resolved",
+    "reply": "Reply",
+    "replyLabel": "Reply",
+    "edit": "Edit",
+    "editLabel": "Edit comment",
+    "delete": "Delete",
+    "deleted": "This comment was deleted.",
+    "edited": "edited",
+    "confirmDelete": "Delete this comment?",
+    "resolve": "Resolve",
+    "reopen": "Reopen",
+    "resolvedBy": "Resolved by {name}",
+    "addReaction": "Add reaction",
+    "reactionCount": "{emoji} {count}",
+    "orphaned": "The quoted text is no longer on the page.",
+    "orphanedShort": "Text changed",
+    "showInPage": "Show in page",
+    "selection": "Selected text",
+    "commentOnSelection": "Comment",
+    "inlineLabel": "Comment on the selected text",
+    "composer": {
+      "label": "Write a comment",
+      "placeholder": "Write a comment… use {'@'} to mention someone",
+      "send": "Comment",
+      "hint": "Ctrl+Enter to send"
+    },
+    "watch": {
+      "watch": "Watch",
+      "watching": "Watching",
+      "on": "You will be notified about comments and new versions of this page.",
+      "off": "You stopped watching this page."
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "open": "Notifications",
+    "openUnread": "Notifications, {n} unread",
+    "empty": "You are all caught up.",
+    "unread": "unread",
+    "markAllRead": "Mark all as read",
+    "kind": {
+      "mention": "{name} mentioned you on “{title}”",
+      "comment_reply": "{name} replied on “{title}”",
+      "comment_created": "{name} commented on “{title}”",
+      "comment_resolved": "{name} resolved a thread on “{title}”",
+      "page_published": "{name} published “{title}”"
+    }
+  },
+  "migration": {
+    "title": "Migrate from Confluence",
+    "new": "New migration",
+    "intro": "Imports spaces, pages and every page version (with original dates, comments and author names) from a Confluence Server/Data Center. Raavi only reads from the source. Imported spaces are visible to you only; grant access afterwards. Start with a dry run to see what would happen.",
+    "empty": "No migrations yet.",
+    "details": "Migration details",
+    "source": "Source",
+    "mode": "Mode",
+    "modeDry": "Dry run",
+    "modeImport": "Import",
+    "modeDryHelp": "Dry run — read and convert everything, change nothing, produce a report (recommended first)",
+    "modeImportHelp": "Import — write the spaces and pages into this workspace",
+    "status": "Status",
+    "progress": "Progress",
+    "created": "Created",
+    "statuses": {
+      "Created": "Ready",
+      "Queued": "Queued",
+      "Running": "Running",
+      "Paused": "Paused",
+      "Cancelled": "Cancelled",
+      "Completed": "Completed",
+      "CompletedWithErrors": "Completed with errors",
+      "Failed": "Failed"
+    },
+    "url": "Confluence address",
+    "urlHelp": "Only addresses your system administrator has allowed can be used.",
+    "token": "Personal access token",
+    "tokenHelp": "Used for reading only. It is stored encrypted and erased when the migration ends.",
+    "tokenAgain": "Access token (needed again because the stored one was erased)",
+    "spaces": "Spaces (optional)",
+    "spacesHelp": "Confluence space keys separated by commas. Empty = all spaces the token can read.",
+    "keyMap": "Space key mapping (optional)",
+    "keyMapHelp": "One per line: ConfluenceKey=RAAVIKEY. Needed when a key is already used in this workspace.",
+    "create": "Check connection and create",
+    "start": "Start",
+    "resume": "Resume",
+    "runAgain": "Run again",
+    "pause": "Pause",
+    "cancel": "Cancel",
+    "confirmCancel": "Cancel this migration? What was already imported stays; you can run it again later.",
+    "pauseRequested": "Pause requested; it takes effect after the current page.",
+    "cancelRequested": "Cancel requested; it takes effect after the current page.",
+    "sourceVersion": "Confluence {v}",
+    "startedAt": "started {time}",
+    "counters": "Spaces {spaces} · pages {pages} · versions {versions} · failed {failed} · warnings {warnings}",
+    "report": {
+      "none": "The report appears when the migration has finished.",
+      "totals": "Totals",
+      "spaces": "Spaces",
+      "pages": "Pages",
+      "versions": "Versions",
+      "attachments": "attachment references (not imported yet)",
+      "linksResolved": "links resolved",
+      "linksUnresolved": "links removed (target not found)",
+      "validationOk": "Validation passed: page counts match the source.",
+      "validationIssues": "{n} validation issue(s):",
+      "sourceKey": "Source key",
+      "name": "Name",
+      "raaviKey": "Raavi key",
+      "keyConflict": "Key already in use",
+      "imported": "Versions imported",
+      "failed": "Failed",
+      "macros": "Content that could not be converted",
+      "noMacros": "Everything was converted.",
+      "macrosHelp": "These macros are kept in the page as plain text so nothing is lost.",
+      "warnings": "Warnings",
+      "noWarnings": "No warnings.",
+      "authors": "Authors not matched to users",
+      "authorsHelp": "History keeps these names as they were in Confluence; they are not linked to Raavi accounts yet.",
+      "more": "…and {n} more",
+      "files": "files ({mb} MB)",
+      "attachmentsTitle": "Files",
+      "attachmentsLine": "{imported} of {found} files imported; {large} larger than {max} MB were left out; {failed} failed to download.",
+      "accessTitle": "Restrictions and permissions",
+      "accessLine": "{pages} page(s) were restricted in Confluence; {applied} restriction(s) applied here.",
+      "unmappedHelp": "These people or groups could not be matched, so they are not on the restriction. Pages stay restricted to the matched people and you.",
+      "spacePermissions": "Space permissions are not imported: spaces are visible to you only. Grant access in each space’s settings.",
+      "authorsTable": "Authors",
+      "sourceUser": "Confluence user",
+      "email": "E-mail",
+      "match": "Workspace member",
+      "applied": "Matched: {name}",
+      "suggested": "Suggested: {name}",
+      "noMatch": "No match",
+      "matchHelp": "A suggestion is only applied when you turn on matching by e-mail (or list the user explicitly) and run the migration again with “Re-convert” on."
+    },
+    "warning": {
+      "macro_unsupported": "Unsupported macro kept as text",
+      "element_unsupported": "Unsupported element kept as text",
+      "link_unsafe": "Link with an unsupported address converted to text",
+      "body_unparseable": "Page body could not be parsed; kept as text",
+      "image_external": "External image converted to a link",
+      "table_empty": "Empty table dropped",
+      "link_unresolved": "Link to a page that was not found",
+      "label_skipped": "Label not valid in Raavi was skipped"
+    },
+    "events": {
+      "title": "Log",
+      "none": "Nothing logged.",
+      "level": "Level",
+      "at": "Time",
+      "where": "Where",
+      "message": "Message",
+      "levels": {
+        "Info": "Info",
+        "Warning": "Warning",
+        "Error": "Error"
+      }
+    },
+    "people": "People",
+    "mapByEmail": "Match authors and restriction users to members by verified e-mail",
+    "mapByEmailHelp": "Off by default. A dry run shows who would be matched; turn this on to apply it. Only members whose e-mail is verified can be matched.",
+    "userMap": "Explicit user mapping (optional)",
+    "userMapHelp": "One per line: Confluence user name=member e-mail. Takes precedence over the e-mail match.",
+    "reconvert": "Re-convert pages that were already imported",
+    "reconvertHelp": "Re-reads every version and refreshes the stored content and authors. History and dates are kept."
+  }
+}

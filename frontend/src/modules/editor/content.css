@@ -1,0 +1,36 @@
+/* Document content (editor and read view). Logical properties only: documents are mixed RTL/LTR. */
+.raavi-doc { outline: none; line-height: 1.8; overflow-wrap: anywhere; }
+.raavi-doc > * + * { margin-block-start: 0.6em; }
+.raavi-doc p { margin: 0; }
+.raavi-doc h1, .raavi-doc h2, .raavi-doc h3, .raavi-doc h4, .raavi-doc h5, .raavi-doc h6 { line-height: 1.35; margin-block: 1em 0.3em; }
+.raavi-doc ul, .raavi-doc ol { padding-inline-start: 1.5em; margin: 0; }
+.raavi-doc blockquote { border-inline-start: 3px solid var(--raavi-border); margin: 0; padding-inline-start: 1em; color: var(--raavi-text-muted); }
+.raavi-doc pre { direction: ltr; text-align: left; background: #0f172a; color: #e2e8f0; padding: 0.8em 1em; border-radius: var(--raavi-radius-sm); overflow-x: auto; font-size: 0.875em; }
+.raavi-doc code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.raavi-doc :not(pre) > code { background: rgba(127, 127, 127, 0.15); padding: 0.1em 0.3em; border-radius: 3px; font-size: 0.9em; }
+.raavi-doc hr { border: 0; border-block-start: 1px solid var(--raavi-border); margin-block: 1.2em; }
+.raavi-doc a { color: var(--p-primary-color); }
+.raavi-doc mark { padding: 0 0.1em; border-radius: 2px; }
+.raavi-doc ul[data-type='taskList'] { list-style: none; padding-inline-start: 0.2em; }
+.raavi-doc ul[data-type='taskList'] li { display: flex; gap: 0.5em; align-items: flex-start; }
+.raavi-doc ul[data-type='taskList'] li > label { margin-block-start: 0.3em; }
+.raavi-doc ul[data-type='taskList'] li > div { flex: 1; }
+.raavi-doc .tableWrapper { overflow-x: auto; margin-block: 0.8em; }
+.raavi-doc table { border-collapse: collapse; table-layout: fixed; inline-size: 100%; }
+.raavi-doc td, .raavi-doc th { border: 1px solid var(--raavi-border); padding: 0.4em 0.6em; vertical-align: top; position: relative; min-inline-size: 3em; }
+.raavi-doc th { background: rgba(127, 127, 127, 0.08); font-weight: 600; text-align: start; }
+.raavi-doc .selectedCell::after { content: ''; position: absolute; inset: 0; background: rgba(99, 102, 241, 0.15); pointer-events: none; }
+.raavi-doc .column-resize-handle { position: absolute; inset-inline-end: -2px; inset-block: 0; inline-size: 4px; background: var(--p-primary-color); pointer-events: none; }
+.raavi-doc.resize-cursor { cursor: col-resize; }
+.raavi-doc .raavi-mention { background: var(--p-primary-50, #eef2ff); color: var(--p-primary-color); border-radius: 3px; padding: 0 0.2em; white-space: nowrap; }
+.raavi-doc .ProseMirror-selectednode { outline: 2px solid var(--p-primary-color); outline-offset: 2px; }
+.raavi-doc p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: var(--raavi-text-muted); float: inline-start; block-size: 0; pointer-events: none; }
+
+/* Remote carets (CollaborationCaret). */
+.raavi-doc .collaboration-carets__caret { position: relative; margin-inline: -1px; border-inline: 1px solid; word-break: normal; pointer-events: none; }
+.raavi-doc .collaboration-carets__label { position: absolute; inset-block-start: -1.4em; inset-inline-start: -1px; padding: 0 4px; border-radius: 3px 3px 3px 0; color: #fff; font-size: 0.7rem; font-weight: 600; line-height: 1.4; white-space: nowrap; user-select: none; }
+
+/* Comments (ADR-024): compact composer and inline anchors in the read view. */
+.raavi-doc.compact { min-block-size: 3.2em; }
+.raavi-comment-anchor { background: color-mix(in srgb, #f5c400 28%, transparent); border-block-end: 2px solid #d9a800; cursor: pointer; border-radius: 2px; }
+.raavi-comment-anchor.active { background: color-mix(in srgb, #f5c400 55%, transparent); outline: 2px solid #b38600; outline-offset: 1px; }

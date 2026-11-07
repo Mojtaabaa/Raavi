@@ -1,0 +1,65 @@
+/* Raavi design tokens. Layout uses logical properties (margin-inline, padding-inline, inset-inline) so RTL/LTR
+   is correct by construction rather than by mirroring. */
+:root {
+  --raavi-font-fa: 'Vazirmatn', system-ui, sans-serif;
+  --raavi-font-en: 'Inter Variable', system-ui, sans-serif;
+  --raavi-font-mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
+
+  --raavi-space-1: 0.25rem;
+  --raavi-space-2: 0.5rem;
+  --raavi-space-3: 0.75rem;
+  --raavi-space-4: 1rem;
+  --raavi-space-6: 1.5rem;
+  --raavi-space-8: 2rem;
+
+  --raavi-radius-sm: 6px;
+  --raavi-radius-md: 10px;
+  --raavi-radius-lg: 14px;
+
+  --raavi-shadow-1: 0 1px 2px rgb(15 23 42 / 0.06), 0 1px 3px rgb(15 23 42 / 0.08);
+  --raavi-shadow-2: 0 4px 12px rgb(15 23 42 / 0.08);
+
+  --raavi-bg: #f7f8fa;
+  --raavi-surface: #ffffff;
+  --raavi-border: #e3e6eb;
+  --raavi-text: #1b2230;
+  --raavi-text-muted: #5b6475;
+  --raavi-success: #1f8a4c;
+  --raavi-danger: #c0392b;
+
+  --raavi-sidebar-width: 272px;
+  --raavi-header-height: 56px;
+  --raavi-content-max: 860px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --raavi-bg: #0f141b;
+    --raavi-surface: #161c25;
+    --raavi-border: #263042;
+    --raavi-text: #e6e9ef;
+    --raavi-text-muted: #9aa3b5;
+    --raavi-success: #4cc282;
+    --raavi-danger: #ef6b5d;
+  }
+}
+
+html { background: var(--raavi-bg); color: var(--raavi-text); }
+html[lang^='fa'] body { font-family: var(--raavi-font-fa); }
+html[lang^='en'] body { font-family: var(--raavi-font-en); }
+body { margin: 0; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+
+.raavi-skip-link {
+  position: absolute;
+  inset-inline-start: var(--raavi-space-4);
+  inset-block-start: -100px;
+}
+.raavi-skip-link:focus { inset-block-start: var(--raavi-space-2); z-index: 1000; }
+
+:focus-visible { outline: 2px solid var(--p-primary-color); outline-offset: 2px; }
+
+/* Buttons rendered as router links (Button as="router-link") must not look like inline links. */
+a.p-button,
+a.p-button:hover {
+  text-decoration: none;
+}
