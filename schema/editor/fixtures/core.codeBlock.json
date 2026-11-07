@@ -1,0 +1,34 @@
+{
+  "schema": "raavi.doc",
+  "schemaVersion": 2,
+  "doc": {
+    "type": "doc",
+    "content": [
+      {
+        "type": "codeBlock",
+        "attrs": {
+          "language": "csharp"
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "var x = 1;\nConsole.WriteLine(x);"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "attrs": {
+          "textAlign": null,
+          "dir": null
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "end"
+          }
+        ]
+      }
+    ]
+  }
+}

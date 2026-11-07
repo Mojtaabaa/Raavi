@@ -1,0 +1,14 @@
+{
+  "Raavi": {
+    "Features": {
+      "Collaboration": true,
+      "Whiteboards": false,
+      "Databases": false,
+      "Slides": false,
+      "Workflows": false,
+      "Automation": false,
+      "AI": false,
+      "ConfluenceImport": false
+    }
+  }
+}

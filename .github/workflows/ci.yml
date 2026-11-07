@@ -1,0 +1,87 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_PID: Developer
+          MSSQL_SA_PASSWORD: ${{ secrets.CI_SQL_PASSWORD || 'Ci-Only-Passw0rd!' }}
+        ports: ["1433:1433"]
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' || exit 1"
+          --health-interval 10s --health-retries 12
+    env:
+      # Database integration + tenant isolation tests run against a real SQL Server 2022 (TESTING_GUIDE.md §2).
+      RAAVI_TEST_SQL: Server=localhost,1433;User Id=sa;Password=${{ secrets.CI_SQL_PASSWORD || 'Ci-Only-Passw0rd!' }};TrustServerCertificate=True;Encrypt=True
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet tool restore
+      - run: dotnet restore Raavi.slnx
+      - run: dotnet build Raavi.slnx --no-restore -c Release
+      - run: dotnet test Raavi.slnx --no-build -c Release --logger trx --results-directory TestResults
+      - run: dotnet list Raavi.slnx package --vulnerable --include-transitive
+      - name: Fail if the EF model has pending changes without a migration
+        run: dotnet ef migrations has-pending-model-changes --project Raavi.Tenancy --startup-project Raavi.Migrator --context TenancyDbContext
+      - name: Fail if the identity EF model has pending changes
+        run: dotnet ef migrations has-pending-model-changes --project Raavi.Identity --startup-project Raavi.Migrator --context IdentityDbContext
+      - name: Fail if the wiki EF model has pending changes
+        run: dotnet ef migrations has-pending-model-changes --project Raavi.Wiki --startup-project Raavi.Migrator --context WikiDbContext
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-test-results
+          path: backend/TestResults
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - run: npm audit --audit-level=high --omit=dev
+
+  collaboration:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: collaboration
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: collaboration/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Load test (100 editors, 20 edits each)
+        run: npm run load -- 100 20
+      - run: npm audit --audit-level=high --omit=dev

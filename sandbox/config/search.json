@@ -1,0 +1,14 @@
+{
+  "Raavi": {
+    "Search": {
+      "Provider": "OpenSearch",
+      "Endpoints": [ "https://localhost:9200" ],
+      "Username": "",
+      "Password": "__SET_VIA_ENV_OR_SECRET_STORE__",
+      "IndexPrefix": "raavi",
+      "ContentIndexShards": 3,
+      "OutboxBatchSize": 200,
+      "OutboxPollSeconds": 2
+    }
+  }
+}

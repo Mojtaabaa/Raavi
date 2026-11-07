@@ -1,0 +1,10 @@
+{
+  "Raavi": {
+    "Collaboration": {
+      "Enabled": true,
+      "PublicUrl": "ws://localhost:1234",
+      "ServerUrl": "http://localhost:1234",
+      "SigningKeyPath": null
+    }
+  }
+}

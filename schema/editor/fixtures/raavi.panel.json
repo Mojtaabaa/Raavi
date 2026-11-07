@@ -1,0 +1,43 @@
+{
+  "schema": "raavi.doc",
+  "schemaVersion": 2,
+  "doc": {
+    "type": "doc",
+    "content": [
+      {
+        "type": "panel",
+        "attrs": {
+          "type": "warning"
+        },
+        "content": [
+          {
+            "type": "paragraph",
+            "attrs": {
+              "textAlign": null,
+              "dir": null
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Careful"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "attrs": {
+          "textAlign": null,
+          "dir": null
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "end"
+          }
+        ]
+      }
+    ]
+  }
+}

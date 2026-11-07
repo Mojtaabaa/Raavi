@@ -1,0 +1,11 @@
+{
+  "id": "raavi.table",
+  "name": "table",
+  "version": 1,
+  "kind": "node",
+  "group": "block",
+  "content": "tableRow+",
+  "attributes": {},
+  "search": "text",
+  "migrations": []
+}

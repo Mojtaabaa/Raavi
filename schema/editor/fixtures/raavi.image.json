@@ -1,0 +1,30 @@
+{
+  "schema": "raavi.doc",
+  "schemaVersion": 2,
+  "doc": {
+    "type": "doc",
+    "content": [
+      {
+        "type": "image",
+        "attrs": {
+          "attachmentId": "0b9f6a3c-1d2e-4f50-8a71-92b3c4d5e6f7",
+          "alt": "Diagram",
+          "width": 320
+        }
+      },
+      {
+        "type": "paragraph",
+        "attrs": {
+          "textAlign": null,
+          "dir": null
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "end"
+          }
+        ]
+      }
+    ]
+  }
+}

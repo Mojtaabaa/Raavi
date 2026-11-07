@@ -1,0 +1,15 @@
+{
+  "id": "core.highlight",
+  "name": "highlight",
+  "version": 1,
+  "kind": "mark",
+  "attributes": {
+    "color": {
+      "type": "string",
+      "nullable": true,
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "default": null
+    }
+  },
+  "migrations": []
+}

@@ -1,0 +1,33 @@
+{
+  "id": "core.paragraph",
+  "name": "paragraph",
+  "version": 1,
+  "kind": "node",
+  "group": "block",
+  "content": "inline*",
+  "attributes": {
+    "textAlign": {
+      "type": "string",
+      "nullable": true,
+      "enum": [
+        "start",
+        "center",
+        "end",
+        "justify"
+      ],
+      "default": null
+    },
+    "dir": {
+      "type": "string",
+      "nullable": true,
+      "enum": [
+        "auto",
+        "ltr",
+        "rtl"
+      ],
+      "default": null
+    }
+  },
+  "search": "text",
+  "migrations": []
+}

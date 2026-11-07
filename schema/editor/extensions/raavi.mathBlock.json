@@ -1,0 +1,17 @@
+{
+  "id": "raavi.mathBlock",
+  "name": "mathBlock",
+  "version": 1,
+  "kind": "node",
+  "group": "block",
+  "atom": true,
+  "attributes": {
+    "latex": {
+      "type": "string",
+      "maxLength": 20000,
+      "default": ""
+    }
+  },
+  "search": "attr:latex",
+  "migrations": []
+}

@@ -1,0 +1,29 @@
+{
+  "schema": "raavi.doc",
+  "schemaVersion": 2,
+  "doc": {
+    "type": "doc",
+    "content": [
+      {
+        "type": "unsupported",
+        "attrs": {
+          "sourceType": "confluence-macro",
+          "source": "<ac:structured-macro ac:name=\"x\"/>"
+        }
+      },
+      {
+        "type": "paragraph",
+        "attrs": {
+          "textAlign": null,
+          "dir": null
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "end"
+          }
+        ]
+      }
+    ]
+  }
+}

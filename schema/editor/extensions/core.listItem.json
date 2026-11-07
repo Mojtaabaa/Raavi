@@ -1,0 +1,10 @@
+{
+  "id": "core.listItem",
+  "name": "listItem",
+  "version": 1,
+  "kind": "node",
+  "content": "paragraph block*",
+  "attributes": {},
+  "search": "text",
+  "migrations": []
+}

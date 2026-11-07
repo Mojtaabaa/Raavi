@@ -1,0 +1,9 @@
+{
+  "Raavi": {
+    "Email": {
+      "Mode": "Pickup",
+      "FromAddress": "no-reply@raavi.localhost",
+      "PickupDirectory": "dev-mail"
+    }
+  }
+}

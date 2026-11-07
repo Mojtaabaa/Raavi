@@ -1,0 +1,17 @@
+{
+  "id": "raavi.mermaid",
+  "name": "mermaid",
+  "version": 1,
+  "kind": "node",
+  "group": "block",
+  "atom": true,
+  "attributes": {
+    "source": {
+      "type": "string",
+      "maxLength": 20000,
+      "default": ""
+    }
+  },
+  "search": "attr:source",
+  "migrations": []
+}

@@ -1,0 +1,15 @@
+{
+  "id": "core.taskItem",
+  "name": "taskItem",
+  "version": 1,
+  "kind": "node",
+  "content": "paragraph block*",
+  "attributes": {
+    "checked": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "search": "text",
+  "migrations": []
+}

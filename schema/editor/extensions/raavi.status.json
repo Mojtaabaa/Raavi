@@ -1,0 +1,30 @@
+{
+  "id": "raavi.status",
+  "name": "status",
+  "version": 1,
+  "kind": "node",
+  "group": "inline",
+  "inline": true,
+  "atom": true,
+  "attributes": {
+    "text": {
+      "type": "string",
+      "maxLength": 60,
+      "default": ""
+    },
+    "color": {
+      "type": "string",
+      "enum": [
+        "neutral",
+        "blue",
+        "green",
+        "yellow",
+        "red",
+        "purple"
+      ],
+      "default": "neutral"
+    }
+  },
+  "search": "attr:text",
+  "migrations": []
+}

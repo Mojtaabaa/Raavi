@@ -1,0 +1,7 @@
+{
+  "Raavi": {
+    "Migration": {
+      "AllowedSourceHosts": [ "docs.viannacloud.ir" ]
+    }
+  }
+}

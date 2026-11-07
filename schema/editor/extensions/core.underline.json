@@ -1,0 +1,8 @@
+{
+  "id": "core.underline",
+  "name": "underline",
+  "version": 1,
+  "kind": "mark",
+  "attributes": {},
+  "migrations": []
+}

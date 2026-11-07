@@ -1,0 +1,8 @@
+{
+  "id": "core.bold",
+  "name": "bold",
+  "version": 1,
+  "kind": "mark",
+  "attributes": {},
+  "migrations": []
+}

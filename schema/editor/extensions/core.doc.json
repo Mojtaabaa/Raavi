@@ -1,0 +1,10 @@
+{
+  "id": "core.doc",
+  "name": "doc",
+  "version": 1,
+  "kind": "node",
+  "content": "block+",
+  "attributes": {},
+  "search": "text",
+  "migrations": []
+}

@@ -1,0 +1,9 @@
+{
+  "Raavi": {
+    "Authentication": {
+      "Session": {
+        "AllowInsecureHttp": true
+      }
+    }
+  }
+}

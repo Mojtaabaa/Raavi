@@ -1,0 +1,22 @@
+{
+  "Raavi": {
+    "Email": {
+      "Mode": "Disabled",
+      "FromAddress": "",
+      "FromName": "Raavi",
+      "Smtp": {
+        "Host": "",
+        "Port": 587,
+        "Security": "StartTls",
+        "UserName": "",
+        "Password": "",
+        "TimeoutSeconds": 30
+      },
+      "PickupDirectory": ""
+    },
+    "Notifications": {
+      "PushIntervalMilliseconds": 2000,
+      "EmailBatchSize": 50
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "id": "raavi.expand",
+  "name": "expand",
+  "version": 1,
+  "kind": "node",
+  "group": "block",
+  "content": "block+",
+  "attributes": {
+    "title": {
+      "type": "string",
+      "maxLength": 200,
+      "default": ""
+    }
+  },
+  "search": "text",
+  "migrations": []
+}

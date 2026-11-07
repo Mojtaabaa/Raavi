@@ -1,0 +1,30 @@
+{
+  "id": "raavi.image",
+  "name": "image",
+  "version": 1,
+  "kind": "node",
+  "group": "block",
+  "atom": true,
+  "attributes": {
+    "attachmentId": {
+      "type": "string",
+      "nullable": true,
+      "format": "guid",
+      "default": null
+    },
+    "alt": {
+      "type": "string",
+      "maxLength": 500,
+      "default": ""
+    },
+    "width": {
+      "type": "integer",
+      "nullable": true,
+      "minimum": 16,
+      "maximum": 4000,
+      "default": null
+    }
+  },
+  "search": "attr:alt",
+  "migrations": []
+}

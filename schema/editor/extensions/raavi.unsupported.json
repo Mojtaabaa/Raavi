@@ -1,0 +1,23 @@
+{
+  "id": "raavi.unsupported",
+  "name": "unsupported",
+  "version": 1,
+  "kind": "node",
+  "group": "block",
+  "atom": true,
+  "attributes": {
+    "sourceType": {
+      "type": "string",
+      "maxLength": 100,
+      "default": ""
+    },
+    "source": {
+      "type": "string",
+      "maxLength": 200000,
+      "default": ""
+    }
+  },
+  "search": "none",
+  "insertable": false,
+  "migrations": []
+}

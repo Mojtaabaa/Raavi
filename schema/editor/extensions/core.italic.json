@@ -1,0 +1,8 @@
+{
+  "id": "core.italic",
+  "name": "italic",
+  "version": 1,
+  "kind": "mark",
+  "attributes": {},
+  "migrations": []
+}

@@ -1,0 +1,11 @@
+{
+  "id": "core.taskList",
+  "name": "taskList",
+  "version": 1,
+  "kind": "node",
+  "group": "block list",
+  "content": "taskItem+",
+  "attributes": {},
+  "search": "text",
+  "migrations": []
+}

@@ -1,0 +1,18 @@
+{
+  "id": "raavi.mathInline",
+  "name": "mathInline",
+  "version": 1,
+  "kind": "node",
+  "group": "inline",
+  "inline": true,
+  "atom": true,
+  "attributes": {
+    "latex": {
+      "type": "string",
+      "maxLength": 5000,
+      "default": ""
+    }
+  },
+  "search": "attr:latex",
+  "migrations": []
+}

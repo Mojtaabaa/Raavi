@@ -1,0 +1,32 @@
+{
+  "id": "raavi.mention",
+  "name": "mention",
+  "version": 1,
+  "kind": "node",
+  "group": "inline",
+  "inline": true,
+  "atom": true,
+  "attributes": {
+    "id": {
+      "type": "string",
+      "nullable": true,
+      "format": "guid",
+      "default": null
+    },
+    "label": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 200,
+      "default": null
+    },
+    "mentionSuggestionChar": {
+      "type": "string",
+      "enum": [
+        "@"
+      ],
+      "default": "@"
+    }
+  },
+  "search": "attr:label",
+  "migrations": []
+}

@@ -1,0 +1,39 @@
+{
+  "id": "core.heading",
+  "name": "heading",
+  "version": 1,
+  "kind": "node",
+  "group": "block",
+  "content": "inline*",
+  "attributes": {
+    "textAlign": {
+      "type": "string",
+      "nullable": true,
+      "enum": [
+        "start",
+        "center",
+        "end",
+        "justify"
+      ],
+      "default": null
+    },
+    "level": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 6,
+      "default": 1
+    },
+    "dir": {
+      "type": "string",
+      "nullable": true,
+      "enum": [
+        "auto",
+        "ltr",
+        "rtl"
+      ],
+      "default": null
+    }
+  },
+  "search": "text",
+  "migrations": []
+}

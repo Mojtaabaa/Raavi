@@ -1,0 +1,34 @@
+{
+  "id": "raavi.attachment",
+  "name": "attachment",
+  "version": 1,
+  "kind": "node",
+  "group": "block",
+  "atom": true,
+  "attributes": {
+    "attachmentId": {
+      "type": "string",
+      "nullable": true,
+      "format": "guid",
+      "default": null
+    },
+    "fileName": {
+      "type": "string",
+      "maxLength": 255,
+      "default": ""
+    },
+    "size": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1099511627776,
+      "default": 0
+    },
+    "mediaType": {
+      "type": "string",
+      "maxLength": 128,
+      "default": "application/octet-stream"
+    }
+  },
+  "search": "attr:fileName",
+  "migrations": []
+}

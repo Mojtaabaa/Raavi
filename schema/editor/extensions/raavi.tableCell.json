@@ -1,0 +1,44 @@
+{
+  "id": "raavi.tableCell",
+  "name": "tableCell",
+  "version": 1,
+  "kind": "node",
+  "content": "block+",
+  "attributes": {
+    "colspan": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100,
+      "default": 1
+    },
+    "rowspan": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000,
+      "default": 1
+    },
+    "colwidth": {
+      "type": "array",
+      "nullable": true,
+      "items": {
+        "type": "integer",
+        "minimum": 10,
+        "maximum": 5000
+      },
+      "maxItems": 100,
+      "default": null
+    },
+    "align": {
+      "type": "string",
+      "nullable": true,
+      "enum": [
+        "left",
+        "center",
+        "right"
+      ],
+      "default": null
+    }
+  },
+  "search": "text",
+  "migrations": []
+}

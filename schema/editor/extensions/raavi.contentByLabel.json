@@ -1,0 +1,27 @@
+{
+  "id": "raavi.contentByLabel",
+  "name": "contentByLabel",
+  "version": 1,
+  "kind": "node",
+  "group": "block",
+  "atom": true,
+  "attributes": {
+    "labels": {
+      "type": "string",
+      "maxLength": 300,
+      "default": ""
+    },
+    "maxItems": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100,
+      "default": 20
+    },
+    "currentSpaceOnly": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "search": "none",
+  "migrations": []
+}

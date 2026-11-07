@@ -1,0 +1,15 @@
+{
+  "id": "core.link",
+  "name": "link",
+  "version": 1,
+  "kind": "mark",
+  "attributes": {
+    "href": {
+      "type": "string",
+      "format": "href",
+      "maxLength": 2048,
+      "default": null
+    }
+  },
+  "migrations": []
+}

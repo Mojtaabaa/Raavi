@@ -1,0 +1,16 @@
+{
+  "schema": "raavi.doc",
+  "schemaVersion": 2,
+  "maxBytes": 5242880,
+  "maxDepth": 48,
+  "history": [
+    {
+      "version": 1,
+      "description": "Phase 3: paragraphs of plain text (dir attribute only)."
+    },
+    {
+      "version": 2,
+      "description": "Phase 4: extension registry (core + Raavi extensions). v1 documents are valid v2 documents after attribute defaults are applied."
+    }
+  ]
+}

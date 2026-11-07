@@ -1,0 +1,10 @@
+{
+  "id": "core.horizontalRule",
+  "name": "horizontalRule",
+  "version": 1,
+  "kind": "node",
+  "group": "block",
+  "attributes": {},
+  "search": "none",
+  "migrations": []
+}

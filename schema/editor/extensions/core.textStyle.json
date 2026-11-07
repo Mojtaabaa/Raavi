@@ -1,0 +1,15 @@
+{
+  "id": "core.textStyle",
+  "name": "textStyle",
+  "version": 1,
+  "kind": "mark",
+  "attributes": {
+    "color": {
+      "type": "string",
+      "nullable": true,
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "default": null
+    }
+  },
+  "migrations": []
+}

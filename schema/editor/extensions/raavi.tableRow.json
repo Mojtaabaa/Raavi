@@ -1,0 +1,10 @@
+{
+  "id": "raavi.tableRow",
+  "name": "tableRow",
+  "version": 1,
+  "kind": "node",
+  "content": "(tableCell | tableHeader)*",
+  "attributes": {},
+  "search": "text",
+  "migrations": []
+}

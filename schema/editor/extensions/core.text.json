@@ -1,0 +1,11 @@
+{
+  "id": "core.text",
+  "name": "text",
+  "version": 1,
+  "kind": "node",
+  "group": "inline",
+  "inline": true,
+  "attributes": {},
+  "search": "text",
+  "migrations": []
+}

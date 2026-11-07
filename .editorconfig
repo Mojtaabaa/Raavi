@@ -1,0 +1,36 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 2
+trim_trailing_whitespace = true
+
+[*.{cs,csx}]
+indent_size = 4
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_using_directive_placement = outside_namespace
+dotnet_sort_system_directives_first = true
+csharp_prefer_braces = true:warning
+
+# Raavi targets C# only; VB keyword collisions are irrelevant.
+dotnet_diagnostic.CA1716.severity = none
+# Result<T>.Success/Failure factories are the intended API.
+dotnet_diagnostic.CA1000.severity = none
+
+[backend/Raavi.Tests/**.cs]
+# Test names use underscores for readability; async tests do not need ConfigureAwait.
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA2007.severity = none
+dotnet_diagnostic.CA1515.severity = none
+# Inline literal arrays in tests are clearer than static fields.
+dotnet_diagnostic.CA1861.severity = none
+
+[*.md]
+trim_trailing_whitespace = false
+
+[backend/**/Migrations/*.cs]
+generated_code = true
+dotnet_analyzer_diagnostic.severity = none

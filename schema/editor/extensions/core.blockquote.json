@@ -1,0 +1,11 @@
+{
+  "id": "core.blockquote",
+  "name": "blockquote",
+  "version": 1,
+  "kind": "node",
+  "group": "block",
+  "content": "block+",
+  "attributes": {},
+  "search": "text",
+  "migrations": []
+}

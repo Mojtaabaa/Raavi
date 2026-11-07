@@ -1,0 +1,11 @@
+{
+  "id": "core.hardBreak",
+  "name": "hardBreak",
+  "version": 1,
+  "kind": "node",
+  "group": "inline",
+  "inline": true,
+  "attributes": {},
+  "search": "newline",
+  "migrations": []
+}

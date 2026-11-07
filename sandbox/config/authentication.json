@@ -1,0 +1,25 @@
+{
+  "Raavi": {
+    "Authentication": {
+      "Session": {
+        "CookieName": "__Host-raavi",
+        "IdleTimeoutMinutes": 60,
+        "AbsoluteTimeoutHours": 12,
+        "SameSite": "Lax"
+      },
+      "Local": {
+        "Enabled": true,
+        "PasswordMinLength": 12,
+        "LockoutThreshold": 5,
+        "LockoutMinutes": 15,
+        "RequireMfaForSystemAdministrators": true
+      },
+      "CollaborationTicket": {
+        "Issuer": "raavi-api",
+        "Audience": "raavi-collaboration",
+        "LifetimeSeconds": 60,
+        "SigningKeyPath": ""
+      }
+    }
+  }
+}

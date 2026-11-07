@@ -1,0 +1,11 @@
+{
+  "id": "core.bulletList",
+  "name": "bulletList",
+  "version": 1,
+  "kind": "node",
+  "group": "block list",
+  "content": "listItem+",
+  "attributes": {},
+  "search": "text",
+  "migrations": []
+}

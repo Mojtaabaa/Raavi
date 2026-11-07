@@ -1,0 +1,30 @@
+{
+  "id": "core.orderedList",
+  "name": "orderedList",
+  "version": 1,
+  "kind": "node",
+  "group": "block list",
+  "content": "listItem+",
+  "attributes": {
+    "start": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100000,
+      "default": 1
+    },
+    "type": {
+      "type": "string",
+      "nullable": true,
+      "enum": [
+        "1",
+        "a",
+        "A",
+        "i",
+        "I"
+      ],
+      "default": null
+    }
+  },
+  "search": "text",
+  "migrations": []
+}

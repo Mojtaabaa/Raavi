@@ -1,0 +1,8 @@
+{
+  "id": "core.strike",
+  "name": "strike",
+  "version": 1,
+  "kind": "mark",
+  "attributes": {},
+  "migrations": []
+}

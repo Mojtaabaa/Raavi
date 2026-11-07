@@ -1,0 +1,19 @@
+{
+  "id": "core.codeBlock",
+  "name": "codeBlock",
+  "version": 1,
+  "kind": "node",
+  "group": "block",
+  "content": "text*",
+  "marks": "",
+  "attributes": {
+    "language": {
+      "type": "string",
+      "nullable": true,
+      "pattern": "^[a-z0-9+#-]{1,32}$",
+      "default": null
+    }
+  },
+  "search": "text",
+  "migrations": []
+}
