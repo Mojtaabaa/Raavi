@@ -19,10 +19,12 @@ public sealed record BoardElementRequest(string? Id, string? Type, double? X, do
 
 public sealed record WhiteboardRequest(string? Title, BoardElementRequest[]? Elements);
 
+public sealed record BoardTitleRequest(string? Title);
+
 public sealed record WhiteboardExport(string FileName, byte[] Data);
 
 /// <summary>Space whiteboards (Phase 9e, ADR-030): validated elements, ETag concurrency, SVG export.</summary>
-public sealed class WhiteboardService(WikiDbContext db, SpaceService spaces, WikiAuthorizer authz, IPrincipalDirectory directory, ICurrentUser current, IClock clock)
+public sealed class WhiteboardService(WikiDbContext db, SpaceService spaces, WikiAuthorizer authz, IPrincipalDirectory directory, ICurrentUser current, IClock clock, Raavi.Wiki.Collaboration.CollaborationClient collaboration)
 {
     public static readonly Error NotFound = new("board.not_found", "Whiteboard not found.", ErrorKind.NotFound);
     public static readonly Error ElementInvalid = new("board.element_invalid", "An element is not valid.", ErrorKind.Validation);
@@ -106,6 +108,30 @@ public sealed class WhiteboardService(WikiDbContext db, SpaceService spaces, Wik
         }
 
         board.Update(request.Title, elements.Value, clock.UtcNow);
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
+
+        // The live state is gone with this save: people editing live are disconnected and re-join from the new content.
+        await collaboration.ResetAsync(new Raavi.Wiki.Collaboration.DocumentAddress(db.CurrentTenantId, id, Raavi.Wiki.Collaboration.DocumentKind.Board).Name, ct).ConfigureAwait(false);
+        return Result<WhiteboardDto>.Success(await ToDtoAsync(board, space, includeElements: true, ct).ConfigureAwait(false));
+    }
+
+    /// <summary>Renames without touching elements or live sessions (live editors cannot use the whole-board save).</summary>
+    public async Task<Result<WhiteboardDto>> RenameAsync(Guid id, BoardTitleRequest request, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var loaded = await LoadAsync(id, track: true, ct).ConfigureAwait(false);
+        if (!loaded.IsSuccess)
+        {
+            return Result<WhiteboardDto>.Failure(loaded.Error!);
+        }
+
+        var (board, space) = loaded.Value;
+        if (!space.CanWrite(PermissionAction.Edit))
+        {
+            return Result<WhiteboardDto>.Failure(WikiErrors.Forbidden);
+        }
+
+        board.Rename(request.Title, clock.UtcNow);
         await db.SaveChangesAsync(ct).ConfigureAwait(false);
         return Result<WhiteboardDto>.Success(await ToDtoAsync(board, space, includeElements: true, ct).ConfigureAwait(false));
     }

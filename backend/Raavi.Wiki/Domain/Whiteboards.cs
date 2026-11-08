@@ -41,6 +41,7 @@ public sealed partial class Whiteboard : Entity, ITenantOwned
     public const int MaxTextLength = 2000;
     public const int MaxPointValues = 4000;
     public const double MaxCoordinate = 100_000;
+    public const int MaxLiveStateBytes = 8 * 1024 * 1024;
     public const string DefaultStroke = "#1f2937";
 
     [GeneratedRegex("^#[0-9a-fA-F]{6}$")]
@@ -68,6 +69,9 @@ public sealed partial class Whiteboard : Entity, ITenantOwned
 
     public int Revision { get; private set; } = 1;
 
+    /// <summary>Full Yjs state of the live session (Phase 11c, ADR-035); null when nobody has edited live since the last REST save. Opaque to the API.</summary>
+    public byte[]? YjsState { get; private set; }
+
     public IReadOnlyList<BoardElement> Elements => JsonSerializer.Deserialize<List<BoardElement>>(ElementsJson, BoardJson.Options) ?? [];
 
     public static Whiteboard Create(Guid spaceId, string? title, IReadOnlyList<BoardElementInput>? elements, Guid userId, DateTimeOffset now)
@@ -81,9 +85,35 @@ public sealed partial class Whiteboard : Entity, ITenantOwned
     public void Update(string? title, IReadOnlyList<BoardElementInput>? elements, DateTimeOffset now)
     {
         Set(title, elements ?? []);
+        YjsState = null; // a REST save replaces the content: the live state would resurrect the old one
         UpdatedAt = now;
         Revision++;
     }
+
+    /// <summary>Renames without touching the elements or the live state.</summary>
+    public void Rename(string? title, DateTimeOffset now)
+    {
+        Set(title, Elements.Select(ToInput).ToList());
+        UpdatedAt = now;
+        Revision++;
+    }
+
+    /// <summary>Stores what the live collaboration server persisted: the validated elements and the Yjs state they came from.</summary>
+    public void SetLiveState(IReadOnlyList<BoardElementInput> elements, byte[] state, DateTimeOffset now)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        if (state.Length is 0 or > MaxLiveStateBytes)
+        {
+            throw new DomainException("board.live_state_invalid", "The live state is empty or too large.");
+        }
+
+        Set(Title, elements);
+        YjsState = state;
+        UpdatedAt = now;
+        Revision++;
+    }
+
+    private static BoardElementInput ToInput(BoardElement e) => new(e.Id, e.Type, e.X, e.Y, e.W, e.H, e.Rotation, e.Stroke, e.Fill, e.StrokeWidth, e.Text, e.FontSize, e.Rtl, e.Points);
 
     private void Set(string? title, IReadOnlyList<BoardElementInput> input)
     {

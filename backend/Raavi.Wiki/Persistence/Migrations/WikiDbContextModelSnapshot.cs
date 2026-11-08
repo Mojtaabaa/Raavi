@@ -1545,6 +1545,9 @@ namespace Raavi.Wiki.Persistence.Migrations
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<byte[]>("YjsState")
+                        .HasColumnType("varbinary(max)");
+
                     b.HasKey("Id");
 
                     SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);

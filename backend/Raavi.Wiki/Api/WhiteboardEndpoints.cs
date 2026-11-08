@@ -35,6 +35,9 @@ public static class WhiteboardEndpoints
                 : expected.Error!.ToProblem();
         });
 
+        g.MapPut("/whiteboards/{id:guid}/title", async (Guid id, BoardTitleRequest body, WhiteboardService svc, HttpContext http, CancellationToken ct) =>
+            (await svc.RenameAsync(id, body, ct).ConfigureAwait(false)).ToHttp(d => ETags.OkWithETag(http, d, d.Revision)));
+
         g.MapDelete("/whiteboards/{id:guid}", async (Guid id, WhiteboardService svc, CancellationToken ct) => (await svc.DeleteAsync(id, ct).ConfigureAwait(false)).ToHttp());
 
         g.MapGet("/whiteboards/{id:guid}/export", async (Guid id, WhiteboardService svc, CancellationToken ct) =>

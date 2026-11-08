@@ -25,23 +25,39 @@ public sealed record StoreSnapshotRequest(string State, long Seq);
 
 public sealed record CheckRequest(string DocumentName, Guid UserId, Guid SessionId);
 
-/// <summary>A parsed collaboration document name: <c>{tenantId}:page:{contentId}:draft</c> (an address, never a credential).</summary>
-public sealed record DocumentAddress(Guid TenantId, Guid ContentId)
+public enum DocumentKind
 {
-    public string Name => $"{TenantId:D}:page:{ContentId:D}:draft";
+    /// <summary>A page draft: <c>{tenantId}:page:{contentId}:draft</c>.</summary>
+    Page = 0,
+
+    /// <summary>A whiteboard: <c>{tenantId}:board:{boardId}:live</c> (Phase 11c).</summary>
+    Board = 1,
+}
+
+/// <summary>A parsed collaboration document name (an address, never a credential). <see cref="ContentId"/> is the page or the board id, depending on <see cref="Kind"/>.</summary>
+public sealed record DocumentAddress(Guid TenantId, Guid ContentId, DocumentKind Kind = DocumentKind.Page)
+{
+    public string Name => Kind == DocumentKind.Board ? $"{TenantId:D}:board:{ContentId:D}:live" : $"{TenantId:D}:page:{ContentId:D}:draft";
 
     public static DocumentAddress? Parse(string? name)
     {
         var parts = (name ?? string.Empty).Split(':');
-        return parts.Length == 4 && parts[1] == "page" && parts[3] == "draft"
-               && Guid.TryParseExact(parts[0], "D", out var tid) && Guid.TryParseExact(parts[2], "D", out var cid)
-            ? new DocumentAddress(tid, cid)
-            : null;
+        if (parts.Length != 4 || !Guid.TryParseExact(parts[0], "D", out var tid) || !Guid.TryParseExact(parts[2], "D", out var cid))
+        {
+            return null;
+        }
+
+        return (parts[1], parts[3]) switch
+        {
+            ("page", "draft") => new DocumentAddress(tid, cid),
+            ("board", "live") => new DocumentAddress(tid, cid, DocumentKind.Board),
+            _ => null,
+        };
     }
 }
 
 /// <summary>
-/// Real-time collaboration on page drafts (ADR-011). Issues tickets after the same checks as REST editing; serves the
+/// Real-time collaboration on page drafts (ADR-011); whiteboards are handled by <see cref="BoardCollaborationService"/> (ADR-035). Issues tickets after the same checks as REST editing; serves the
 /// collaboration server's persistence calls inside the document's tenant scope; keeps the shared draft in step.
 /// </summary>
 public sealed class CollaborationService(

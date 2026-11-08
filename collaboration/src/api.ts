@@ -5,7 +5,8 @@ export interface DocumentState {
   snapshot: string | null
   updates: string[]
   seq: number
-  seed: { schema: string; schemaVersion: number; doc: Record<string, unknown> } | null
+  /** Pages: the ProseMirror envelope. Boards: `{ elements }`. */
+  seed: { schema: string; schemaVersion: number; doc: Record<string, unknown> } | { elements: Record<string, unknown>[] } | null
 }
 
 export class ApiError extends Error {

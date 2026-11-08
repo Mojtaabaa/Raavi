@@ -45,7 +45,7 @@ Baseline: Confluence Cloud. Status values as in `docs/IMPLEMENTATION_STATUS.md`.
 | Media | Attachments, versions, previews, quotas | yes | 7 | Planned |
 | Search | Full text, filters, suggestions, Persian normalization | yes (no Persian tuning) | 7 | In Progress (normalizer done) |
 | Migration | Confluence import with full history | n/a | 8 | Planned (contracts done) |
-| Whiteboards | Infinite canvas, collaboration, export | yes | 9e | Tested (Konva canvas: shapes, text, sticky notes, arrows, pen, transform, undo/redo, PNG + SVG export; live co-editing not yet) |
+| Whiteboards | Infinite canvas, collaboration, export | yes | 9e | Tested (Konva canvas: shapes, text, sticky notes, arrows, pen, transform, undo/redo, PNG + SVG export; live co-editing with Yjs for editors (9e/11c), no live cursors or reader view) |
 | Databases | Metadata-driven databases, views | yes | 9c | Tested (table view only; saved views later) |
 | Tasks | Tasks with assignees, due dates | yes | 9a | Tested |
 | Calendar | Team/space calendars, Jalali | Team Calendars app | 9b | Tested |

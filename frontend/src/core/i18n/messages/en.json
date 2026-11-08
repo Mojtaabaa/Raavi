@@ -1247,7 +1247,12 @@
       "Sticky": "Sticky note",
       "Arrow": "Arrow",
       "Pen": "Pen stroke"
-    }
+    },
+    "liveJoining": "Connecting for live editing…",
+    "liveOn": "Live",
+    "liveOffline": "Offline — your changes will sync when the connection returns",
+    "liveRevoked": "You can no longer edit this whiteboard live.",
+    "liveFallback": "Live editing is not available right now; you can still edit and save the board as usual."
   },
   "workflows": {
     "nav": "Workflows",

@@ -14,7 +14,8 @@ using Raavi.Wiki.Collaboration;
 
 namespace Raavi.Wiki.Api;
 
-public sealed record TicketRequest(Guid ContentId);
+/// <summary><see cref="Kind"/> is <c>page</c> (default; <see cref="ContentId"/> is the page) or <c>board</c> (the whiteboard id).</summary>
+public sealed record TicketRequest(Guid ContentId, string? Kind = null);
 
 public sealed record DraftTitleRequest(string Title);
 
@@ -28,9 +29,14 @@ public static class CollaborationEndpoints
 
         g.MapGet("/collaboration/config", (CollaborationService svc) => Results.Ok(new { enabled = svc.IsEnabled }));
 
-        g.MapPost("/collaboration/tickets", async (TicketRequest body, CollaborationService svc, HttpContext http, CancellationToken ct) =>
+        g.MapPost("/collaboration/tickets", async (TicketRequest body, CollaborationService svc, BoardCollaborationService boards, HttpContext http, CancellationToken ct) =>
         {
             http.Response.Headers.CacheControl = "no-store";
+            if (string.Equals(body.Kind, "board", StringComparison.OrdinalIgnoreCase))
+            {
+                return (await boards.IssueTicketAsync(body.ContentId, ct).ConfigureAwait(false)).ToHttp(Results.Ok);
+            }
+
             return (await svc.IssueTicketAsync(body.ContentId, ct).ConfigureAwait(false)).ToHttp(Results.Ok);
         });
 
@@ -51,22 +57,31 @@ public static class CollaborationEndpoints
         g.MapGet("/jwks", (TicketSigner signer) => signer.IsAvailable ? Results.Ok(signer.Jwks()) : Results.StatusCode(StatusCodes.Status503ServiceUnavailable));
 
         g.MapGet("/documents/{name}/state", (string name, HttpContext http, CancellationToken ct) =>
-            InTenantAsync(http, name, async (svc, address) =>
+            InTenantAsync(http, name, async (sp, address) =>
             {
-                var state = await svc.LoadStateAsync(address.ContentId, ct).ConfigureAwait(false);
+                var state = address.Kind == DocumentKind.Board
+                    ? await sp.GetRequiredService<BoardCollaborationService>().LoadStateAsync(address.ContentId, ct).ConfigureAwait(false)
+                    : await sp.GetRequiredService<CollaborationService>().LoadStateAsync(address.ContentId, ct).ConfigureAwait(false);
                 return state is null ? Results.NotFound() : Results.Ok(state);
             }));
 
         g.MapPost("/documents/{name}/updates", (string name, StoreUpdateRequest body, HttpContext http, CancellationToken ct) =>
-            InTenantAsync(http, name, async (svc, address) =>
-                (await svc.StoreUpdateAsync(address.ContentId, body, ct).ConfigureAwait(false)).ToHttp(seq => Results.Ok(new { seq }))));
+            InTenantAsync(http, name, async (sp, address) =>
+                (address.Kind == DocumentKind.Board
+                    ? await sp.GetRequiredService<BoardCollaborationService>().StoreStateAsync(address.ContentId, body, ct).ConfigureAwait(false)
+                    : await sp.GetRequiredService<CollaborationService>().StoreUpdateAsync(address.ContentId, body, ct).ConfigureAwait(false)).ToHttp(seq => Results.Ok(new { seq }))));
 
         g.MapPost("/documents/{name}/snapshot", (string name, StoreSnapshotRequest body, HttpContext http, CancellationToken ct) =>
-            InTenantAsync(http, name, async (svc, address) => (await svc.StoreSnapshotAsync(address.ContentId, body, ct).ConfigureAwait(false)).ToHttp()));
+            InTenantAsync(http, name, async (sp, address) =>
+                address.Kind == DocumentKind.Board
+                    ? Results.NoContent() // boards persist their full state with every update; there is nothing to compact
+                    : (await sp.GetRequiredService<CollaborationService>().StoreSnapshotAsync(address.ContentId, body, ct).ConfigureAwait(false)).ToHttp()));
 
         g.MapPost("/check", (CheckRequest body, HttpContext http, CancellationToken ct) =>
-            InTenantAsync(http, body.DocumentName, async (svc, address) =>
-                Results.Ok(new { permission = await svc.CheckAsync(address.ContentId, body.UserId, body.SessionId, ct).ConfigureAwait(false) }),
+            InTenantAsync(http, body.DocumentName, async (sp, address) =>
+                Results.Ok(new { permission = address.Kind == DocumentKind.Board
+                    ? await sp.GetRequiredService<BoardCollaborationService>().CheckAsync(address.ContentId, body.UserId, body.SessionId, ct).ConfigureAwait(false)
+                    : await sp.GetRequiredService<CollaborationService>().CheckAsync(address.ContentId, body.UserId, body.SessionId, ct).ConfigureAwait(false) }),
                 missingTenant: Results.Ok(new { permission = "none" })));
     }
 
@@ -108,7 +123,7 @@ public static class CollaborationEndpoints
         }));
     }
 
-    private static async Task<IResult> InTenantAsync(HttpContext http, string documentName, Func<CollaborationService, DocumentAddress, Task<IResult>> action, IResult? missingTenant = null)
+    private static async Task<IResult> InTenantAsync(HttpContext http, string documentName, Func<IServiceProvider, DocumentAddress, Task<IResult>> action, IResult? missingTenant = null)
     {
         var address = DocumentAddress.Parse(documentName);
         if (address is null)
@@ -127,7 +142,7 @@ public static class CollaborationEndpoints
             .CreateScope(new ResolvedTenant(tenant.Id, tenant.Code, tenant.Slug, TenantResolutionSource.ServicePrincipal, null));
         await using (scope.ConfigureAwait(false))
         {
-            return await action(scope.ServiceProvider.GetRequiredService<CollaborationService>(), address).ConfigureAwait(false);
+            return await action(scope.ServiceProvider, address).ConfigureAwait(false);
         }
     }
 }

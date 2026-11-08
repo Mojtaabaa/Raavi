@@ -115,8 +115,11 @@ Triggers: `content.created|updated|moved|archived|trashed|published|publish_requ
 | GET | `/spaces/{key}/whiteboards` | View; boards with `elementCount` (the `elements` array is empty in lists) |
 | POST | `/spaces/{key}/whiteboards` | Edit on an active space. `{title, elements: [{id, type: Rect|Ellipse|Text|Sticky|Arrow|Pen, x, y, w, h, rotation, stroke, fill, strokeWidth, text, fontSize, rtl, points}]}` |
 | GET/PUT | `/whiteboards/{id}` | PUT replaces title and the whole element list (order = stacking order), needs **If-Match** `"r{n}"` |
+| PUT | `/whiteboards/{id}/title` | Edit; `{title}` — renames without touching elements or live sessions |
 | DELETE | `/whiteboards/{id}` | Edit |
 | GET | `/whiteboards/{id}/export` | View; SVG (`image/svg+xml`). PNG is rendered by the browser from the canvas |
+
+Live editing (ADR-035): `POST /collaboration/tickets {contentId: <boardId>, kind: "board"}` returns a ticket for the Yjs document `{tenantId}:board:{boardId}:live` (Edit right required; 403 for readers, 404 otherwise). The collaboration server persists through the signed internal endpoints (`/internal/collaboration/documents/{name}/state|updates|check`), where `updates` carries the full Yjs state and the converted `{elements}` that are validated like a PUT. A whole-board PUT clears the live state and resets connected editors.
 
 Elements are validated and normalised (colours `#rrggbb`, finite bounded coordinates, ≤ 2 000 elements, text ≤ 2 000 characters, arrows 2 points, pen ≤ 2 000 points). Errors: `board.title_invalid`, `board.too_many`, `board.element_invalid`, `board.not_found`.
 

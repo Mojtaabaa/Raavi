@@ -50,6 +50,7 @@ export const whiteboardsApi = {
   get: (id: string) => api<Whiteboard>('GET', `/whiteboards/${enc(id)}`),
   create: (spaceKey: string, body: WhiteboardInput) => api<Whiteboard>('POST', `/spaces/${enc(spaceKey)}/whiteboards`, body),
   update: (board: Whiteboard, body: WhiteboardInput) => apiRequest<Whiteboard>('PUT', `/whiteboards/${enc(board.id)}`, body, { ifMatch: `"r${board.revision}"` }).then((r) => r.data),
+  rename: (id: string, title: string) => api<Whiteboard>('PUT', `/whiteboards/${enc(id)}/title`, { title }),
   remove: (id: string) => api<void>('DELETE', `/whiteboards/${enc(id)}`),
   exportUrl: (id: string) => `/api/v1/whiteboards/${enc(id)}/export`,
 }

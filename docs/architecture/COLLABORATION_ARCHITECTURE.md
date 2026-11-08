@@ -75,6 +75,10 @@ Restoring an old version replaces the draft Y doc content in a single transactio
 - Close reasons: `raavi:revoked` (client stops, shows a notice) and `raavi:reset` (client clears its IndexedDB cache, then re-joins).
 - Real-time editors publish with `If-Match: *` and save the title through `PUT /content/{id}/draft/title`.
 
+## 7c. Whiteboards (Phase 11c, ADR-035)
+
+Boards are a second document kind: name `{tenantId}:board:{boardId}:live`, Yjs `elements` (map of per-element maps) + `order` (array), edit-only tickets, full-state persistence on the board row (no update log or snapshots), validation by the same rules as a REST save, reset on refusal or on a whole-board save.
+
 ## 8. Limits and observability
 
 Max document size (default 20 MB Y state), max connections per document (default 200), message rate limits per connection. Metrics: active documents, connections, reconnects, persistence latency/failures, revocations, ticket rejections (by reason).

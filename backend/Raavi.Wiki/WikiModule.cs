@@ -66,6 +66,7 @@ public static class WikiModule
         services.AddScoped<Raavi.Wiki.Collaboration.CollaborationClient>();
         services.AddScoped<Raavi.Application.Abstractions.Collaboration.ICollaborationRevocation>(sp => sp.GetRequiredService<Raavi.Wiki.Collaboration.CollaborationClient>());
         services.AddScoped<Raavi.Wiki.Collaboration.CollaborationService>();
+        services.AddScoped<Raavi.Wiki.Collaboration.BoardCollaborationService>();
         services.AddScoped<IOutboxHandler, Raavi.Wiki.Api.CollaborationRevocationHandler>();
         return services;
     }

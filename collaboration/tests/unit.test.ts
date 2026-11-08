@@ -63,3 +63,14 @@ test('tickets: valid once, bound to the document and tenant, audience and lifeti
     await api.close()
   }
 })
+
+test('the server decodes the whiteboard state produced by the frontend binding (shared fixture)', async () => {
+  const { readFileSync } = await import('node:fs')
+  const Y = await import('yjs')
+  const { boardToJson } = await import('../src/board.ts')
+  const fixture = JSON.parse(readFileSync(new URL('../../schema/board/live-board.fixture.json', import.meta.url), 'utf8')) as { update: string; elements: Record<string, unknown>[] }
+  const doc = new Y.Doc()
+  Y.applyUpdate(doc, Buffer.from(fixture.update, 'base64'))
+  assert.deepEqual(boardToJson(doc), fixture.elements, 'server conversion and frontend binding agree on the structure')
+  assert.deepEqual(boardToJson(doc).map((e) => e.id), ['r1', 'a1', 's1']) // order = stacking order
+})

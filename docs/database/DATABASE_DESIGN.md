@@ -23,6 +23,7 @@ SQL Server 2022+ · shared database, logical tenant isolation (ADR-005) · EF Co
 
 | Phase | Tables | Notes |
 |---|---|---|
+| 11c | `content.Whiteboards` (+`YjsState`) | Migration `WhiteboardLiveState`: nullable `varbinary(max)` with the full Yjs state of the last live session; cleared by every whole-board save. No new tables: boards need no update log. |
 | 11a | `ai.Settings`, `ai.Usage` | Module-owned context `AiDbContext` (schema `ai`, migration `Initial`, RLS). Settings: one row per tenant, API key stored protected (Data Protection, tenant-bound purpose). Usage: token counts only — no prompts, answers or content. |
 | 10c | `content.Workflows` (+`StaleDays`) | Migration `WorkflowStaleDays`: nullable int, set only for the `content.stale` trigger. Reminders and the daily sweep add no tables (Hangfire jobs + existing run log). |
 | 10b | `content.ApprovalRequests`, `content.ApprovalAssignments` | Migration `Approvals` (RLS; request → space and assignment → request composite FKs; no FK to the page node). Request revision is a concurrency token bumped on every decision. |

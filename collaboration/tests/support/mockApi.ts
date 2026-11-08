@@ -26,7 +26,8 @@ export async function startMockApi(serviceKey: string) {
   const docOf = (name: string) => {
     let d = docs.get(name)
     if (!d) {
-      d = { snapshot: null, snapshotSeq: 0, updates: [], lastSeq: 0, json: null, contributors: new Set(), seed: { schema: 'raavi.doc', schemaVersion: 2, doc: { type: 'doc', content: [{ type: 'paragraph', attrs: { textAlign: null, dir: null }, content: [{ type: 'text', text: 'seeded' }] }] } } }
+      const board = name.includes(':board:')
+      d = { snapshot: null, snapshotSeq: 0, updates: [], lastSeq: 0, json: null, contributors: new Set(), seed: board ? { elements: [{ id: 'r1', type: 'Rect', x: 10, y: 20, w: 100, h: 50, stroke: '#1f2937', fill: null }, { id: 't1', type: 'Text', x: 0, y: 100, text: 'hello' }] } : { schema: 'raavi.doc', schemaVersion: 2, doc: { type: 'doc', content: [{ type: 'paragraph', attrs: { textAlign: null, dir: null }, content: [{ type: 'text', text: 'seeded' }] }] } } }
       docs.set(name, d)
     }
     return d
@@ -54,6 +55,8 @@ export async function startMockApi(serviceKey: string) {
     const doc = docOf(name)
     if (m[2] === 'state') {
       const hasState = doc.snapshot !== null || doc.updates.length > 0
+      // Boards keep only the latest full state (what the real API does): it comes back as the snapshot, with no later updates.
+      if (name.includes(':board:')) return json({ snapshot: doc.updates.at(-1)?.update ?? null, updates: [], seq: doc.lastSeq, seed: hasState ? null : doc.seed })
       return json({ snapshot: doc.snapshot, updates: doc.updates.filter((u) => u.seq > doc.snapshotSeq).map((u) => u.update), seq: doc.lastSeq, seed: hasState ? null : doc.seed })
     }
     const payload = JSON.parse(body.toString()) as { update?: string; json?: unknown; contributors?: string[]; state?: string; seq?: number }

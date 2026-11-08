@@ -1,10 +1,25 @@
 # Implementation Status
 
-**Last updated:** 2026-11-08 (Phase 11a: AI assistant)
+**Last updated:** 2026-11-08 (Phase 11c: live whiteboards)
 
 Statuses: Not Started · Planned · In Progress · Implemented · Tested · Blocked · Deferred. "Tested" requires executed test evidence (listed).
 
 ## Phase 11 — AI & integrations (split: 11a AI assistant done; RAG, integrations, webhooks pending)
+
+### 11c — Live whiteboards with Yjs (ADR-035)
+
+```
+cd backend && dotnet test Raavi.Tests    → Passed: 413, Failed: 0   (new: BoardAddressTests 1, BoardCollaborationTests 3 API: tickets, signed state/updates, validation, checks)
+cd collaboration && npm test             → 14 tests, all passing in 6 consecutive runs (new: 4 board tests on a real Hocuspocus server + 1 fixture contract test)
+EF: has-pending-model-changes (Wiki)     → none; new migration WhiteboardLiveState
+cd frontend && npm run build && npm test → ok; 21 files, 145 tests (new: liveBoard.test.ts 8, whiteboardLive.test.ts 3); npm audit (production) 0
+```
+
+Boards become a second document kind on the collaboration server: editors get a board ticket, edit through Yjs (per-element field maps + order array, so concurrent changes to different fields of one element both survive), see who else is on the board, and undo only their own changes. The server persists the **full** Yjs state with the converted element list on the board row; the API validates it like a REST save. A whole-board save clears the live state and resets editors. Readers, and everyone when the collaboration server is off or unreachable, keep the ordinary whole-board editing. A frontend-generated fixture is decoded by the server tests so the two Yjs implementations cannot drift.
+
+**Verified:** convergence, persistence and restart of a real Hocuspocus server with real Yjs clients; API validation, tickets, tenant isolation, rights re-checks; the binding logic; the view's live/fallback/reset behaviour with an in-memory session. **Not verified:** the full chain API ⇄ collaboration server ⇄ browser (no signed-in browser session, so never run end to end), the Konva canvas under live remote updates, multi-user latency, and multi-node operation. The 'reset drops the live state' test of the collaboration server was already timing-sensitive (about 1 run in 4 failed on the previous code too); it now tolerates an in-flight store, and the underlying narrow race is documented in the ADR.
+
+**Not in 11c:** live view for readers, live cursors, offline cache, Redis multi-node, board history.
 
 ### 11a — AI assistant on pages (ADR-034)
 

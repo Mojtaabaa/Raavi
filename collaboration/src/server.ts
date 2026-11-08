@@ -3,13 +3,17 @@ import { Server, type Connection, type Document, type Hocuspocus } from '@hocusp
 import * as Y from 'yjs'
 import { prosemirrorJSONToYXmlFragment, yXmlFragmentToProsemirrorJSON } from '@tiptap/y-tiptap'
 import type { Schema } from 'prosemirror-model'
+import { boardToJson, seedBoard, type BoardElementJson } from './board.ts'
 import { ApiError, InternalApi } from './api.ts'
 import { verify } from './signature.ts'
 import { TicketError, TicketVerifier, type Ticket } from './tickets.ts'
 
 /** Tiptap's Collaboration extension stores the document in this fragment. */
 export const FIELD = 'default'
-const DOCUMENT_NAME = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:page:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:draft$/
+const GUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+/** Page drafts `{tenant}:page:{id}:draft` and whiteboards `{tenant}:board:{id}:live` (an address, never a credential). */
+const DOCUMENT_NAME = new RegExp(`^${GUID}:(?:page:${GUID}:draft|board:${GUID}:live)$`)
+const isBoard = (name: string) => name.includes(':board:')
 
 export interface CollabConfig {
   apiUrl: string
@@ -63,11 +67,13 @@ export function createCollaborationServer(config: CollabConfig, schema: Schema, 
   async function persist(name: string, document: Y.Doc, forceSnapshot = false): Promise<void> {
     const state = stateOf(name)
     if (state.discarded) return
+    const board = isBoard(name)
     const vector = Y.encodeStateVector(document)
-    const update = state.stored ? Y.encodeStateAsUpdate(document, state.stored) : Y.encodeStateAsUpdate(document)
+    // Boards are small: every store carries the full state, which the API keeps as the one source for loading (no log, no compaction).
+    const update = state.stored && !board ? Y.encodeStateAsUpdate(document, state.stored) : Y.encodeStateAsUpdate(document)
     const changed = !state.stored || !Buffer.from(vector).equals(Buffer.from(state.stored))
     if (changed) {
-      const json = yXmlFragmentToProsemirrorJSON(document.getXmlFragment(FIELD))
+      const json = board ? { elements: boardToJson(document) } : yXmlFragmentToProsemirrorJSON(document.getXmlFragment(FIELD))
       const contributors = [...state.contributors]
       const result = await api.storeUpdate(name, update, json, contributors)
       state.stored = vector
@@ -75,7 +81,7 @@ export function createCollaborationServer(config: CollabConfig, schema: Schema, 
       state.sinceSnapshot++
       for (const c of contributors) state.contributors.delete(c)
     }
-    if (state.seq > 0 && state.sinceSnapshot > 0 && (forceSnapshot || state.sinceSnapshot >= config.snapshotEvery)) {
+    if (!board && state.seq > 0 && state.sinceSnapshot > 0 && (forceSnapshot || state.sinceSnapshot >= config.snapshotEvery)) {
       await api.storeSnapshot(name, Y.encodeStateAsUpdate(document), state.seq)
       state.sinceSnapshot = 0
     }
@@ -166,8 +172,9 @@ export function createCollaborationServer(config: CollabConfig, schema: Schema, 
         state.seq = stored.seq
         state.sinceSnapshot = stored.updates.length
       } else if (stored.seed) {
-        // First collaborative session: build the Yjs document from the draft (or the published version).
-        document.transact(() => prosemirrorJSONToYXmlFragment(schema, stored.seed!.doc, document.getXmlFragment(FIELD)), 'seed')
+        // First collaborative session: build the Yjs document from the draft (or the published version), or from the board elements.
+        if (isBoard(documentName)) seedBoard(document, (stored.seed as { elements?: BoardElementJson[] }).elements ?? [])
+        else document.transact(() => prosemirrorJSONToYXmlFragment(schema, (stored.seed as { doc: Record<string, unknown> }).doc, document.getXmlFragment(FIELD)), 'seed')
         state.stored = null
       }
       return document

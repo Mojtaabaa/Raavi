@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
@@ -8,6 +8,9 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import { whiteboardsApi, type BoardElement, type Whiteboard } from '@/core/api/whiteboards'
 import { errorMessage } from '@/core/api/errors'
+import { useAuthStore } from '@/stores/auth'
+import { liveBoardsAvailable, startBoardSession, type BoardSession } from './liveSession'
+import type { LivePeer, LiveStatus } from '@/modules/editor/collaboration'
 import { duplicate, FILLS, History, labelOf, MAX_ELEMENTS, PALETTE, patch, remove, reorder, STROKE_WIDTHS, type Tool } from './boardModel'
 
 /**
@@ -22,6 +25,7 @@ const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 const confirm = useConfirm()
+const auth = useAuthStore()
 
 const tools: { id: Tool; icon: string }[] = [
   { id: 'select', icon: 'pi pi-arrow-up-left' },
@@ -53,9 +57,18 @@ const canEdit = computed(() => !!board.value?.canEdit)
 const selected = computed(() => elements.value.find((e) => e.id === selectedId.value) ?? null)
 const hasText = computed(() => selected.value?.type === 'Text' || selected.value?.type === 'Sticky')
 const snapshot = () => JSON.stringify({ title: title.value, elements: elements.value })
-const dirty = computed(() => canEdit.value && snapshot() !== saved.value)
-const canUndo = computed(() => (historyTick.value, history.canUndo))
-const canRedo = computed(() => (historyTick.value, history.canRedo))
+const dirty = computed(() => canEdit.value && !isLive.value && liveState.value !== 'joining' && snapshot() !== saved.value)
+// Live mode (Phase 11c): edits go through a Yjs session instead of whole-board saves; undo/redo only touch the user's own changes.
+const liveState = ref<'off' | 'joining' | 'live'>('off')
+const liveStatus = ref<LiveStatus>('connecting')
+const peers = ref<LivePeer[]>([])
+let session: BoardSession | null = null
+let stops: (() => void)[] = []
+let joinTimer: ReturnType<typeof setTimeout> | undefined
+const isLive = computed(() => liveState.value === 'live')
+const editable = computed(() => canEdit.value && liveState.value !== 'joining')
+const canUndo = computed(() => (historyTick.value, session && isLive.value ? session.board.canUndo : history.canUndo))
+const canRedo = computed(() => (historyTick.value, session && isLive.value ? session.board.canRedo : history.canRedo))
 
 function apply(b: Whiteboard) {
   board.value = b
@@ -68,18 +81,104 @@ function apply(b: Whiteboard) {
 }
 
 async function load() {
+  leaveLive()
   try {
     apply(await whiteboardsApi.get(id.value))
+    if (canEdit.value) void joinLive()
   } catch (e) {
     fail(e)
   }
 }
 onMounted(load)
 watch(id, load)
+onBeforeUnmount(leaveLive)
+
+function leaveLive() {
+  clearTimeout(joinTimer)
+  stops.forEach((s) => s())
+  stops = []
+  session?.destroy()
+  session = null
+  liveState.value = 'off'
+  peers.value = []
+}
+
+/** Tries to join the live session; any problem falls back to the ordinary whole-board editing (nothing is lost, nothing is blocked for long). */
+async function joinLive() {
+  const target = board.value
+  const me = auth.me
+  if (!target || !me || !(await liveBoardsAvailable())) return
+  liveState.value = 'joining'
+  try {
+    const s = await startBoardSession(target.id, { id: me.id, name: me.displayName })
+    session = s
+    const stopPeers = watch(s.peers, (p) => (peers.value = [...p]), { immediate: true, deep: true })
+    const stopStatus = watch(
+      s.status,
+      (status) => {
+        liveStatus.value = status
+        if (status === 'live' && liveState.value === 'joining') {
+          clearTimeout(joinTimer)
+          const synced = s.board.toElements()
+          elements.value = synced
+          saved.value = snapshot()
+          if (selectedId.value && !synced.some((e) => e.id === selectedId.value)) selectedId.value = null
+          history.clear()
+          liveState.value = 'live'
+        } else if (status === 'reset') {
+          void load() // the board was replaced by a whole-board save: start over from the stored content
+        } else if (status === 'revoked') {
+          toast.add({ severity: 'warn', summary: t('whiteboards.liveRevoked'), life: 6000 })
+          void load()
+        }
+      },
+      { immediate: true },
+    )
+    stops.push(
+      stopPeers,
+      stopStatus,
+      s.board.onRemote((els) => {
+        elements.value = els
+        if (selectedId.value && !els.some((e) => e.id === selectedId.value)) selectedId.value = null
+        historyTick.value++
+      }),
+      s.board.onHistory(() => historyTick.value++),
+    )
+    joinTimer = setTimeout(() => {
+      if (liveState.value === 'joining') {
+        leaveLive()
+        toast.add({ severity: 'info', summary: t('whiteboards.liveFallback'), life: 5000 })
+      }
+    }, 10_000)
+  } catch {
+    leaveLive() // e.g. no collaboration server reachable: keep editing the ordinary way
+  }
+}
+
+/** Live mode saves the title on its own (the whole-board save would reset everybody's session). */
+async function renameLive() {
+  const b = board.value
+  const name = title.value.trim()
+  if (!isLive.value || !b || !name || name === b.title) return
+  try {
+    const updated = await whiteboardsApi.rename(b.id, name)
+    board.value = { ...b, title: updated.title, revision: updated.revision }
+    saved.value = snapshot()
+  } catch (e) {
+    fail(e)
+  }
+}
 
 /** Every model change goes through here so that it can be undone. */
 function commit(next: BoardElement[]) {
   if (next === elements.value) return
+  if (session && isLive.value) {
+    session.board.apply(next) // one tracked Yjs transaction; undo/redo come from the Yjs undo manager
+    elements.value = next
+    historyTick.value++
+    return
+  }
+
   history.record(elements.value)
   elements.value = next
   historyTick.value++
@@ -132,6 +231,11 @@ function order(to: 'front' | 'back') {
 }
 
 function undo() {
+  if (session && isLive.value) {
+    session.board.undo()
+    return
+  }
+
   const prev = history.undo(elements.value)
   if (prev) {
     elements.value = prev
@@ -140,6 +244,11 @@ function undo() {
 }
 
 function redo() {
+  if (session && isLive.value) {
+    session.board.redo()
+    return
+  }
+
   const next = history.redo(elements.value)
   if (next) {
     elements.value = next
@@ -216,18 +325,23 @@ onBeforeRouteLeave(() => !dirty.value || window.confirm(t('whiteboards.unsaved')
     <header class="head">
       <div class="titles">
         <RouterLink :to="{ name: 'space-whiteboards', params: { key: board.spaceKey } }" class="muted">{{ board.spaceName }}</RouterLink>
-        <InputText v-if="canEdit" v-model="title" maxlength="200" class="board-title" dir="auto" :aria-label="t('whiteboards.boardTitle')" data-testid="board-title-input" />
+        <InputText v-if="canEdit" v-model="title" maxlength="200" class="board-title" dir="auto" :aria-label="t('whiteboards.boardTitle')" data-testid="board-title-input" @change="renameLive" />
         <h1 v-else dir="auto">{{ board.title }}</h1>
       </div>
       <div class="tools">
-        <Button v-if="canEdit" icon="pi pi-save" :label="t('common.save')" :loading="saving" :disabled="!dirty || !title.trim()" data-testid="save-board" @click="save" />
+        <span v-if="liveState !== 'off'" class="live" :class="liveState === 'live' && liveStatus === 'offline' ? 'off' : liveState" role="status" data-testid="live-status">
+          <i class="pi pi-circle-fill" aria-hidden="true" />
+          {{ liveState === 'joining' ? t('whiteboards.liveJoining') : liveStatus === 'offline' ? t('whiteboards.liveOffline') : t('whiteboards.liveOn') }}
+          <template v-if="peers.length"> · <span data-testid="peers">{{ peers.map((p) => p.name).join(', ') }}</span></template>
+        </span>
+        <Button v-if="canEdit && !isLive" icon="pi pi-save" :label="t('common.save')" :loading="saving" :disabled="!dirty || !title.trim()" data-testid="save-board" @click="save" />
         <Button icon="pi pi-image" text :label="t('whiteboards.exportPng')" data-testid="export-png" @click="exportPng" />
         <Button as="a" :href="whiteboardsApi.exportUrl(board.id)" icon="pi pi-download" text :label="t('whiteboards.exportSvg')" :disabled="dirty" data-testid="export-svg" />
       </div>
     </header>
     <p v-if="dirty" class="muted" role="status" data-testid="unsaved">{{ t('whiteboards.exportAfterSave') }}</p>
 
-    <div v-if="canEdit" class="toolbar" role="toolbar" :aria-label="t('whiteboards.tools')">
+    <div v-if="editable" class="toolbar" role="toolbar" :aria-label="t('whiteboards.tools')">
       <Button v-for="tl in tools" :key="tl.id" :icon="tl.icon" :severity="tool === tl.id ? 'primary' : 'secondary'" :outlined="tool !== tl.id" size="small" :aria-label="t(`whiteboards.toolNames.${tl.id}`)" :aria-pressed="tool === tl.id" :title="t(`whiteboards.toolNames.${tl.id}`)" :data-testid="`tool-${tl.id}`" @click="tool = tl.id" />
       <span class="sep" />
       <Button icon="pi pi-undo" text rounded size="small" :disabled="!canUndo" :aria-label="t('whiteboards.undo')" data-testid="undo" @click="undo" />
@@ -244,7 +358,7 @@ onBeforeRouteLeave(() => !dirty.value || window.confirm(t('whiteboards.unsaved')
 
     <div class="workspace">
       <div class="surface" tabindex="0" :aria-label="t('whiteboards.canvasHint')">
-        <BoardCanvas ref="canvas" :elements="elements" :tool="tool" :selected-id="selectedId" :read-only="!canEdit" :stroke="stroke" :fill="fill" :label="t('whiteboards.canvasLabel', { title: board.title, count: elements.length })" @select="setSelected" @create="onCreate" @change="onChange" />
+        <BoardCanvas ref="canvas" :elements="elements" :tool="tool" :selected-id="selectedId" :read-only="!editable" :stroke="stroke" :fill="fill" :label="t('whiteboards.canvasLabel', { title: board.title, count: elements.length })" @select="setSelected" @create="onCreate" @change="onChange" />
         <div class="zoom">
           <Button icon="pi pi-search-minus" text rounded size="small" :aria-label="t('whiteboards.zoomOut')" @click="canvas?.zoomBy(1 / 1.2)" />
           <Button icon="pi pi-expand" text rounded size="small" :aria-label="t('whiteboards.fit')" data-testid="fit" @click="canvas?.resetView()" />
@@ -323,6 +437,10 @@ h2 { margin: 0; font-size: 1rem; }
 .row.on { background: var(--raavi-surface-muted, rgba(59, 130, 246, 0.12)); }
 .n { min-inline-size: 1.5rem; font-weight: 700; text-align: center; }
 .excerpt { color: var(--raavi-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.live { display: inline-flex; gap: 0.35rem; align-items: center; font-size: 0.85rem; padding: 0.15rem 0.6rem; border-radius: 999px; background: var(--raavi-surface-muted, #eee); }
+.live .pi { font-size: 0.6rem; }
+.live.live .pi { color: #16a34a; }
+.live.joining .pi, .live.off .pi { color: #d97706; }
 .muted { color: var(--raavi-text-muted); margin: 0; }
 :deep(.redo .pi-refresh) { transform: scaleX(-1); }
 </style>
