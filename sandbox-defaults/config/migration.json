@@ -1,0 +1,9 @@
+{
+  "Raavi": {
+    "Migration": {
+      "AllowedSourceHosts": [],
+      "RequestsPerSecond": 10,
+      "MaxEventsPerJob": 2000
+    }
+  }
+}

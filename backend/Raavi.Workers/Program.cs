@@ -29,6 +29,7 @@ builder.Services.AddMigrationModule(builder.Configuration);
 builder.Services.AddIntegrationsModule(builder.Configuration);
 
 var host = builder.Build();
+SandboxCommand.WarnIfDrifted(builder.Environment.ContentRootPath, builder.Configuration["Raavi:SandboxPath"]!, host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Raavi.Sandbox"));
 
 // Recurring system jobs. Tenant jobs are enqueued through ITenantJobScheduler and executed by TenantJobRunner.
 var recurring = host.Services.GetRequiredService<IRecurringJobManager>();

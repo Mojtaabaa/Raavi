@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { buildSchema, loadManifests } from './schema.ts'
 import { createCollaborationServer } from './server.ts'
@@ -11,7 +13,20 @@ import { createCollaborationServer } from './server.ts'
  *   RAAVI_RECHECK_SECONDS    periodic permission re-check (default 60)
  *   RAAVI_SNAPSHOT_EVERY     snapshot after N stored updates (default 500)
  *   RAAVI_SCHEMA_DIR         editor manifests (default ../schema/editor/extensions)
+ *
+ * The same variables may be kept in `<sandbox>/secrets/collaboration.env` (KEY=value lines) so they survive an upgrade with the rest of the
+ * installation's files (ADR-040). The file is found next to RAAVI_SANDBOX_PATH (its parent folder), or via RAAVI_COLLAB_ENV_FILE, or in the
+ * repository's sandbox/secrets in development. Variables already set in the process environment win over the file.
  */
+const sandboxConfig = process.env.RAAVI_SANDBOX_PATH
+const envFile =
+  process.env.RAAVI_COLLAB_ENV_FILE ??
+  (sandboxConfig
+    ? join(dirname(sandboxConfig), 'secrets', 'collaboration.env')
+    : fileURLToPath(new URL('../../sandbox/secrets/collaboration.env', import.meta.url)))
+if (existsSync(envFile)) {
+  process.loadEnvFile(envFile)
+}
 const env = process.env
 const serviceKey = env.RAAVI_COLLAB_SERVICE_KEY ?? ''
 const apiUrl = env.RAAVI_API_URL ?? ''

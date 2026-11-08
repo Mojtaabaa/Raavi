@@ -16,6 +16,11 @@ using Raavi.Wiki.Persistence;
 
 // Raavi database migrator (ADR-020). Applies module migrations in dependency order and installs the Hangfire schema.
 // Uses ConnectionStrings:Migrator (DDL login) when present, otherwise ConnectionStrings:System (development only).
+if (args.Length > 0 && args[0].Equals("sandbox", StringComparison.OrdinalIgnoreCase))
+{
+    return SandboxCommand.Run(args, Directory.GetCurrentDirectory());
+}
+
 var builder = Host.CreateApplicationBuilder(args);
 builder.Configuration.AddRaaviSandboxConfiguration(builder.Environment, args);
 builder.AddRaaviLogging();
@@ -46,3 +51,4 @@ await Raavi.AI.Persistence.AiMigrations.ApplyAsync(host.Services).ConfigureAwait
 await Raavi.Integrations.Persistence.IntegrationsMigrations.ApplyAsync(host.Services).ConfigureAwait(false);
 HangfireExtensions.InstallSchema(builder.Configuration.GetConnectionString("System")!);
 Console.WriteLine("Raavi database is up to date.");
+return 0;

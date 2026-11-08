@@ -26,6 +26,8 @@ Thumbs.db
 sandbox/config/*.Local.json
 sandbox/config/*.Production.json
 sandbox/secrets/
+sandbox/data/
+sandbox/backups/
 *.pfx
 *.key
 *.pem

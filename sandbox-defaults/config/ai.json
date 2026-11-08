@@ -1,0 +1,10 @@
+{
+  "Raavi": {
+    "Ai": {
+      "AllowedHosts": [],
+      "RequestTimeoutSeconds": 60,
+      "MaxInputChars": 24000,
+      "MaxRequestsPerUserPerHour": 20
+    }
+  }
+}

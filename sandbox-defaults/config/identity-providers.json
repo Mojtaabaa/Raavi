@@ -1,0 +1,72 @@
+{
+  "Raavi": {
+    "IdentityProviders": [
+      {
+        "Id": "local",
+        "Type": "Local",
+        "DisplayName": { "Fa": "حساب راوی", "En": "Raavi account" },
+        "Enabled": true
+      }
+    ],
+    "_examples": [
+      {
+        "Id": "jira-eng",
+        "Type": "JiraDataCenter",
+        "DisplayName": { "Fa": "جیرای مهندسی", "En": "Engineering Jira" },
+        "Enabled": false,
+        "BaseUrl": "https://jira.company.local",
+        "Mode": "OAuth2",
+        "ClientId": "",
+        "ClientSecret": "__SET_VIA_ENV_OR_SECRET_STORE__",
+        "Scopes": [ "READ" ],
+        "CallbackMode": "Relay",
+        "TrustEmail": false,
+        "IncludeGroups": true,
+        "_note": "Create an incoming OAuth 2.0 application link in Jira DC 8.22+ with redirect URL https://<system host>/api/v1/auth/relay/jira-eng"
+      },
+      {
+        "Id": "corp-ad",
+        "Type": "ActiveDirectory",
+        "DisplayName": { "Fa": "اکتیو دایرکتوری", "En": "Corporate AD" },
+        "Enabled": false,
+        "Server": "ldaps://dc01.company.local:636",
+        "BaseDn": "DC=company,DC=local",
+        "BindDn": "CN=svc-raavi,OU=Service,DC=company,DC=local",
+        "BindPassword": "__SET_VIA_ENV_OR_SECRET_STORE__",
+        "UserFilter": "(&(objectClass=user)(sAMAccountName={0}))",
+        "SubjectAttribute": "objectGUID",
+        "GroupAttribute": "memberOf",
+        "TrustEmail": false
+      },
+      {
+        "Id": "openldap",
+        "Type": "Ldap",
+        "DisplayName": { "Fa": "دایرکتوری LDAP", "En": "LDAP directory" },
+        "Enabled": false,
+        "Server": "ldap://ldap.company.local:389",
+        "StartTls": true,
+        "BaseDn": "ou=people,dc=company,dc=local",
+        "BindDn": "cn=raavi,ou=services,dc=company,dc=local",
+        "BindPassword": "__SET_VIA_ENV_OR_SECRET_STORE__",
+        "UserFilter": "(&(objectClass=inetOrgPerson)(uid={0}))",
+        "SubjectAttribute": "entryUUID",
+        "UsernameAttribute": "uid",
+        "GroupAttribute": "memberOf"
+      },
+      {
+        "Id": "partner-oidc",
+        "Type": "OpenIdConnect",
+        "DisplayName": { "Fa": "ورود سازمانی", "En": "Partner SSO" },
+        "Enabled": false,
+        "Authority": "https://idp.partner.example/realms/main",
+        "ClientId": "",
+        "ClientSecret": "__SET_VIA_ENV_OR_SECRET_STORE__",
+        "Scopes": [ "openid", "profile", "email" ],
+        "GroupsClaim": "groups",
+        "CallbackMode": "PerHost",
+        "TrustEmail": false,
+        "_note": "Register https://<tenant host>/api/v1/auth/callback/partner-oidc for every tenant host, or use CallbackMode Relay with https://<system host>/api/v1/auth/relay/partner-oidc"
+      }
+    ]
+  }
+}

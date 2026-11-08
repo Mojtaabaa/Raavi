@@ -13,7 +13,8 @@
 backend/        ASP.NET Core solution (Raavi.slnx)
 frontend/       Vue 3 SPA
 collaboration/  Hocuspocus server (Phase 6)
-sandbox/config/ global configuration (no secrets)
+sandbox/config/ global configuration (no secrets); sandbox/data, sandbox/secrets: instance state and keys (git-ignored) — see sandbox/README.md
+sandbox-defaults/ settings shipped with the version (same keys as sandbox/config; a test checks it)
 deployment/     compose, kubernetes, scripts
 docs/           architecture, ADRs, guides
 ```

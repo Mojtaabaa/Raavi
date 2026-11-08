@@ -1,0 +1,25 @@
+{
+  "Raavi": {
+    "Security": {
+      "DataProtection": {
+        "KeyRingPath": "",
+        "ApplicationName": "raavi"
+      },
+      "RateLimiting": {
+        "AnonymousPerMinute": 60,
+        "AuthenticatedPerMinute": 600,
+        "LoginPerMinutePerIp": 10
+      },
+      "OutboundHttp": {
+        "BlockPrivateNetworks": true,
+        "AllowedPrivateHosts": []
+      },
+      "CustomDomains": {
+        "VerificationRecordPrefix": "_raavi-verify",
+        "MaxDomainsPerTenant": 10,
+        "QuarantineDays": 30
+      },
+      "SystemApiKeys": []
+    }
+  }
+}

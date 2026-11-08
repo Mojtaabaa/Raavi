@@ -8,7 +8,7 @@
 | Object storage | Bucket replication/versioning or snapshot of the storage volume; consistency point recorded after SQL backup | Daily + continuous versioning | Restore must be ≥ SQL point in time (orphan objects are cleaned automatically; missing objects are not) |
 | Collaboration snapshots | Part of SQL + object storage | — | Y updates are in SQL |
 | Configuration (`sandbox/config`) | Version-controlled deployment repository | On change | No secrets inside |
-| Secrets / keys | Secret store backup (Data Protection key ring, collaboration ticket keys, tenant data-key master key, SQL backup certificate) | On change | Store separately from data backups — without them encrypted data is unrecoverable |
+| Secrets / keys | Secret store backup (`sandbox/data/keys` Data Protection key ring, `sandbox/secrets`, `sandbox/config`, collaboration ticket keys, tenant data-key master key, SQL backup certificate) | On change | Store separately from data backups — without them encrypted data is unrecoverable |
 | Redis/Valkey | Not backed up by default (cache, ephemeral coordination). Optional AOF for faster warm-up | — | Rebuilt from SQL |
 | OpenSearch | Rebuild via reindex jobs (authoritative data in SQL); optional snapshot repository to S3 for faster recovery | Optional daily | |
 

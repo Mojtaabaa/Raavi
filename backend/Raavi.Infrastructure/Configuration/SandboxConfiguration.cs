@@ -47,6 +47,13 @@ public static class SandboxConfiguration
         var path = ResolvePath(environment.ContentRootPath, explicitPath ?? Environment.GetEnvironmentVariable(PathVariable));
         EnsureNotPubliclyServed(path, environment.ContentRootPath);
 
+        // Lowest layer: scalar defaults the shipped version declares in sandbox-defaults/, so a setting added by an upgrade has a value
+        // even before `Raavi.Migrator sandbox sync` has copied it into the installation's files (ADR-040).
+        if (SandboxSync.ResolveDefaultsPath(environment.ContentRootPath) is { } defaults)
+        {
+            configuration.Add(new Microsoft.Extensions.Configuration.Memory.MemoryConfigurationSource { InitialData = SandboxSync.FlattenScalars(defaults) });
+        }
+
         var main = System.IO.Path.Combine(path, "appsettings.json");
         if (!File.Exists(main))
         {
@@ -69,7 +76,46 @@ public static class SandboxConfiguration
         }
 
         configuration["Raavi:SandboxPath"] = path;
+        ApplyStatePaths(configuration, path);
         return path;
+    }
+
+    /// <summary>The instance root: the parent of <c>config</c> (development layout and the documented production layout), else the directory itself.</summary>
+    public static string RootOf(string sandboxConfigPath)
+    {
+        var full = System.IO.Path.GetFullPath(sandboxConfigPath).TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
+        return string.Equals(System.IO.Path.GetFileName(full), "config", StringComparison.OrdinalIgnoreCase) ? System.IO.Path.GetDirectoryName(full)! : full;
+    }
+
+    /// <summary>
+    /// Everything an installation must keep across upgrades lives under the sandbox root: <c>config/</c> (settings), <c>data/</c> (state the
+    /// application writes: Data Protection key ring, mail pickup) and <c>secrets/</c> (keys; never committed). Relative paths in settings are
+    /// resolved against these folders instead of the process working directory, which changes with every release.
+    /// </summary>
+    private static void ApplyStatePaths(IConfigurationManager configuration, string sandboxConfigPath)
+    {
+        var root = RootOf(sandboxConfigPath);
+        configuration["Raavi:Sandbox:Root"] = root;
+        configuration["Raavi:Sandbox:DataPath"] = System.IO.Path.Combine(root, "data");
+        configuration["Raavi:Sandbox:SecretsPath"] = System.IO.Path.Combine(root, "secrets");
+
+        void Resolve(string key, string baseFolder, string? fallbackRelative)
+        {
+            var value = configuration[key];
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                value = fallbackRelative;
+            }
+
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                configuration[key] = System.IO.Path.IsPathRooted(value) ? value : System.IO.Path.GetFullPath(System.IO.Path.Combine(root, baseFolder, value));
+            }
+        }
+
+        Resolve("Raavi:Security:DataProtection:KeyRingPath", "data", "keys");
+        Resolve("Raavi:Email:PickupDirectory", "data", null);
+        Resolve("Raavi:Collaboration:SigningKeyPath", "secrets", null);
     }
 
     /// <summary>

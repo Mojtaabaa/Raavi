@@ -1,0 +1,12 @@
+{
+  "Raavi": {
+    "Collaboration": {
+      "Enabled": false,
+      "PublicUrl": "wss://collab.raavi.local",
+      "ServerUrl": "http://raavi-collaboration:1234",
+      "SigningKeyPath": "/run/secrets/raavi-collab-signing-key.pem",
+      "TicketLifetimeSeconds": 60,
+      "_comment": "ServiceKey is a secret: set RAAVI_Raavi__Collaboration__ServiceKey (≥ 32 chars, same value as RAAVI_COLLAB_SERVICE_KEY on the collaboration server). Debounce, snapshot and re-check settings live in the collaboration server's environment (collaboration/src/main.ts)."
+    }
+  }
+}

@@ -60,6 +60,7 @@ builder.Services.AddIntegrationsModule(builder.Configuration);
 builder.Services.AddOpenApi("v1");
 
 var app = builder.Build();
+SandboxCommand.WarnIfDrifted(app.Environment.ContentRootPath, builder.Configuration["Raavi:SandboxPath"]!, app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Raavi.Sandbox"));
 
 app.UseForwardedHeaders();
 app.UseRaaviHttpFoundation();

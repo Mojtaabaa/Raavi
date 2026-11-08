@@ -1,0 +1,19 @@
+{
+  "Raavi": {
+    "ObjectStorage": {
+      "Provider": "S3",
+      "Endpoint": "http://localhost:9000",
+      "Region": "us-east-1",
+      "Bucket": "raavi",
+      "ForcePathStyle": true,
+      "AccessKey": "",
+      "SecretKey": "__SET_VIA_ENV_OR_SECRET_STORE__",
+      "PresignedUrlLifetimeSeconds": 120
+    },
+    "Uploads": {
+      "MaxFileSizeMb": 200,
+      "BlockedExtensions": [ ".exe", ".dll", ".bat", ".cmd", ".ps1", ".sh", ".msi", ".js", ".html", ".htm", ".svg" ],
+      "VirusScanning": { "Enabled": false, "Provider": "ClamAV", "Endpoint": "tcp://localhost:3310" }
+    }
+  }
+}

@@ -18,14 +18,14 @@
 
 ## 3. Configuration
 
-- Mount `sandbox/config` read-only at `/etc/raavi/sandbox/config`; set `RAAVI_SANDBOX_PATH`.
+- Keep the whole `sandbox/` folder (ADR-040, `sandbox/README.md`): `config/` (settings), `data/` (key ring, written by the app — must be writable and shared by all API nodes) and `secrets/`. Set `RAAVI_SANDBOX_PATH` to its `config` folder, e.g. `/etc/raavi/sandbox/config` (mount `config` read-only if you wish; `data` and `secrets` are siblings of it).
 - Provide secrets as environment variables (`RAAVI_ConnectionStrings__System`, `RAAVI_Raavi__ObjectStorage__SecretKey`, …) or Docker/Kubernetes secrets mapped to them.
 - Never expose the sandbox directory through the web server; the application refuses to start if it is inside `wwwroot`.
 
 ## 4. Database
 
 - SQL Server 2022+. After the first migration run `deployment/scripts/sql/01-database-roles.sql` (runtime role: DML only, cannot alter tables, schemas or the RLS policy; verified by `DatabaseRolesTests`) and `02-logins.sql` (logins `raavi_app` → runtime role, `raavi_migrator` → db_owner; passwords from your secret store via sqlcmd variables). API/Workers use `raavi_app`; only the migrator uses `raavi_migrator` (`ConnectionStrings:Migrator`).
-- Set `Raavi:Security:DataProtection:KeyRingPath` to a shared, backed-up directory for all API nodes: it protects TOTP secrets and antiforgery tokens.
+- Set `Raavi:Security:DataProtection:KeyRingPath` only to place the key ring elsewhere; the default is `sandbox/data/keys` (a shared, backed-up directory for all API nodes: it protects TOTP secrets, AI keys, webhook secrets and antiforgery tokens).
 - Run the migrator before starting new versions:
 
 ```bash
@@ -39,9 +39,9 @@ docker compose run --rm migrator
 
 ## 6. Upgrades
 
-1. Back up (BACKUP_AND_RESTORE).
-2. Pull new images.
-3. Run migrator (expand migrations only).
+1. Back up (BACKUP_AND_RESTORE) — including `sandbox/`.
+2. Pull new images / replace the application folders **but not `sandbox/`** (it holds your settings, key ring and secrets).
+3. Run `Raavi.Migrator sandbox check`, then `sandbox sync` (adds settings that are new in this version; see `sandbox/README.md`), then run the migrator (expand migrations only).
 4. Rolling restart api → workers → collab → web.
 5. Contract migrations ship in the following release.
 
