@@ -1,10 +1,21 @@
 # Implementation Status
 
-**Last updated:** 2026-11-08 (Phase 12a: workspace export)
+**Last updated:** 2026-11-08 (Phase 12b: backup and restore scripts)
 
 Statuses: Not Started · Planned · In Progress · Implemented · Tested · Blocked · Deferred. "Tested" requires executed test evidence (listed).
 
-## Phase 12 — Enterprise readiness (split: 12a workspace export done; deletion/purge, backups, HA, load tests, hardening pending)
+## Phase 12 — Enterprise readiness (split: 12a workspace export and 12b backup/restore scripts done; deletion/purge, scheduling, HA, load tests, hardening pending)
+
+### 12b — Backup, restore and restore drill for SQL Server (ADR-038)
+
+```
+powershell deployment/scripts/backup/Test-BackupScripts.ps1 -ServerInstance '(localdb)\MSSQLLocalDB'   → 16 checks passed, 0 failed (3 consecutive runs)
+powershell deployment/scripts/backup/Test-RestoreDrill.ps1 -SourceDatabase RaaviDev                     → PASSED: 66 tables, 5 530 rows, 1 row-level-security policy; backup 4.9 s (131 MB), restore 5.1 s, CHECKDB 1.9 s
+```
+
+`Backup-Raavi.ps1` (full/differential/log, CHECKSUM, verify, optional encryption/compression/copy-only, manifest with SHA-256, safe retention), `Restore-Raavi.ps1` (hash check first, chain validation, side-database restore, point in time, overwrite only with `-Replace` + the exact name), `Test-RestoreDrill.ps1` (restore into a new throw-away database, CHECKDB, row counts and structure incl. RLS policies, cleanup, report, exit code). The self-test found and fixed three defects (colliding file names that overwrote a backup, STOPAT compared in server-local time, a drill backup that would have replaced the differential base). The dev drill ran against a copy of the real development database; nothing of it was changed or kept.
+
+**Not done / not verified:** encrypted backups (LocalDB cannot create them — code path untested), scheduling and alerting, off-site copy, secrets / Data Protection key ring backup, a drill that starts the API/workers/collaboration server on the restored copy, other SQL Server versions or editions, object storage / OpenSearch / Redis (not in use).
 
 ### 12a — Workspace data export (ADR-037)
 
