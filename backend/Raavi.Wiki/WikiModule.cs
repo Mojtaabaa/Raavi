@@ -49,6 +49,8 @@ public static class WikiModule
         services.AddScoped<DatabaseService>();
         services.AddScoped<SlideService>();
         services.AddScoped<WhiteboardService>();
+        services.AddScoped<WorkflowService>();
+        services.AddScoped<IOutboxHandler, WorkflowEngine>();
         services.AddScoped<NotificationService>();
         services.AddScoped<IOutboxHandler, NotificationFanOut>();
         services.AddScoped<IOutboxHandler, NotificationEmailer>();

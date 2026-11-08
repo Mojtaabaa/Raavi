@@ -344,6 +344,16 @@
       "too_many": "A whiteboard can have at most 2000 elements.",
       "element_invalid": "An element is not valid: check its size, colours, text and points.",
       "not_found": "Whiteboard not found."
+    },
+    "workflow": {
+      "name_invalid": "A workflow needs a name of up to 200 characters.",
+      "trigger_invalid": "That trigger is not supported.",
+      "too_many_conditions": "A workflow can have at most 10 conditions.",
+      "actions_invalid": "A workflow needs between 1 and 5 actions.",
+      "condition_invalid": "A condition needs a supported field, operator and a value.",
+      "action_invalid": "An action is not valid: check the label, recipients and message.",
+      "invalid": "The workflow definition is not valid.",
+      "not_found": "Workflow not found."
     }
   },
   "profile": {
@@ -874,7 +884,8 @@
       "comment_reply": "{name} replied on “{title}”",
       "comment_created": "{name} commented on “{title}”",
       "comment_resolved": "{name} resolved a thread on “{title}”",
-      "page_published": "{name} published “{title}”"
+      "page_published": "{name} published “{title}”",
+      "workflow": "Automation on “{title}”"
     }
   },
   "migration": {
@@ -1189,6 +1200,77 @@
       "Sticky": "Sticky note",
       "Arrow": "Arrow",
       "Pen": "Pen stroke"
+    }
+  },
+  "workflows": {
+    "nav": "Workflows",
+    "spaceTitle": "Workflows — {name}",
+    "new": "New workflow",
+    "edit": "Edit workflow",
+    "none": "No workflows in this space.",
+    "adminOnly": "Only space administrators can manage workflows.",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "turnOn": "Turn on",
+    "turnOff": "Turn off",
+    "when": "When",
+    "summary": "{conditions} conditions · {actions} actions",
+    "runs": "Runs",
+    "runsOf": "Runs of “{name}”",
+    "noRuns": "This workflow has not run yet.",
+    "name": "Name",
+    "trigger": "Trigger",
+    "conditions": "Conditions (all must hold)",
+    "noConditions": "No conditions: the actions run for every matching event.",
+    "field": "Field",
+    "operator": "Operator",
+    "value": "Value",
+    "addCondition": "Add condition",
+    "actions": "Actions",
+    "actionType": "Action",
+    "addAction": "Add action",
+    "labelName": "Label (no spaces)",
+    "recipients": "Recipients",
+    "recipientsWatchers": "Page watchers",
+    "recipientsActor": "Whoever triggered it",
+    "message": "Message",
+    "confirmDelete": "Delete the workflow “{name}” and its run history?",
+    "time": "Time",
+    "page": "Page",
+    "result": "Result",
+    "triggers": {
+      "content_created": "a page is created",
+      "content_updated": "a page is updated",
+      "content_moved": "a page is moved",
+      "content_archived": "a page is archived",
+      "content_trashed": "a page is trashed",
+      "content_published": "a page is published",
+      "content_publish_requested": "publishing is requested"
+    },
+    "fields": {
+      "Title": "Title",
+      "ContentType": "Content type",
+      "Label": "Label"
+    },
+    "operators": {
+      "Contains": "contains",
+      "Equals": "equals",
+      "StartsWith": "starts with",
+      "Has": "is present"
+    },
+    "actionTypes": {
+      "AddLabel": "Add label",
+      "Notify": "Send notification"
+    },
+    "status": {
+      "Succeeded": "Succeeded",
+      "Skipped": "Skipped",
+      "Failed": "Failed"
+    },
+    "reasons": {
+      "conditions_not_met": "Conditions not met",
+      "content_gone": "The page no longer exists",
+      "rate_limited": "Skipped: more than 100 runs in the last hour"
     }
   }
 }

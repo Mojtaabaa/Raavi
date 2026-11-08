@@ -68,6 +68,21 @@ Page DTO `rights` gained `canComment`, `canModerateComments`. Push: WebSocket `/
 
 Task DTO: `{id, spaceKey, spaceName, contentId, title, notes, status: Open|Done, assigneeId, assigneeName, dueDate, isOverdue, completedAt, createdAt, createdByName, revision, rights{canEdit, canComplete, canDelete}}`.
 
+## Workflows (Phase 10a, ADR-031)
+
+Space administrators only (403 for other viewers of the space, 404 when the space is not visible).
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/workflows/catalog` | Supported triggers |
+| GET | `/spaces/{key}/workflows` | Rules of the space |
+| POST | `/spaces/{key}/workflows` | `{name, enabled?, trigger, conditions: [{field: Title|ContentType|Label, operator: Contains|Equals|StartsWith|Has, value}], actions: [{type: AddLabel, label} | {type: Notify, recipients: Watchers|Actor, message}]}` — ≤ 10 conditions, 1–5 actions |
+| GET/PUT | `/workflows/{id}` | PUT replaces the definition, needs **If-Match** `"r{n}"` |
+| DELETE | `/workflows/{id}` | Also deletes the run history |
+| GET | `/workflows/{id}/runs?take=` | Latest runs (≤ 100): `status` Succeeded/Skipped/Failed, `message`, `attempts` |
+
+Triggers: `content.created|updated|moved|archived|trashed|published|publish_requested`. Errors: `workflow.name_invalid`, `workflow.trigger_invalid`, `workflow.too_many_conditions`, `workflow.actions_invalid`, `workflow.condition_invalid`, `workflow.action_invalid`, `label.invalid`, `workflow.not_found`.
+
 ## Whiteboards (Phase 9e, ADR-030)
 
 | Method | Path | Notes |

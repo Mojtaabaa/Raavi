@@ -69,6 +69,10 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
 
     public DbSet<Whiteboard> Whiteboards => Set<Whiteboard>();
 
+    public DbSet<Workflow> Workflows => Set<Workflow>();
+
+    public DbSet<WorkflowRun> WorkflowRuns => Set<WorkflowRun>();
+
     public DbSet<CommentReaction> CommentReactions => Set<CommentReaction>();
 
     public DbSet<Watch> Watches => Set<Watch>();
@@ -380,6 +384,33 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
             b.Ignore(x => x.Elements);
             b.HasIndex(x => new { x.TenantId, x.SpaceId, x.Title });
             b.HasOne<Space>().WithMany().HasForeignKey(x => new { x.TenantId, x.SpaceId }).HasPrincipalKey(s => new { s.TenantId, s.Id }).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Workflow>(b =>
+        {
+            b.ToTable("Workflows", "content");
+            Keys(b);
+            b.Property(x => x.Name).HasMaxLength(Workflow.MaxNameLength);
+            b.Property(x => x.Trigger).HasMaxLength(64).IsUnicode(false);
+            b.Property(x => x.ConditionsJson).HasColumnType("nvarchar(max)");
+            b.Property(x => x.ActionsJson).HasColumnType("nvarchar(max)");
+            b.Property(x => x.Revision).IsConcurrencyToken();
+            b.Ignore(x => x.Conditions);
+            b.Ignore(x => x.Actions);
+            b.HasIndex(x => new { x.TenantId, x.SpaceId, x.Trigger, x.Enabled });
+            b.HasOne<Space>().WithMany().HasForeignKey(x => new { x.TenantId, x.SpaceId }).HasPrincipalKey(s => new { s.TenantId, s.Id }).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<WorkflowRun>(b =>
+        {
+            b.ToTable("WorkflowRuns", "content");
+            Keys(b);
+            b.Property(x => x.EventType).HasMaxLength(64).IsUnicode(false);
+            b.Property(x => x.Message).HasMaxLength(WorkflowRun.MaxMessageLength);
+            b.Property(x => x.Status).HasConversion<int>();
+            b.HasIndex(x => new { x.TenantId, x.WorkflowId, x.EventId }).IsUnique();
+            b.HasIndex(x => new { x.TenantId, x.WorkflowId, x.StartedAt });
+            b.HasOne<Workflow>().WithMany().HasForeignKey(x => new { x.TenantId, x.WorkflowId }).HasPrincipalKey(w => new { w.TenantId, w.Id }).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<CommentReaction>(b =>

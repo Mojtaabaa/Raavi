@@ -62,6 +62,7 @@ function open(node: TreeNode) {
         <Button as="router-link" :to="{ name: 'space-databases', params: { key: space.key } }" size="small" text icon="pi pi-table" :label="t('databases.nav')" data-testid="space-databases-link" />
         <Button as="router-link" :to="{ name: 'space-calendar', params: { key: space.key } }" size="small" text icon="pi pi-calendar" :label="t('calendar.nav')" data-testid="space-calendar-link" />
         <Button as="router-link" :to="{ name: 'space-tasks', params: { key: space.key } }" size="small" text icon="pi pi-check-square" :label="t('tasks.nav')" data-testid="space-tasks-link" />
+        <Button v-if="space.rights.canAdminister" as="router-link" :to="{ name: 'space-workflows', params: { key: space.key } }" size="small" text icon="pi pi-bolt" :label="t('workflows.nav')" data-testid="space-workflows-link" />
         <Button v-if="space.rights.canAdminister" as="router-link" :to="{ name: 'space-settings', params: { key: space.key } }" size="small" text icon="pi pi-cog" :label="t('wiki.space.settings')" />
       </nav>
       <h2 class="side-title">{{ t('wiki.tree.title') }}</h2>

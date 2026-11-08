@@ -31,6 +31,7 @@ export const routes: RouteRecordRaw[] = [
     meta: { host: 'tenant', requires: 'user' },
     children: [
       { path: '', name: 'space', component: () => import('@/modules/wiki/views/SpaceOverview.vue') },
+      { path: 'workflows', name: 'space-workflows', component: () => import('@/modules/workflows/WorkflowsView.vue') },
       { path: 'whiteboards', name: 'space-whiteboards', component: () => import('@/modules/whiteboards/WhiteboardsView.vue') },
       { path: 'slides', name: 'space-slides', component: () => import('@/modules/slides/SlidesView.vue') },
       { path: 'databases', name: 'space-databases', component: () => import('@/modules/databases/DatabasesView.vue') },

@@ -344,6 +344,16 @@
       "too_many": "یک وایت‌برد حداکثر ۲۰۰۰ عنصر دارد.",
       "element_invalid": "عنصری معتبر نیست: اندازه، رنگ‌ها، متن و نقطه‌های آن را بررسی کنید.",
       "not_found": "وایت‌برد پیدا نشد."
+    },
+    "workflow": {
+      "name_invalid": "گردش‌کار نامی تا ۲۰۰ نویسه می‌خواهد.",
+      "trigger_invalid": "آن محرک پشتیبانی نمی‌شود.",
+      "too_many_conditions": "یک گردش‌کار حداکثر ۱۰ شرط دارد.",
+      "actions_invalid": "یک گردش‌کار بین ۱ تا ۵ اقدام می‌خواهد.",
+      "condition_invalid": "هر شرط فیلد و عملگر پشتیبانی‌شده و یک مقدار می‌خواهد.",
+      "action_invalid": "اقدامی معتبر نیست: برچسب، گیرندگان و پیام را بررسی کنید.",
+      "invalid": "تعریف گردش‌کار معتبر نیست.",
+      "not_found": "گردش‌کار پیدا نشد."
     }
   },
   "profile": {
@@ -874,7 +884,8 @@
       "comment_reply": "{name} در «{title}» پاسخ داد",
       "comment_created": "{name} در «{title}» نظر داد",
       "comment_resolved": "{name} گفت‌وگویی را در «{title}» حل‌شده اعلام کرد",
-      "page_published": "{name} «{title}» را منتشر کرد"
+      "page_published": "{name} «{title}» را منتشر کرد",
+      "workflow": "اتوماسیون روی «{title}»"
     }
   },
   "migration": {
@@ -1189,6 +1200,77 @@
       "Sticky": "یادداشت چسبان",
       "Arrow": "پیکان",
       "Pen": "خط قلم"
+    }
+  },
+  "workflows": {
+    "nav": "گردش‌کارها",
+    "spaceTitle": "گردش‌کارها — {name}",
+    "new": "گردش‌کار تازه",
+    "edit": "ویرایش گردش‌کار",
+    "none": "در این فضا گردش‌کاری نیست.",
+    "adminOnly": "فقط مدیران فضا می‌توانند گردش‌کارها را مدیریت کنند.",
+    "enabled": "فعال",
+    "disabled": "غیرفعال",
+    "turnOn": "روشن کردن",
+    "turnOff": "خاموش کردن",
+    "when": "وقتی",
+    "summary": "{conditions} شرط · {actions} اقدام",
+    "runs": "اجراها",
+    "runsOf": "اجراهای «{name}»",
+    "noRuns": "این گردش‌کار هنوز اجرا نشده است.",
+    "name": "نام",
+    "trigger": "محرک",
+    "conditions": "شرط‌ها (همه باید برقرار باشند)",
+    "noConditions": "بدون شرط: اقدام‌ها برای هر رویداد مطابق اجرا می‌شوند.",
+    "field": "فیلد",
+    "operator": "عملگر",
+    "value": "مقدار",
+    "addCondition": "افزودن شرط",
+    "actions": "اقدام‌ها",
+    "actionType": "اقدام",
+    "addAction": "افزودن اقدام",
+    "labelName": "برچسب (بدون فاصله)",
+    "recipients": "گیرندگان",
+    "recipientsWatchers": "دنبال‌کنندگان صفحه",
+    "recipientsActor": "کسی که رویداد را ایجاد کرد",
+    "message": "پیام",
+    "confirmDelete": "گردش‌کار «{name}» با تاریخچهٔ اجراهایش حذف شود؟",
+    "time": "زمان",
+    "page": "صفحه",
+    "result": "نتیجه",
+    "triggers": {
+      "content_created": "صفحه‌ای ساخته شود",
+      "content_updated": "صفحه‌ای به‌روز شود",
+      "content_moved": "صفحه‌ای جابه‌جا شود",
+      "content_archived": "صفحه‌ای بایگانی شود",
+      "content_trashed": "صفحه‌ای به زباله‌دان برود",
+      "content_published": "صفحه‌ای منتشر شود",
+      "content_publish_requested": "درخواست انتشار ثبت شود"
+    },
+    "fields": {
+      "Title": "عنوان",
+      "ContentType": "نوع محتوا",
+      "Label": "برچسب"
+    },
+    "operators": {
+      "Contains": "شامل",
+      "Equals": "برابر با",
+      "StartsWith": "شروع با",
+      "Has": "وجود داشته باشد"
+    },
+    "actionTypes": {
+      "AddLabel": "افزودن برچسب",
+      "Notify": "ارسال اعلان"
+    },
+    "status": {
+      "Succeeded": "موفق",
+      "Skipped": "ردشده",
+      "Failed": "ناموفق"
+    },
+    "reasons": {
+      "conditions_not_met": "شرط‌ها برقرار نبود",
+      "content_gone": "صفحه دیگر وجود ندارد",
+      "rate_limited": "ردشد: بیش از ۱۰۰ اجرا در یک ساعت گذشته"
     }
   }
 }

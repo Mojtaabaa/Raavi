@@ -34,6 +34,7 @@ const icon: Record<string, string> = {
   'comment.created': 'pi pi-comment',
   'comment.resolved': 'pi pi-check-circle',
   'page.published': 'pi pi-file',
+  workflow: 'pi pi-bolt',
 }
 
 function text(n: AppNotification) {

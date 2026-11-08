@@ -1,8 +1,22 @@
 # Implementation Status
 
-**Last updated:** 2026-11-08 (Phase 9e: whiteboards)
+**Last updated:** 2026-11-08 (Phase 10a: workflows)
 
 Statuses: Not Started · Planned · In Progress · Implemented · Tested · Blocked · Deferred. "Tested" requires executed test evidence (listed).
+
+## Phase 10 — Workflows & automation (split: 10a rules engine done; approvals, designer, scheduling pending)
+
+### 10a — Workflows (ADR-031)
+
+```
+cd backend && dotnet test Raavi.Tests    → Passed: 392, Failed: 0   (new: WorkflowDomainTests 2 pure, WorkflowTests 3 API through the real outbox dispatcher)
+EF: has-pending-model-changes (Wiki)     → none; new migration Workflows (RLS + composite FKs, unique run key)
+cd frontend && npm run build && npm test → ok; 17 files, 126 tests (new: workflows.test.ts 2); npm audit (production) 0
+```
+
+Rules per space (administrators only): trigger = page event, conditions (title / content type / label, AND), actions `AddLabel` and `Notify` (watchers or the actor; recipients' View right re-checked). Engine = outbox handler: one `WorkflowRun` per (workflow, event) (idempotent), failed runs retried by the outbox with back-off, skipped runs for unmet conditions / missing page / rate limit (100 executed runs per workflow per hour), no action emits page events so rules cannot loop. UI: per-space "Workflows" page (admins), form editor, on/off, run history; new "workflow" notification kind. **Not exercised in a real browser.** Not covered by tests: the Failed→retry path and the hourly rate limit (both rely on code paths that need fault injection / 100 events); the watcher View-right re-check is code-shared with comment notifications and not re-tested here.
+
+**Not in 10a:** approvals, visual designer, time-based triggers, e-mail/webhook/edit actions, explicit-user recipients, run retention, tenant-wide rules.
 
 ## Phase 9 — Advanced content types (split: 9a tasks, 9b calendar, 9c databases, 9d slides and 9e whiteboards done; live board co-editing and advanced macros pending)
 
