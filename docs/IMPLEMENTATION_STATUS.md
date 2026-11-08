@@ -1,10 +1,22 @@
 # Implementation Status
 
-**Last updated:** 2026-11-08 (Phase 10a: workflows)
+**Last updated:** 2026-11-08 (Phase 10b: approvals)
 
 Statuses: Not Started · Planned · In Progress · Implemented · Tested · Blocked · Deferred. "Tested" requires executed test evidence (listed).
 
-## Phase 10 — Workflows & automation (split: 10a rules engine done; approvals, designer, scheduling pending)
+## Phase 10 — Workflows & automation (split: 10a rules engine and 10b approvals done; designer, scheduling, reminders pending)
+
+### 10b — Approvals (ADR-032)
+
+```
+cd backend && dotnet test Raavi.Tests    → Passed: 397, Failed: 0   (new: ApprovalDomainTests 2 pure, ApprovalTests 3 API through the real outbox dispatcher)
+EF: has-pending-model-changes (Wiki)     → none; new migration Approvals (RLS, composite FKs)
+cd frontend && npm run build && npm test → ok; 18 files, 130 tests (new: approvals.test.ts 4); npm audit (production) 0
+```
+
+A page can have one pending approval request with 1–10 named approvers (mode All or Any; any rejection ends it and needs a comment; due date optional). Editors request, assigned approvers decide, requester/space admin cancel; approvers must be able to read the page when asked and when deciding; users who cannot read the page get 404. Revision-token concurrency between simultaneous decisions; "page changed since the request" flag. Notifications through the outbox (requested → approvers, outcome → requester, cancel → pending approvers) with a fresh View check. UI: approvals panel on every page (history, approve/reject/cancel, request dialog with user picker), personal "Approvals" page (waiting for me / requested by me) in the main navigation, four new notification kinds. **Not exercised in a real browser** (component tests only). The simultaneous-decision race (412 + retry) rests on the EF concurrency token and was not tested concurrently.
+
+**Not in 10b:** chains, group approvers, delegation, reminders/escalation (overdue is display-only), approval as a workflow action/trigger, e-mail, approval-before-publish, retention.
 
 ### 10a — Workflows (ADR-031)
 

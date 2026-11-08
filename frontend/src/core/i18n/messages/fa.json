@@ -28,7 +28,8 @@
     "permissions": "مجوزهای سراسری",
     "migrations": "مهاجرت",
     "tasks": "وظایف",
-    "calendar": "تقویم"
+    "calendar": "تقویم",
+    "approvals": "تأییدیه‌ها"
   },
   "common": {
     "save": "ذخیره",
@@ -354,6 +355,22 @@
       "action_invalid": "اقدامی معتبر نیست: برچسب، گیرندگان و پیام را بررسی کنید.",
       "invalid": "تعریف گردش‌کار معتبر نیست.",
       "not_found": "گردش‌کار پیدا نشد."
+    },
+    "approval": {
+      "not_found": "درخواست تأیید پیدا نشد.",
+      "not_approver": "شما تأییدکنندهٔ این درخواست نیستید.",
+      "self_approver": "نمی‌توانید از خودتان بخواهید درخواست خودتان را تأیید کنید.",
+      "approvers_invalid": "۱ تا ۱۰ تأییدکنندهٔ متفاوت که صفحه را می‌خوانند انتخاب کنید.",
+      "already_pending": "این صفحه از قبل درخواست تأیید در انتظار دارد.",
+      "not_pending": "دربارهٔ این درخواست قبلاً تصمیم گرفته شده است.",
+      "note_invalid": "یادداشت حداکثر ۵۰۰ نویسه است.",
+      "mode_invalid": "قاعدهٔ تأیید معتبر نیست.",
+      "due_invalid": "مهلت باید در آینده و حداکثر یک سال بعد باشد.",
+      "decision_invalid": "تصمیم معتبر نیست.",
+      "comment_required": "رد کردن توضیح می‌خواهد.",
+      "comment_invalid": "توضیح حداکثر ۱۰۰۰ نویسه است.",
+      "already_decided": "شما قبلاً دربارهٔ این درخواست تصمیم گرفته‌اید.",
+      "scope_invalid": "فهرست ناشناخته."
     }
   },
   "profile": {
@@ -885,7 +902,11 @@
       "comment_created": "{name} در «{title}» نظر داد",
       "comment_resolved": "{name} گفت‌وگویی را در «{title}» حل‌شده اعلام کرد",
       "page_published": "{name} «{title}» را منتشر کرد",
-      "workflow": "اتوماسیون روی «{title}»"
+      "workflow": "اتوماسیون روی «{title}»",
+      "approval_requested": "{name} از شما خواست «{title}» را تأیید کنید",
+      "approval_approved": "«{title}» تأیید شد",
+      "approval_rejected": "«{title}» رد شد",
+      "approval_cancelled": "{name} تأییدیهٔ «{title}» را لغو کرد"
     }
   },
   "migration": {
@@ -1272,5 +1293,44 @@
       "content_gone": "صفحه دیگر وجود ندارد",
       "rate_limited": "ردشد: بیش از ۱۰۰ اجرا در یک ساعت گذشته"
     }
+  },
+  "approvals": {
+    "title": "تأییدیه‌ها",
+    "myTitle": "تأییدیه‌های من",
+    "inbox": "منتظر من",
+    "requested": "درخواست من",
+    "inboxEmpty": "چیزی منتظر تصمیم شما نیست.",
+    "requestedEmpty": "درخواست تأییدی نداده‌اید.",
+    "request": "درخواست تأیید",
+    "approvers": "تأییدکنندگان",
+    "rule": "قاعده",
+    "modes": {
+      "All": "همه باید تأیید کنند",
+      "Any": "یک تأیید کافی است"
+    },
+    "dueOptional": "مهلت (اختیاری)",
+    "noteOptional": "یادداشت (اختیاری)",
+    "send": "ارسال درخواست",
+    "none": "برای این صفحه درخواست تأییدی نیست.",
+    "requestedBy": "درخواست از {name} · {time}",
+    "due": "مهلت {time}",
+    "overdue": "گذشته",
+    "pageChanged": "صفحه بعد از درخواست تغییر کرده است",
+    "status": {
+      "Pending": "در انتظار",
+      "Approved": "تأیید شد",
+      "Rejected": "رد شد",
+      "Cancelled": "لغو شد"
+    },
+    "decision": {
+      "Pending": "منتظر",
+      "Approved": "تأیید کرد",
+      "Rejected": "رد کرد"
+    },
+    "approve": "تأیید",
+    "reject": "رد",
+    "rejectReason": "چرا رد می‌کنید؟ (الزامی)",
+    "confirmReject": "رد درخواست",
+    "cancel": "لغو درخواست"
   }
 }

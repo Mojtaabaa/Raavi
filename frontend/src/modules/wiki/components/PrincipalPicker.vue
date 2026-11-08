@@ -5,7 +5,7 @@ import AutoComplete from 'primevue/autocomplete'
 import { wikiApi, type DirectoryEntry } from '@/core/api/wiki'
 
 /** Searches users and groups of the current workspace (server-side, tenant-scoped) and emits the chosen principal. */
-const props = defineProps<{ inputId: string; allowAllMembers?: boolean; groupsOnly?: boolean }>()
+const props = defineProps<{ inputId: string; allowAllMembers?: boolean; groupsOnly?: boolean; usersOnly?: boolean }>()
 const emit = defineEmits<{ pick: [subject: { subjectType: 'User' | 'Group' | 'AllMembers'; subjectId: string | null; name: string }] }>()
 const { t } = useI18n()
 
@@ -28,7 +28,7 @@ async function search(e: { query: string }) {
   }
   suggestions.value = [
     ...all,
-    ...found.filter((d) => !props.groupsOnly || d.kind === 'Group').map((d) => ({ kind: d.kind, id: d.id, label: d.displayName, detail: d.detail })),
+    ...found.filter((d) => (!props.groupsOnly || d.kind === 'Group') && (!props.usersOnly || d.kind === 'User')).map((d) => ({ kind: d.kind, id: d.id, label: d.displayName, detail: d.detail })),
   ]
 }
 

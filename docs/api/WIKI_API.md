@@ -68,6 +68,19 @@ Page DTO `rights` gained `canComment`, `canModerateComments`. Push: WebSocket `/
 
 Task DTO: `{id, spaceKey, spaceName, contentId, title, notes, status: Open|Done, assigneeId, assigneeName, dueDate, isOverdue, completedAt, createdAt, createdByName, revision, rights{canEdit, canComplete, canDelete}}`.
 
+## Approvals (Phase 10b, ADR-032)
+
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/content/{id}/approvals` | Edit right on the page. `{note?, mode: All|Any, approverIds: [1–10 users], dueAt?}`; one pending request per page (409 `approval.already_pending`) |
+| GET | `/content/{id}/approvals` | View; latest 50 requests of the page |
+| GET | `/approvals?scope=inbox|requested` | Waiting for my decision (due date first) / requested by me |
+| GET | `/approvals/{id}` | View of the page; `status`, `approvers[]` (decision, comment), `pageChanged`, `overdue`, `canDecide`, `canCancel` |
+| POST | `/approvals/{id}/decision` | Assigned approvers only. `{decision: Approved|Rejected, comment}`; a rejection needs a comment; 409 once final |
+| POST | `/approvals/{id}/cancel` | Requester or space administrator, while pending |
+
+Errors: `approval.not_found`, `approval.not_approver`, `approval.self_approver`, `approval.approvers_invalid`, `approval.already_pending`, `approval.not_pending`, `approval.already_decided`, `approval.note_invalid`, `approval.mode_invalid`, `approval.due_invalid`, `approval.decision_invalid`, `approval.comment_required`, `approval.comment_invalid`, `approval.scope_invalid`. Notification kinds: `approval.requested|approved|rejected|cancelled`.
+
 ## Workflows (Phase 10a, ADR-031)
 
 Space administrators only (403 for other viewers of the space, 404 when the space is not visible).

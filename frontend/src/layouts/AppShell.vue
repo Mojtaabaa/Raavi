@@ -50,6 +50,7 @@ const nav = computed(() => {
     { to: { name: 'spaces' }, label: t('nav.spaces'), icon: 'pi pi-th-large' },
     { to: { name: 'tasks' }, label: t('nav.tasks'), icon: 'pi pi-check-square' },
     { to: { name: 'calendar' }, label: t('nav.calendar'), icon: 'pi pi-calendar' },
+    { to: { name: 'approvals' }, label: t('nav.approvals'), icon: 'pi pi-verified' },
   ]
   if (me.isTenantAdministrator) {
     items.push({ to: { name: 'admin-members' }, label: t('nav.members'), icon: 'pi pi-users' })

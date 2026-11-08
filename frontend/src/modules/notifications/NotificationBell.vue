@@ -35,6 +35,10 @@ const icon: Record<string, string> = {
   'comment.resolved': 'pi pi-check-circle',
   'page.published': 'pi pi-file',
   workflow: 'pi pi-bolt',
+  'approval.requested': 'pi pi-verified',
+  'approval.approved': 'pi pi-check-circle',
+  'approval.rejected': 'pi pi-times-circle',
+  'approval.cancelled': 'pi pi-ban',
 }
 
 function text(n: AppNotification) {

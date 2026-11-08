@@ -35,3 +35,4 @@ Format: Context · Decision · Alternatives considered · Consequences. Status v
 | [029](ADR-029-slides.md) | Slides (Phase 9d) | Accepted |
 | [030](ADR-030-whiteboards.md) | Whiteboards, Konva vs Fabric (Phase 9e) | Accepted |
 | [031](ADR-031-workflows.md) | Workflows: rules engine on the outbox (Phase 10a) | Accepted |
+| [032](ADR-032-approvals.md) | Page approvals (Phase 10b) | Accepted |

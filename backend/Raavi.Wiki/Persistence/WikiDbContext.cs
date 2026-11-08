@@ -71,6 +71,10 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
 
     public DbSet<Workflow> Workflows => Set<Workflow>();
 
+    public DbSet<ApprovalRequest> ApprovalRequests => Set<ApprovalRequest>();
+
+    public DbSet<ApprovalAssignment> ApprovalAssignments => Set<ApprovalAssignment>();
+
     public DbSet<WorkflowRun> WorkflowRuns => Set<WorkflowRun>();
 
     public DbSet<CommentReaction> CommentReactions => Set<CommentReaction>();
@@ -411,6 +415,29 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
             b.HasIndex(x => new { x.TenantId, x.WorkflowId, x.EventId }).IsUnique();
             b.HasIndex(x => new { x.TenantId, x.WorkflowId, x.StartedAt });
             b.HasOne<Workflow>().WithMany().HasForeignKey(x => new { x.TenantId, x.WorkflowId }).HasPrincipalKey(w => new { w.TenantId, w.Id }).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ApprovalRequest>(b =>
+        {
+            b.ToTable("ApprovalRequests", "content");
+            Keys(b);
+            b.Property(x => x.Note).HasMaxLength(ApprovalRequest.MaxNoteLength);
+            b.Property(x => x.Mode).HasConversion<int>();
+            b.Property(x => x.Status).HasConversion<int>();
+            b.Property(x => x.Revision).IsConcurrencyToken();
+            b.HasIndex(x => new { x.TenantId, x.ContentId, x.Status });
+            b.HasIndex(x => new { x.TenantId, x.RequestedBy, x.RequestedAt });
+            b.HasOne<Space>().WithMany().HasForeignKey(x => new { x.TenantId, x.SpaceId }).HasPrincipalKey(s => new { s.TenantId, s.Id }).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ApprovalAssignment>(b =>
+        {
+            b.ToTable("ApprovalAssignments", "content");
+            b.HasKey(x => new { x.TenantId, x.RequestId, x.UserId }).IsClustered();
+            b.Property(x => x.Comment).HasMaxLength(ApprovalRequest.MaxCommentLength);
+            b.Property(x => x.Decision).HasConversion<int>();
+            b.HasIndex(x => new { x.TenantId, x.UserId, x.Decision });
+            b.HasOne<ApprovalRequest>().WithMany().HasForeignKey(x => new { x.TenantId, x.RequestId }).HasPrincipalKey(r => new { r.TenantId, r.Id }).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<CommentReaction>(b =>

@@ -22,6 +22,7 @@ export const routes: RouteRecordRaw[] = [
   { path: '/whiteboards/:id', name: 'whiteboard', component: () => import('@/modules/whiteboards/WhiteboardView.vue'), meta: { host: 'tenant', requires: 'user' } },
   { path: '/slides/:id', name: 'slide-deck', component: () => import('@/modules/slides/SlideDeckView.vue'), meta: { host: 'tenant', requires: 'user' } },
   { path: '/slides/:id/print', name: 'slide-print', component: () => import('@/modules/slides/SlidesPrintView.vue'), meta: { host: 'tenant', requires: 'user', bare: true } },
+  { path: '/approvals', name: 'approvals', component: () => import('@/modules/approvals/ApprovalsView.vue'), meta: { host: 'tenant', requires: 'user' } },
   { path: '/calendar', name: 'calendar', component: () => import('@/modules/calendar/CalendarView.vue'), meta: { host: 'tenant', requires: 'user' } },
   { path: '/tasks', name: 'tasks', component: () => import('@/modules/tasks/TasksView.vue'), meta: { host: 'tenant', requires: 'user' } },
   { path: '/spaces', name: 'spaces', component: () => import('@/modules/wiki/views/SpacesView.vue'), meta: { host: 'tenant', requires: 'user' } },

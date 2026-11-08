@@ -20,6 +20,7 @@ import MoveDialog from '../components/MoveDialog.vue'
 import RestrictionsDialog from '../components/RestrictionsDialog.vue'
 import { useSpaceContext } from '../spaceContext'
 import CommentsPanel from '../comments/CommentsPanel.vue'
+import PageApprovals from '@/modules/approvals/PageApprovals.vue'
 import { commentsApi } from '@/core/api/comments'
 import type { AnchorHighlight, TextQuote } from '@/modules/editor/extensions/commentAnchors'
 
@@ -305,6 +306,8 @@ function onMoved(p: Page, newEtag: string | null) {
         <Button type="submit" size="small" icon="pi pi-plus" :aria-label="t('wiki.labels.add')" />
       </form>
     </section>
+
+    <PageApprovals v-if="discussable" :content-id="page.id" :can-request="page.rights.canEdit" />
 
     <CommentsPanel
       v-if="discussable"

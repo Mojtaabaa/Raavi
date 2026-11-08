@@ -129,6 +129,97 @@ namespace Raavi.Wiki.Persistence.Migrations
                     b.ToTable("Activity", "content");
                 });
 
+            modelBuilder.Entity("Raavi.Wiki.Domain.ApprovalAssignment", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("RequestId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTimeOffset?>("DecidedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("Decision")
+                        .HasColumnType("int");
+
+                    b.HasKey("TenantId", "RequestId", "UserId");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("TenantId", "RequestId", "UserId"));
+
+                    b.HasIndex("TenantId", "UserId", "Decision");
+
+                    b.ToTable("ApprovalAssignments", "content");
+                });
+
+            modelBuilder.Entity("Raavi.Wiki.Domain.ApprovalRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ContentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("DecidedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("DueAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("Mode")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTimeOffset>("RequestedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("RequestedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("SpaceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("VersionNumber")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasAlternateKey("TenantId", "Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasAlternateKey("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "SpaceId");
+
+                    b.HasIndex("TenantId", "ContentId", "Status");
+
+                    b.HasIndex("TenantId", "RequestedBy", "RequestedAt");
+
+                    b.ToTable("ApprovalRequests", "content");
+                });
+
             modelBuilder.Entity("Raavi.Wiki.Domain.Attachment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1646,6 +1737,26 @@ namespace Raavi.Wiki.Persistence.Migrations
                     b.HasIndex("TenantId", "WorkflowId", "StartedAt");
 
                     b.ToTable("WorkflowRuns", "content");
+                });
+
+            modelBuilder.Entity("Raavi.Wiki.Domain.ApprovalAssignment", b =>
+                {
+                    b.HasOne("Raavi.Wiki.Domain.ApprovalRequest", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RequestId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Raavi.Wiki.Domain.ApprovalRequest", b =>
+                {
+                    b.HasOne("Raavi.Wiki.Domain.Space", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "SpaceId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Raavi.Wiki.Domain.Attachment", b =>

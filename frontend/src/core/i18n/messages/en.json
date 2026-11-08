@@ -28,7 +28,8 @@
     "permissions": "Global permissions",
     "migrations": "Migration",
     "tasks": "Tasks",
-    "calendar": "Calendar"
+    "calendar": "Calendar",
+    "approvals": "Approvals"
   },
   "common": {
     "save": "Save",
@@ -354,6 +355,22 @@
       "action_invalid": "An action is not valid: check the label, recipients and message.",
       "invalid": "The workflow definition is not valid.",
       "not_found": "Workflow not found."
+    },
+    "approval": {
+      "not_found": "Approval request not found.",
+      "not_approver": "You are not an approver of this request.",
+      "self_approver": "You cannot ask yourself to approve your own request.",
+      "approvers_invalid": "Choose 1–10 different approvers who can read the page.",
+      "already_pending": "This page already has a pending approval request.",
+      "not_pending": "This request has already been decided.",
+      "note_invalid": "The note is limited to 500 characters.",
+      "mode_invalid": "The approval rule is not valid.",
+      "due_invalid": "The due date must be in the future and within a year.",
+      "decision_invalid": "The decision is not valid.",
+      "comment_required": "A rejection needs a comment.",
+      "comment_invalid": "The comment is limited to 1000 characters.",
+      "already_decided": "You have already decided on this request.",
+      "scope_invalid": "Unknown list."
     }
   },
   "profile": {
@@ -885,7 +902,11 @@
       "comment_created": "{name} commented on “{title}”",
       "comment_resolved": "{name} resolved a thread on “{title}”",
       "page_published": "{name} published “{title}”",
-      "workflow": "Automation on “{title}”"
+      "workflow": "Automation on “{title}”",
+      "approval_requested": "{name} asked you to approve “{title}”",
+      "approval_approved": "“{title}” was approved",
+      "approval_rejected": "“{title}” was rejected",
+      "approval_cancelled": "{name} cancelled the approval of “{title}”"
     }
   },
   "migration": {
@@ -1272,5 +1293,44 @@
       "content_gone": "The page no longer exists",
       "rate_limited": "Skipped: more than 100 runs in the last hour"
     }
+  },
+  "approvals": {
+    "title": "Approvals",
+    "myTitle": "My approvals",
+    "inbox": "Waiting for me",
+    "requested": "Requested by me",
+    "inboxEmpty": "Nothing is waiting for your decision.",
+    "requestedEmpty": "You have not requested any approvals.",
+    "request": "Request approval",
+    "approvers": "Approvers",
+    "rule": "Rule",
+    "modes": {
+      "All": "Everyone must approve",
+      "Any": "One approval is enough"
+    },
+    "dueOptional": "Due (optional)",
+    "noteOptional": "Note (optional)",
+    "send": "Send request",
+    "none": "No approval requests for this page.",
+    "requestedBy": "Requested by {name} · {time}",
+    "due": "Due {time}",
+    "overdue": "overdue",
+    "pageChanged": "the page changed after the request",
+    "status": {
+      "Pending": "Pending",
+      "Approved": "Approved",
+      "Rejected": "Rejected",
+      "Cancelled": "Cancelled"
+    },
+    "decision": {
+      "Pending": "waiting",
+      "Approved": "approved",
+      "Rejected": "rejected"
+    },
+    "approve": "Approve",
+    "reject": "Reject",
+    "rejectReason": "Why are you rejecting? (required)",
+    "confirmReject": "Reject request",
+    "cancel": "Cancel request"
   }
 }

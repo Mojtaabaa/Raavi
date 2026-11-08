@@ -85,6 +85,7 @@ api.MapDatabaseEndpoints();
 api.MapSlideEndpoints();
 api.MapWhiteboardEndpoints();
 api.MapWorkflowEndpoints();
+api.MapApprovalEndpoints();
 api.MapMigrationEndpoints();
 app.MapCollaborationInternalEndpoints();
 app.MapWikiRealtime();

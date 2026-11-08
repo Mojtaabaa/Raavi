@@ -23,6 +23,7 @@ SQL Server 2022+ · shared database, logical tenant isolation (ADR-005) · EF Co
 
 | Phase | Tables | Notes |
 |---|---|---|
+| 10b | `content.ApprovalRequests`, `content.ApprovalAssignments` | Migration `Approvals` (RLS; request → space and assignment → request composite FKs; no FK to the page node). Request revision is a concurrency token bumped on every decision. |
 | 10a | `content.Workflows`, `content.WorkflowRuns` | Migration `Workflows` (RLS + composite FKs: workflow → space, run → workflow). Rule definition as validated JSON; unique (TenantId, WorkflowId, EventId) on runs = idempotency key. |
 | 9e | `content.Whiteboards` | Migration `Whiteboards` (RLS + composite FK to the space). Elements are validated JSON (`ElementsJson`), saved as a whole with a revision. |
 | 9d | `content.SlideDecks` | Migration `Slides` (RLS + composite FK to the space). Slides are validated JSON (`SlidesJson`), direction stored as `Ltr`/`Rtl`. |
