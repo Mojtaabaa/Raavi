@@ -694,6 +694,47 @@ namespace Raavi.Wiki.Persistence.Migrations
                     b.ToTable("ContentRestrictions", "security");
                 });
 
+            modelBuilder.Entity("Raavi.Wiki.Domain.DatabaseRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("DatabaseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("ValuesJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasAlternateKey("TenantId", "Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasAlternateKey("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "DatabaseId", "CreatedAt");
+
+                    b.ToTable("DatabaseRows", "content");
+                });
+
             modelBuilder.Entity("Raavi.Wiki.Domain.Label", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1187,6 +1228,56 @@ namespace Raavi.Wiki.Persistence.Migrations
                     b.ToTable("Spaces", "spaces");
                 });
 
+            modelBuilder.Entity("Raavi.Wiki.Domain.SpaceDatabase", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ColumnsJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("SpaceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasAlternateKey("TenantId", "Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasAlternateKey("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "SpaceId", "Name");
+
+                    b.ToTable("Databases", "content");
+                });
+
             modelBuilder.Entity("Raavi.Wiki.Domain.Template", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1481,6 +1572,16 @@ namespace Raavi.Wiki.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Raavi.Wiki.Domain.DatabaseRow", b =>
+                {
+                    b.HasOne("Raavi.Wiki.Domain.SpaceDatabase", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "DatabaseId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Raavi.Wiki.Domain.Notification", b =>
                 {
                     b.HasOne("Raavi.Wiki.Domain.ContentNode", null)
@@ -1535,6 +1636,16 @@ namespace Raavi.Wiki.Persistence.Migrations
                     b.HasOne("Raavi.Wiki.Domain.ContentNode", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "ContentId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Raavi.Wiki.Domain.SpaceDatabase", b =>
+                {
+                    b.HasOne("Raavi.Wiki.Domain.Space", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "SpaceId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();

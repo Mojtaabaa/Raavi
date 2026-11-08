@@ -318,6 +318,19 @@
       "occurrence_invalid": "That date is not an occurrence of this event.",
       "too_many_exclusions": "Too many cancelled occurrences; change the series instead.",
       "event_not_found": "Event not found."
+    },
+    "db": {
+      "name_invalid": "A database needs a name of up to 200 characters.",
+      "description_too_long": "The description is too long.",
+      "column_invalid": "Each column needs a unique name, and a select column needs unique options.",
+      "too_many_columns": "A database can have at most 30 columns.",
+      "column_unknown": "That column does not exist.",
+      "column_type_locked": "The type of an existing column cannot be changed; add a new column instead.",
+      "value_invalid": "A value does not fit its column.",
+      "row_limit": "A database can hold at most 5000 rows.",
+      "sort_invalid": "The sort column does not exist.",
+      "not_found": "Database not found.",
+      "row_not_found": "Row not found."
     }
   },
   "profile": {
@@ -1036,6 +1049,40 @@
       "Weekly": "Weekly",
       "Monthly": "Monthly",
       "Yearly": "Yearly"
+    }
+  },
+  "databases": {
+    "nav": "Databases",
+    "spaceTitle": "Databases — {name}",
+    "new": "New database",
+    "name": "Name",
+    "none": "No databases in this space.",
+    "summary": "{columns} columns · {rows} rows",
+    "firstColumn": "Name",
+    "search": "Search rows",
+    "addRow": "Add row",
+    "columns": "Columns",
+    "export": "Export CSV",
+    "noRows": "No rows yet.",
+    "noMatches": "No rows match.",
+    "pages": "Pages",
+    "prev": "Previous page",
+    "next": "Next page",
+    "confirmDeleteRow": "Delete this row?",
+    "confirmDelete": "Delete the database “{name}” and all its rows?",
+    "columnName": "Column name",
+    "columnType": "Column type",
+    "options": "Options",
+    "optionsHint": "One option per line",
+    "addColumn": "Add column",
+    "deleteDatabase": "Delete database",
+    "types": {
+      "Text": "Text",
+      "Number": "Number",
+      "Date": "Date",
+      "Checkbox": "Checkbox",
+      "Select": "Select",
+      "Url": "Link"
     }
   }
 }

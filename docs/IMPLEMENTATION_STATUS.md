@@ -1,10 +1,22 @@
 # Implementation Status
 
-**Last updated:** 2026-11-08 (Phase 9b: calendar)
+**Last updated:** 2026-11-08 (Phase 9c: databases)
 
 Statuses: Not Started · Planned · In Progress · Implemented · Tested · Blocked · Deferred. "Tested" requires executed test evidence (listed).
 
-## Phase 9 — Advanced content types (split: 9a tasks and 9b calendar done; 9c databases, 9d slides, 9e whiteboards pending)
+## Phase 9 — Advanced content types (split: 9a tasks, 9b calendar and 9c databases done; 9d slides, 9e whiteboards pending)
+
+### 9c — Databases (ADR-028)
+
+```
+cd backend && dotnet test Raavi.Tests    → Passed: 377, Failed: 0   (new: DatabaseDomainTests 2 pure, DatabaseTests 3 API)
+EF: has-pending-model-changes (Wiki)     → none; new migration Databases (RLS + composite FKs)
+cd frontend && npm run build && npm test → ok; 14 files, 112 tests (new: databases.test.ts 3); npm audit (production) 0
+```
+
+Metadata-driven tables per space: columns (Text, Number, Date, Checkbox, Select, Url) stored as data with stable ids, rows as validated JSON, no runtime DDL. Server-side free-text filter, one-column sort (empty last), paging, CSV export (BOM, formula-safe), ETag concurrency for schema and rows, permissions from the space, type of existing columns locked. UI: per-space "Databases" list, table with in-place cell editing, sortable headers, search, column editor dialog, read-only rendering without Edit. Verified through unit/API/component tests; **not exercised in a real browser**.
+
+**Not in 9c:** relations/rollups/formulas, multi-select/user/file columns, saved views, filters per column, board/gallery layouts, CSV import, embedding in pages, row-level permissions, row history, search indexing.
 
 ### 9b — Calendar (ADR-027)
 

@@ -31,3 +31,4 @@ Format: Context · Decision · Alternatives considered · Consequences. Status v
 | [025](ADR-025-confluence-import.md) | Confluence Import (REST source, idempotent importer, jobs) | Accepted |
 | [026](ADR-026-tasks.md) | Tasks (Phase 9a) | Accepted |
 | [027](ADR-027-calendar.md) | Calendar (Phase 9b) | Accepted |
+| [028](ADR-028-databases.md) | Databases (Phase 9c) | Accepted |

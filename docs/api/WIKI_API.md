@@ -68,6 +68,21 @@ Page DTO `rights` gained `canComment`, `canModerateComments`. Push: WebSocket `/
 
 Task DTO: `{id, spaceKey, spaceName, contentId, title, notes, status: Open|Done, assigneeId, assigneeName, dueDate, isOverdue, completedAt, createdAt, createdByName, revision, rights{canEdit, canComplete, canDelete}}`.
 
+## Databases (Phase 9c, ADR-028)
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/spaces/{key}/databases` | View; with column definitions and row counts |
+| POST | `/spaces/{key}/databases` | Edit on an active space. `{name, description?, columns: [{name, type: Text|Number|Date|Checkbox|Select|Url, options?: [{label}]}]}` |
+| GET/PUT | `/databases/{id}` | PUT needs **If-Match** `"r{n}"`; columns with an `id` keep it (type locked: `db.column_type_locked`), without an id are new |
+| DELETE | `/databases/{id}` | Edit; deletes all rows |
+| GET | `/databases/{id}/rows?q=&sort=<columnId>&dir=asc|desc&skip=&take=` | `{total, rows}`; take ≤ 500; empty cells sort last; `db.sort_invalid` |
+| POST | `/databases/{id}/rows` | `{values: {columnId: value}}`; at most 5 000 rows (`db.row_limit`) |
+| GET/PUT/DELETE | `/database-rows/{id}` | PUT needs **If-Match**; sends the whole row |
+| GET | `/databases/{id}/export` | CSV (UTF-8 BOM, formula-safe) |
+
+Errors: `db.name_invalid`, `db.column_invalid`, `db.too_many_columns`, `db.column_unknown`, `db.column_type_locked`, `db.value_invalid`, `db.not_found`, `db.row_not_found`.
+
 ## Calendar (Phase 9b, ADR-027)
 
 | Method | Path | Notes |

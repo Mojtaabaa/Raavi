@@ -23,6 +23,7 @@ SQL Server 2022+ · shared database, logical tenant isolation (ADR-005) · EF Co
 
 | Phase | Tables | Notes |
 |---|---|---|
+| 9c | `content.Databases`, `content.DatabaseRows` | Migration `Databases` (RLS + composite FKs rows → database → space). Schema and row values are JSON keyed by stable column ids; no runtime DDL. |
 | 9b | `content.CalendarEvents` | Migration `Calendar` (RLS + composite FK to the space). Wall-clock dates/times + IANA zone; recurrence as flat columns; cancelled occurrences as a comma-separated date list. |
 | 9a | `content.Tasks` | Migration `Tasks` (RLS + composite FK to the space; no FK for the optional page link). |
 | 7a | `content.Comments`, `CommentReactions`, `Watches`, `Notifications`, `NotificationPreferences` | Migration `Comments` (RLS + tenant FKs). Unique `(TenantId, EventId, RecipientId)` makes notification fan-out idempotent. |

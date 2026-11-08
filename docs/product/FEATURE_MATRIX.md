@@ -46,7 +46,7 @@ Baseline: Confluence Cloud. Status values as in `docs/IMPLEMENTATION_STATUS.md`.
 | Search | Full text, filters, suggestions, Persian normalization | yes (no Persian tuning) | 7 | In Progress (normalizer done) |
 | Migration | Confluence import with full history | n/a | 8 | Planned (contracts done) |
 | Whiteboards | Infinite canvas, collaboration, export | yes | 9 | Planned |
-| Databases | Metadata-driven databases, views | yes | 9 | Planned |
+| Databases | Metadata-driven databases, views | yes | 9c | Tested (table view only; saved views later) |
 | Tasks | Tasks with assignees, due dates | yes | 9a | Tested |
 | Calendar | Team/space calendars, Jalali | Team Calendars app | 9b | Tested |
 | Slides | Slide decks, presenter, PDF/PPTX | n/a | 9 | Planned |

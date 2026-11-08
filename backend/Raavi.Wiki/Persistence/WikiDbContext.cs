@@ -61,6 +61,10 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
 
     public DbSet<CalendarEvent> CalendarEvents => Set<CalendarEvent>();
 
+    public DbSet<SpaceDatabase> SpaceDatabases => Set<SpaceDatabase>();
+
+    public DbSet<DatabaseRow> DatabaseRows => Set<DatabaseRow>();
+
     public DbSet<CommentReaction> CommentReactions => Set<CommentReaction>();
 
     public DbSet<Watch> Watches => Set<Watch>();
@@ -323,6 +327,30 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
             b.Ignore(x => x.ExcludedDates);
             b.HasIndex(x => new { x.TenantId, x.SpaceId, x.StartDate });
             b.HasOne<Space>().WithMany().HasForeignKey(x => new { x.TenantId, x.SpaceId }).HasPrincipalKey(s => new { s.TenantId, s.Id }).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SpaceDatabase>(b =>
+        {
+            b.ToTable("Databases", "content");
+            Keys(b);
+            b.Property(x => x.Name).HasMaxLength(SpaceDatabase.MaxNameLength);
+            b.Property(x => x.Description).HasMaxLength(SpaceDatabase.MaxDescriptionLength);
+            b.Property(x => x.ColumnsJson).HasColumnType("nvarchar(max)");
+            b.Property(x => x.Revision).IsConcurrencyToken();
+            b.Ignore(x => x.Columns);
+            b.HasIndex(x => new { x.TenantId, x.SpaceId, x.Name });
+            b.HasOne<Space>().WithMany().HasForeignKey(x => new { x.TenantId, x.SpaceId }).HasPrincipalKey(s => new { s.TenantId, s.Id }).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<DatabaseRow>(b =>
+        {
+            b.ToTable("DatabaseRows", "content");
+            Keys(b);
+            b.Property(x => x.ValuesJson).HasColumnType("nvarchar(max)");
+            b.Property(x => x.Revision).IsConcurrencyToken();
+            b.Ignore(x => x.Values);
+            b.HasIndex(x => new { x.TenantId, x.DatabaseId, x.CreatedAt });
+            b.HasOne<SpaceDatabase>().WithMany().HasForeignKey(x => new { x.TenantId, x.DatabaseId }).HasPrincipalKey(d => new { d.TenantId, d.Id }).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<CommentReaction>(b =>

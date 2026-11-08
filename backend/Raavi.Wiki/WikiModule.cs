@@ -46,6 +46,7 @@ public static class WikiModule
         services.AddScoped<CommentService>();
         services.AddScoped<TaskService>();
         services.AddScoped<CalendarService>();
+        services.AddScoped<DatabaseService>();
         services.AddScoped<NotificationService>();
         services.AddScoped<IOutboxHandler, NotificationFanOut>();
         services.AddScoped<IOutboxHandler, NotificationEmailer>();
