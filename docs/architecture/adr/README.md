@@ -32,3 +32,4 @@ Format: Context · Decision · Alternatives considered · Consequences. Status v
 | [026](ADR-026-tasks.md) | Tasks (Phase 9a) | Accepted |
 | [027](ADR-027-calendar.md) | Calendar (Phase 9b) | Accepted |
 | [028](ADR-028-databases.md) | Databases (Phase 9c) | Accepted |
+| [029](ADR-029-slides.md) | Slides (Phase 9d) | Accepted |

@@ -68,6 +68,18 @@ Page DTO `rights` gained `canComment`, `canModerateComments`. Push: WebSocket `/
 
 Task DTO: `{id, spaceKey, spaceName, contentId, title, notes, status: Open|Done, assigneeId, assigneeName, dueDate, isOverdue, completedAt, createdAt, createdByName, revision, rights{canEdit, canComplete, canDelete}}`.
 
+## Slides (Phase 9d, ADR-029)
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/spaces/{key}/slides` | View; decks with `slideCount` (the `slides` array is empty in lists) |
+| POST | `/spaces/{key}/slides` | Edit on an active space. `{title, direction: Ltr|Rtl, slides: [{layout: Title|Bullets|Text, title, body, notes}]}` |
+| GET/PUT | `/slides/{id}` | PUT replaces title, direction and the whole slide list, needs **If-Match** `"r{n}"`; a slide with an `id` keeps it (order = list order), without an id is new |
+| DELETE | `/slides/{id}` | Edit |
+| GET | `/slides/{id}/export` | View; PPTX (`application/vnd.openxmlformats-officedocument.presentationml.presentation`). PDF is produced by the browser from the `/slides/{id}/print` page |
+
+Errors: `slides.title_invalid`, `slides.direction_invalid`, `slides.too_many` (100), `slides.slide_invalid`, `slides.not_found`.
+
 ## Databases (Phase 9c, ADR-028)
 
 | Method | Path | Notes |

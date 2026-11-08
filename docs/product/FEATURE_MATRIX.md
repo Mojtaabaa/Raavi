@@ -49,7 +49,7 @@ Baseline: Confluence Cloud. Status values as in `docs/IMPLEMENTATION_STATUS.md`.
 | Databases | Metadata-driven databases, views | yes | 9c | Tested (table view only; saved views later) |
 | Tasks | Tasks with assignees, due dates | yes | 9a | Tested |
 | Calendar | Team/space calendars, Jalali | Team Calendars app | 9b | Tested |
-| Slides | Slide decks, presenter, PDF/PPTX | n/a | 9 | Planned |
+| Slides | Slide decks, presenter, PDF/PPTX | n/a | 9d | Tested (text slides, notes, PPTX on the server, PDF via browser print; no images/shapes) |
 | Workflows | Workflow designer, approvals | apps | 10 | Planned |
 | Automation | Rules: triggers → conditions → actions | yes | 10 | Planned |
 | AI | Q&A, summarization, writing, tagging, related | Atlassian Intelligence | 11 | Planned |

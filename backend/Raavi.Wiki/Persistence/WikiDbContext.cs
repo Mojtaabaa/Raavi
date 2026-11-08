@@ -65,6 +65,8 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
 
     public DbSet<DatabaseRow> DatabaseRows => Set<DatabaseRow>();
 
+    public DbSet<SlideDeck> SlideDecks => Set<SlideDeck>();
+
     public DbSet<CommentReaction> CommentReactions => Set<CommentReaction>();
 
     public DbSet<Watch> Watches => Set<Watch>();
@@ -351,6 +353,19 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
             b.Ignore(x => x.Values);
             b.HasIndex(x => new { x.TenantId, x.DatabaseId, x.CreatedAt });
             b.HasOne<SpaceDatabase>().WithMany().HasForeignKey(x => new { x.TenantId, x.DatabaseId }).HasPrincipalKey(d => new { d.TenantId, d.Id }).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SlideDeck>(b =>
+        {
+            b.ToTable("SlideDecks", "content");
+            Keys(b);
+            b.Property(x => x.Title).HasMaxLength(SlideDeck.MaxTitleLength);
+            b.Property(x => x.Direction).HasConversion<string>().HasMaxLength(3);
+            b.Property(x => x.SlidesJson).HasColumnType("nvarchar(max)");
+            b.Property(x => x.Revision).IsConcurrencyToken();
+            b.Ignore(x => x.Slides);
+            b.HasIndex(x => new { x.TenantId, x.SpaceId, x.Title });
+            b.HasOne<Space>().WithMany().HasForeignKey(x => new { x.TenantId, x.SpaceId }).HasPrincipalKey(s => new { s.TenantId, s.Id }).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<CommentReaction>(b =>

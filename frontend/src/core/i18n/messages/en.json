@@ -331,6 +331,13 @@
       "sort_invalid": "The sort column does not exist.",
       "not_found": "Database not found.",
       "row_not_found": "Row not found."
+    },
+    "slides": {
+      "title_invalid": "A deck needs a title of up to 200 characters.",
+      "direction_invalid": "The text direction is not valid.",
+      "too_many": "A deck can have at most 100 slides.",
+      "slide_invalid": "A slide is not valid: check its layout, length and characters.",
+      "not_found": "Slide deck not found."
     }
   },
   "profile": {
@@ -1084,5 +1091,45 @@
       "Select": "Select",
       "Url": "Link"
     }
+  },
+  "slides": {
+    "nav": "Slides",
+    "spaceTitle": "Slides — {name}",
+    "new": "New deck",
+    "none": "No slide decks in this space.",
+    "summary": "{count} slides",
+    "deckTitle": "Deck title",
+    "direction": "Text direction",
+    "ltr": "Left to right",
+    "rtl": "Right to left",
+    "slides": "Slides",
+    "untitled": "(untitled)",
+    "addSlide": "Add slide",
+    "layout": "Layout",
+    "layouts": {
+      "Title": "Title slide",
+      "Bullets": "Bullets",
+      "Text": "Text"
+    },
+    "moveUp": "Move slide up",
+    "moveDown": "Move slide down",
+    "removeSlide": "Remove slide",
+    "slideTitle": "Slide title",
+    "subtitle": "Subtitle (one line per row)",
+    "body": "Text",
+    "bodyHint": "One line per bullet or paragraph",
+    "notes": "Speaker notes",
+    "noSlides": "This deck has no slides yet.",
+    "deleteDeck": "Delete deck",
+    "confirmDelete": "Delete the deck “{name}”?",
+    "unsaved": "You have unsaved changes. Leave without saving?",
+    "exportAfterSave": "Save your changes to export.",
+    "present": "Present",
+    "exitPresent": "Exit presentation",
+    "prev": "Previous slide",
+    "next": "Next slide",
+    "exportPptx": "Export PPTX",
+    "exportPdf": "Export PDF",
+    "printSave": "Print / Save as PDF"
   }
 }

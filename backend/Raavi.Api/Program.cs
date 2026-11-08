@@ -82,6 +82,7 @@ api.MapCommentEndpoints();
 api.MapTaskEndpoints();
 api.MapCalendarEndpoints();
 api.MapDatabaseEndpoints();
+api.MapSlideEndpoints();
 api.MapMigrationEndpoints();
 app.MapCollaborationInternalEndpoints();
 app.MapWikiRealtime();

@@ -41,6 +41,7 @@ Raavi is distributed to customers for on-premises installation, so every bundled
 | FluentValidation | Apache-2.0 | DTO validation |
 | Asp.Versioning.Http | MIT | API versioning |
 | OpenTelemetry .NET | Apache-2.0 | Traces/metrics |
+| DocumentFormat.OpenXml **3.5.1** | MIT | PPTX export of slide decks (Phase 9d). No PDF library: PDF comes from the browser print dialog (ADR-029) |
 | HtmlSanitizer (Ganss.Xss) **11.0.16** (+ AngleSharp, AngleSharp.Css) | MIT | Defence-in-depth HTML sanitizing (Phase 4) |
 | Tiptap **3.33.0** packages: vue-3, core, pm, starter-kit, extension-link, -table, -list, -text-align, -text-style, -highlight, -mention, suggestion, extensions | MIT | Phase 4; open-source only |
 | KaTeX **0.19.1** (also forced for Mermaid via npm `overrides`) | MIT | Phase 4 |

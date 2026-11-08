@@ -1,10 +1,22 @@
 # Implementation Status
 
-**Last updated:** 2026-11-08 (Phase 9c: databases)
+**Last updated:** 2026-11-08 (Phase 9d: slides)
 
 Statuses: Not Started · Planned · In Progress · Implemented · Tested · Blocked · Deferred. "Tested" requires executed test evidence (listed).
 
-## Phase 9 — Advanced content types (split: 9a tasks, 9b calendar and 9c databases done; 9d slides, 9e whiteboards pending)
+## Phase 9 — Advanced content types (split: 9a tasks, 9b calendar, 9c databases and 9d slides done; 9e whiteboards pending)
+
+### 9d — Slides (ADR-029)
+
+```
+cd backend && dotnet test Raavi.Tests    → Passed: 382, Failed: 0   (new: SlideDomainTests 2 pure, SlideTests 3 API incl. OpenXmlValidator 0 errors)
+EF: has-pending-model-changes (Wiki)     → none; new migration Slides (RLS + composite FK)
+cd frontend && npm run build && npm test → ok; 15 files, 117 tests (new: slides.test.ts 5); npm audit (production) 0; NuGet vulnerable: none
+```
+
+Slide decks per space: ordered text slides (Title / Bullets / Text layouts) with speaker notes, Ltr/Rtl direction, stable slide ids, whole-deck ETag saves, permissions from the space. UI: per-space "Slides" list, editor with slide strip (add, reorder, delete), live preview, presenter mode (keyboard, notes, mirrored arrows for RTL), unsaved-changes guard. Export: PPTX on the server (Open XML SDK, schema-validated with OpenXmlValidator, speaker notes, RTL) and PDF through a shell-less print page (browser "Save as PDF"). **PPTX was not opened in PowerPoint; UI not exercised in a real browser.**
+
+**Not in 9d:** images, shapes, tables, charts, transitions, themes, PPTX import, slide embedding in pages, co-editing/comments, deck history, server-side PDF.
 
 ### 9c — Databases (ADR-028)
 

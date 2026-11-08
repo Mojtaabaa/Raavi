@@ -19,6 +19,8 @@ declare module 'vue-router' {
 export const routes: RouteRecordRaw[] = [
   { path: '/', name: 'home', component: () => import('@/modules/wiki/views/HomeView.vue'), meta: { host: 'tenant', requires: 'user' } },
   { path: '/databases/:id', name: 'database', component: () => import('@/modules/databases/DatabaseView.vue'), meta: { host: 'tenant', requires: 'user' } },
+  { path: '/slides/:id', name: 'slide-deck', component: () => import('@/modules/slides/SlideDeckView.vue'), meta: { host: 'tenant', requires: 'user' } },
+  { path: '/slides/:id/print', name: 'slide-print', component: () => import('@/modules/slides/SlidesPrintView.vue'), meta: { host: 'tenant', requires: 'user', bare: true } },
   { path: '/calendar', name: 'calendar', component: () => import('@/modules/calendar/CalendarView.vue'), meta: { host: 'tenant', requires: 'user' } },
   { path: '/tasks', name: 'tasks', component: () => import('@/modules/tasks/TasksView.vue'), meta: { host: 'tenant', requires: 'user' } },
   { path: '/spaces', name: 'spaces', component: () => import('@/modules/wiki/views/SpacesView.vue'), meta: { host: 'tenant', requires: 'user' } },
@@ -28,6 +30,7 @@ export const routes: RouteRecordRaw[] = [
     meta: { host: 'tenant', requires: 'user' },
     children: [
       { path: '', name: 'space', component: () => import('@/modules/wiki/views/SpaceOverview.vue') },
+      { path: 'slides', name: 'space-slides', component: () => import('@/modules/slides/SlidesView.vue') },
       { path: 'databases', name: 'space-databases', component: () => import('@/modules/databases/DatabasesView.vue') },
       { path: 'calendar', name: 'space-calendar', component: () => import('@/modules/calendar/CalendarView.vue') },
       { path: 'tasks', name: 'space-tasks', component: () => import('@/modules/tasks/TasksView.vue') },
