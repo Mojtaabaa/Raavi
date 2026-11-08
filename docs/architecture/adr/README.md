@@ -37,6 +37,7 @@ Format: Context · Decision · Alternatives considered · Consequences. Status v
 | [031](ADR-031-workflows.md) | Workflows: rules engine on the outbox (Phase 10a) | Accepted |
 | [032](ADR-032-approvals.md) | Page approvals (Phase 10b) | Accepted |
 | [033](ADR-033-scheduling-and-flow-view.md) | Reminders, stale-page trigger, flow view (Phase 10c) | Accepted |
+| [037](ADR-037-workspace-export.md) | Workspace data export (Phase 12a) | Accepted |
 | [036](ADR-036-webhooks.md) | Outbound webhooks (Phase 11d) | Accepted |
 | [035](ADR-035-live-whiteboards.md) | Live whiteboards on the collaboration server (Phase 11c) | Accepted |
 | [034](ADR-034-ai-assistant.md) | AI assistant on pages: OpenAI-compatible provider per tenant (Phase 11a) | Accepted |

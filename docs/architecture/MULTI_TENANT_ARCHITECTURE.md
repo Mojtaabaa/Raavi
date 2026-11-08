@@ -83,7 +83,7 @@ Session cookies are **host-only** (`__Host-` prefix, no `Domain` attribute, `Sec
 | Create | System admin; assigns Code (immutable), Slug, initial admin invitation; status `Provisioning` → `Active` after seed (default roles, groups, settings). |
 | Suspend | Immediate: resolution cache invalidated, active sessions and collaboration connections closed, jobs for the tenant paused (not deleted). Data untouched. |
 | Deactivate | Like suspend, plus scheduled jobs cancelled; reversible. |
-| Export | Background job producing an archive (JSON + attachments) to object storage; download link short-lived and audited. |
+| Export | **12a (ADR-037): on-demand ZIP (JSON + attachments) of what the requesting administrator may view, built in a temporary file and streamed; no stored archive. The background-job/object-storage variant and a full-tenant dump by the installation administrator are still open.** |
 | Delete | Two-step: request (reason, audited) → `PendingDeletion` with retention window → irreversible purge job that deletes tenant rows in dependency order, object-storage prefix, search documents and Redis keys, then writes a deletion certificate to the system audit log. Requires a second system administrator to confirm. |
 | Quotas & usage | Storage bytes, users, spaces, AI tokens tracked per tenant (`TenantUsage`), enforced at write time. |
 

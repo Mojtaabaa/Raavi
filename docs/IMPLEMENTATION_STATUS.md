@@ -1,8 +1,21 @@
 # Implementation Status
 
-**Last updated:** 2026-11-08 (Phase 11d: webhooks)
+**Last updated:** 2026-11-08 (Phase 12a: workspace export)
 
 Statuses: Not Started · Planned · In Progress · Implemented · Tested · Blocked · Deferred. "Tested" requires executed test evidence (listed).
+
+## Phase 12 — Enterprise readiness (split: 12a workspace export done; deletion/purge, backups, HA, load tests, hardening pending)
+
+### 12a — Workspace data export (ADR-037)
+
+```
+cd backend && dotnet test Raavi.Tests    → Passed: 423, Failed: 0   (new: ExportUnitTests 1, ExportTests 2 API: contents, permission filtering, tenant isolation, concurrency)
+cd frontend && npm run build && npm test → ok; 23 files, 150 tests (new: export.test.ts 2); npm audit (production) 0
+```
+
+Tenant administrators download a ZIP built on demand in a temporary file (nothing stored): spaces, current pages with labels, comments and attachments, tasks, events, databases with rows, slide decks, whiteboards (JSON, SVG for boards), manifest and user names. Scope is **what the exporting administrator may view** — restricted pages, private spaces of others and other tenants are absent from files and counts (tests assert the hidden text appears nowhere in any file); hostile attachment names cannot escape their folder; one export per workspace at a time; attachments capped at 1 GB. UI: admin "Data export" page stating exactly what is and is not included. **Not tested:** a large workspace (time and memory), the browser download itself, opening the archive on another OS. No dedicated audit-log entry (the manifest records the exporter).
+
+**Not in 12a:** tenant deletion with retention and purge, complete dump by the installation administrator, job/link delivery (needs 7b), import, history export, backup/restore automation, HA, load tests, hardening review.
 
 ## Phase 11 — AI & integrations (split: 11a AI assistant done; RAG, integrations, webhooks pending)
 

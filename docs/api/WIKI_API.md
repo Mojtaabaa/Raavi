@@ -68,6 +68,14 @@ Page DTO `rights` gained `canComment`, `canModerateComments`. Push: WebSocket `/
 
 Task DTO: `{id, spaceKey, spaceName, contentId, title, notes, status: Open|Done, assigneeId, assigneeName, dueDate, isOverdue, completedAt, createdAt, createdByName, revision, rights{canEdit, canComplete, canDelete}}`.
 
+## Workspace export (Phase 12a, ADR-037)
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/tenant/export` | **Tenant administrator.** Streams a ZIP (`application/zip`, `no-store`, file name `raavi-export-{slug}-{yyyyMMdd-HHmm}.zip`) of everything the caller may view; `409 export.in_progress` while another export of the workspace runs |
+
+Archive layout: `manifest.json` (format version, counts, omissions, scope text), `users.json`, `spaces/{key}/space.json`, `pages/{id}.json` (labels, body, comments, attachment list), `attachments/{pageId}/{id}-{name}`, `tasks.json`, `events.json`, `databases/{id}.json`, `slides/{id}.json`, `whiteboards/{id}.json|.svg`. Drafts, archive, trash, history, permissions and secrets are not included.
+
 ## Webhooks (Phase 11d, ADR-036)
 
 Tenant administrators only (403 for members).

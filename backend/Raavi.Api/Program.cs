@@ -89,6 +89,7 @@ api.MapDatabaseEndpoints();
 api.MapSlideEndpoints();
 api.MapWhiteboardEndpoints();
 api.MapWorkflowEndpoints();
+api.MapExportEndpoints();
 api.MapApprovalEndpoints();
 api.MapMigrationEndpoints();
 api.MapAiEndpoints();

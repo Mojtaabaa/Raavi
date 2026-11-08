@@ -51,6 +51,7 @@ public static class WikiModule
         services.AddScoped<SlideService>();
         services.AddScoped<WhiteboardService>();
         services.AddScoped<WorkflowService>();
+        services.AddScoped<ExportService>();
         services.AddScoped<ApprovalService>();
         services.AddScoped<IOutboxHandler, ApprovalNotifier>();
         services.AddScoped<WorkflowEngine>();

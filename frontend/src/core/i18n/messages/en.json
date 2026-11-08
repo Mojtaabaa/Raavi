@@ -31,7 +31,8 @@
     "calendar": "Calendar",
     "approvals": "Approvals",
     "ai": "AI assistant",
-    "webhooks": "Webhooks"
+    "webhooks": "Webhooks",
+    "export": "Data export"
   },
   "common": {
     "save": "Save",
@@ -1448,5 +1449,22 @@
       "comment": "Comments",
       "approval": "Approvals"
     }
+  },
+  "export": {
+    "title": "Data export",
+    "intro": "Download a ZIP archive of the content of this workspace as JSON files (plus the attached files), for backup, audits or moving to another system.",
+    "included": "Included",
+    "i1": "Spaces with their current pages: title, hierarchy, labels, the published body, comments and attachments.",
+    "i2": "Tasks, calendar events, databases with their rows, slide decks and whiteboards (JSON, and SVG for boards).",
+    "i3": "A manifest with counts, what was left out, and a list of the people named in the data.",
+    "notIncluded": "Not included",
+    "n1": "Pages you cannot view (restricted pages, private spaces you are not part of).",
+    "n2": "Drafts, archived and deleted content, and page history.",
+    "n3": "Permissions, notification settings, AI and webhook configuration, secrets and sessions.",
+    "scopeNote": "The export contains what you, as the signed-in administrator, may view. A complete dump of the whole workspace is a separate operation for the installation administrator.",
+    "download": "Download export",
+    "preparing": "Preparing…",
+    "failed": "The export could not be created. Try again later.",
+    "inProgress": "An export of this workspace is already running. Try again in a few minutes."
   }
 }
