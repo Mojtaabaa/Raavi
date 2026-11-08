@@ -6,6 +6,15 @@ Statuses: Not Started · Planned · In Progress · Implemented · Tested · Bloc
 
 ## Phase 12 — Enterprise readiness (split: 12a workspace export and 12b backup/restore scripts and 12c performance baseline done; deletion/purge, scheduling, HA, large-scale/k6 load tests, hardening pending)
 
+### 12e — Security review notes and endpoint authorization guard
+
+```
+dotnet list package --vulnerable --include-transitive → none; npm audit --omit=dev (frontend) → 0
+dotnet test Raavi.Tests                                → all passed (new: EndpointAuthorizationTests, 228 routes, 24 reviewed anonymous routes)
+```
+
+`docs/architecture/SECURITY_REVIEW.md` records what was verified and, explicitly, what was not. **Not done:** penetration test, DAST, full ASVS L2 walk-through, log-scrubbing test, collaboration/SPA re-review.
+
 ### 12d — Release package and upgrade script (ADR-041)
 
 ```
