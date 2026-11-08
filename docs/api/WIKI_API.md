@@ -68,6 +68,18 @@ Page DTO `rights` gained `canComment`, `canModerateComments`. Push: WebSocket `/
 
 Task DTO: `{id, spaceKey, spaceName, contentId, title, notes, status: Open|Done, assigneeId, assigneeName, dueDate, isOverdue, completedAt, createdAt, createdByName, revision, rights{canEdit, canComplete, canDelete}}`.
 
+## AI assistant (Phase 11a, ADR-034)
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/ai/status` | Any member: `{available}` (AI is switched on, a key is stored and the installation allows an AI host) |
+| POST | `/ai/pages/{id}/summary` | Member who can read the page. `{text, model, promptTokens, completionTokens, truncated}` |
+| POST | `/ai/pages/{id}/ask` | `{question}` (1–1000 characters); answers from that page only |
+| GET/PUT | `/ai/settings` | **Tenant administrator.** `{enabled, baseUrl, model, apiKey?, monthlyTokenCap, maxOutputTokens}`; the key is write-only (`hasApiKey` is returned), omit it to keep it, send `""` to remove it. The first save needs no `If-Match`; later saves do |
+| GET | `/ai/usage` | Tenant administrator: tokens/requests/failures this month, by feature, top users |
+
+Global configuration (`sandbox/config/ai.json`, `Raavi:Ai`): `AllowedHosts` (empty = AI off), `RequestTimeoutSeconds`, `MaxInputChars`, `MaxRequestsPerUserPerHour`. Errors: 404 `ai.page_not_found` (also for pages the caller cannot read), 409 `ai.not_configured`, 429 `ai.quota_exceeded` / `ai.rate_limited`, 503 `ai.provider_auth|rate_limited|not_found|unavailable|rejected|bad_response`, 400 `ai.url_invalid|host_not_allowed|host_forbidden|model_invalid|cap_invalid|output_invalid|key_required|key_invalid|question_invalid`, 400 `ai.page_empty`.
+
 ## Approvals (Phase 10b, ADR-032)
 
 | Method | Path | Notes |

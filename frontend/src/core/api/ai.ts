@@ -1,0 +1,54 @@
+import { api, apiRequest } from './http'
+
+export interface AiSettings {
+  enabled: boolean
+  baseUrl: string
+  model: string
+  /** True when a key is stored; the key itself is never returned. */
+  hasApiKey: boolean
+  monthlyTokenCap: number
+  maxOutputTokens: number
+  revision: number
+  /** False when the installation administrator has not allowed any AI host. */
+  hostPolicyConfigured: boolean
+  tokensThisMonth: number
+}
+
+export interface AiSettingsInput {
+  enabled: boolean
+  baseUrl: string
+  model: string
+  /** Omitted/undefined keeps the stored key; an empty string removes it. */
+  apiKey?: string
+  monthlyTokenCap: number
+  maxOutputTokens: number
+}
+
+export interface AiAnswer {
+  text: string
+  model: string
+  promptTokens: number
+  completionTokens: number
+  truncated: boolean
+}
+
+export interface AiUsage {
+  tokensThisMonth: number
+  requestsThisMonth: number
+  failedThisMonth: number
+  monthlyTokenCap: number
+  byFeature: { feature: string; requests: number; tokens: number }[]
+  topUsers: { userId: string; name: string | null; requests: number; tokens: number }[]
+}
+
+const enc = encodeURIComponent
+
+export const aiApi = {
+  status: () => api<{ available: boolean }>('GET', '/ai/status'),
+  settings: () => api<AiSettings>('GET', '/ai/settings'),
+  saveSettings: (current: AiSettings, body: AiSettingsInput) =>
+    apiRequest<AiSettings>('PUT', '/ai/settings', body, current.revision > 0 ? { ifMatch: `"r${current.revision}"` } : {}).then((r) => r.data),
+  usage: () => api<AiUsage>('GET', '/ai/usage'),
+  summarize: (pageId: string) => api<AiAnswer>('POST', `/ai/pages/${enc(pageId)}/summary`, {}),
+  ask: (pageId: string, question: string) => api<AiAnswer>('POST', `/ai/pages/${enc(pageId)}/ask`, { question }),
+}

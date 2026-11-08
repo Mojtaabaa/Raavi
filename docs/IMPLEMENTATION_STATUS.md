@@ -1,8 +1,22 @@
 # Implementation Status
 
-**Last updated:** 2026-11-08 (Phase 10c: scheduling)
+**Last updated:** 2026-11-08 (Phase 11a: AI assistant)
 
 Statuses: Not Started · Planned · In Progress · Implemented · Tested · Blocked · Deferred. "Tested" requires executed test evidence (listed).
+
+## Phase 11 — AI & integrations (split: 11a AI assistant done; RAG, integrations, webhooks pending)
+
+### 11a — AI assistant on pages (ADR-034)
+
+```
+cd backend && dotnet test Raavi.Tests    → Passed: 409, Failed: 0   (new: AiClientTests 3 pure, AiTests 5 API against an in-process OpenAI-compatible fake)
+EF: has-pending-model-changes (Wiki, AI) → none; new module context AiDbContext, migration Initial (RLS)
+cd frontend && npm run build && npm test → ok; 19 files, 134 tests (new: ai.test.ts 3); npm audit (production) 0
+```
+
+Per-tenant OpenAI-compatible provider (base URL, model, write-only key protected with a tenant-bound Data Protection purpose), summarise a page / ask about one page, usage accounting (token counts only), monthly token cap, per-user hourly limit, installation-wide host allow-list with connect-time address checks (SSRF). Leakage tests: a user without View, another tenant (with AI on) and an unknown id all get the same 404 and the fake provider records **zero** calls. Prompt: the page is delimited untrusted data; long pages are cut and the model told; answers are plain text. UI: admin "AI assistant" page (settings, usage), assistant panel on pages when AI is on. **Never run against a real model or in a real browser** — the provider is an in-process fake and the UI was tested with components only. Prompt-injection robustness of real models is not tested.
+
+**Not in 11a:** embeddings/RAG over spaces (no vector store: SQL Server 2016 compat 130, OpenSearch deferred), editor writing help, streaming, retry/fallback/multiple providers, non-OpenAI protocols, Jira/GitHub/GitLab/Teams/Outlook/Google integrations, webhooks.
 
 ## Phase 10 — Workflows & automation (split: 10a rules engine, 10b approvals and 10c scheduling done; drag-and-drop designer, branching, external actions pending)
 

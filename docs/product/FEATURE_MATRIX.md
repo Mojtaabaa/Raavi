@@ -52,7 +52,7 @@ Baseline: Confluence Cloud. Status values as in `docs/IMPLEMENTATION_STATUS.md`.
 | Slides | Slide decks, presenter, PDF/PPTX | n/a | 9d | Tested (text slides, notes, PPTX on the server, PDF via browser print; no images/shapes) |
 | Workflows | Workflow designer, approvals | apps | 10c | Partial: rules engine, time-based stale-page trigger (daily sweep) and read-only flow view Tested; drag-and-drop designer, branching, webhooks planned |
 | Automation | Rules: triggers → conditions → actions | yes | 10 | Planned |
-| AI | Q&A, summarization, writing, tagging, related | Atlassian Intelligence | 11 | Planned |
+| AI | Q&A, summarization, writing, tagging, related | Atlassian Intelligence | 11a | Partial: per-page summary and Q&A with a per-tenant OpenAI-compatible provider, quotas and ACL leakage tests Tested against a fake provider; space-wide RAG, writing help, tagging, related pages planned |
 | Integrations | Jira, GitHub, GitLab, Teams, Outlook, Google, webhooks | yes | 11 | Planned |
 | Analytics | Content, usage, search, AI analytics | premium | 12 | Planned |
 | I18n | Persian + English UI, RTL/LTR, tenant default locale/calendar | partial (no fa) | 0+ | In Progress (shell + tenant defaults tested) |

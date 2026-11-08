@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Raavi.Identity;
 using Raavi.Identity.Api;
 using Raavi.Identity.Security;
+using Raavi.AI;
 using Raavi.Migration;
 using Raavi.Infrastructure;
 using Raavi.Infrastructure.Configuration;
@@ -53,6 +54,7 @@ builder.Services.AddIdentityModule(builder.Configuration);
 builder.Services.AddWikiModule(builder.Configuration);
 builder.Services.AddWikiRealtime();
 builder.Services.AddMigrationModule(builder.Configuration);
+builder.Services.AddAiModule(builder.Configuration);
 builder.Services.AddOpenApi("v1");
 
 var app = builder.Build();
@@ -87,6 +89,7 @@ api.MapWhiteboardEndpoints();
 api.MapWorkflowEndpoints();
 api.MapApprovalEndpoints();
 api.MapMigrationEndpoints();
+api.MapAiEndpoints();
 app.MapCollaborationInternalEndpoints();
 app.MapWikiRealtime();
 

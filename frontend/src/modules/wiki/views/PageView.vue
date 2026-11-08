@@ -21,6 +21,7 @@ import RestrictionsDialog from '../components/RestrictionsDialog.vue'
 import { useSpaceContext } from '../spaceContext'
 import CommentsPanel from '../comments/CommentsPanel.vue'
 import PageApprovals from '@/modules/approvals/PageApprovals.vue'
+import PageAssistant from '@/modules/ai/PageAssistant.vue'
 import { commentsApi } from '@/core/api/comments'
 import type { AnchorHighlight, TextQuote } from '@/modules/editor/extensions/commentAnchors'
 
@@ -268,6 +269,8 @@ function onMoved(p: Page, newEtag: string | null) {
     </Message>
     <Message v-if="page.scheduledPublishAt" severity="info" :closable="false">{{ t('wiki.publish.scheduledFor', { time: formatDate(page.scheduledPublishAt, locale.locale, { dateStyle: 'medium', timeStyle: 'short' }), name: '' }) }}</Message>
     <Message v-if="page.pendingApproval" severity="warn" :closable="false" data-testid="pending-approval">{{ t('wiki.publish.pendingShort') }}</Message>
+
+    <PageAssistant v-if="page.contentType === 'page' && page.status === 'Current'" :page-id="page.id" />
 
     <DocumentBody
       v-if="page.contentType === 'page'"

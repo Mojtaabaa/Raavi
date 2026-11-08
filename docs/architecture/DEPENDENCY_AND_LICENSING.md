@@ -52,7 +52,7 @@ Raavi is distributed to customers for on-premises installation, so every bundled
 | OpenSearch.Client / OpenSearch.Net | Apache-2.0 | Search |
 | StackExchange.Redis | MIT | Redis/Valkey |
 | Novell.Directory.Ldap.NETStandard / System.DirectoryServices.Protocols | MIT | LDAP/AD |
-| Microsoft.Extensions.AI | MIT | AI provider abstraction |
+| Microsoft.Extensions.AI | MIT | AI provider abstraction — **not yet used**: 11a calls OpenAI-compatible endpoints through its own `IAiChat` over `HttpClient` (no new package); see ADR-034 |
 | KaTeX | MIT | Math rendering |
 | vazirmatn font | OFL-1.1 | Persian UI font (self-hosted) |
 | Inter font (@fontsource-variable/inter) | OFL-1.1 | Latin UI font (self-hosted) |

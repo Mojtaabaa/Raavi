@@ -23,6 +23,7 @@ SQL Server 2022+ · shared database, logical tenant isolation (ADR-005) · EF Co
 
 | Phase | Tables | Notes |
 |---|---|---|
+| 11a | `ai.Settings`, `ai.Usage` | Module-owned context `AiDbContext` (schema `ai`, migration `Initial`, RLS). Settings: one row per tenant, API key stored protected (Data Protection, tenant-bound purpose). Usage: token counts only — no prompts, answers or content. |
 | 10c | `content.Workflows` (+`StaleDays`) | Migration `WorkflowStaleDays`: nullable int, set only for the `content.stale` trigger. Reminders and the daily sweep add no tables (Hangfire jobs + existing run log). |
 | 10b | `content.ApprovalRequests`, `content.ApprovalAssignments` | Migration `Approvals` (RLS; request → space and assignment → request composite FKs; no FK to the page node). Request revision is a concurrency token bumped on every decision. |
 | 10a | `content.Workflows`, `content.WorkflowRuns` | Migration `Workflows` (RLS + composite FKs: workflow → space, run → workflow). Rule definition as validated JSON; unique (TenantId, WorkflowId, EventId) on runs = idempotency key. |

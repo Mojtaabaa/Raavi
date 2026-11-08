@@ -32,6 +32,7 @@ public static class WikiModule
         services.AddScoped<IPermissionEvaluator>(sp => sp.GetRequiredService<WikiAuthorizer>());
         services.AddScoped<SpaceService>();
         services.AddScoped<PageService>();
+        services.AddScoped<Raavi.Application.Abstractions.Ai.IPageTextReader, PageTextReader>();
         services.AddScoped<DiscoveryService>();
         services.AddScoped<TemplateService>();
         services.AddScoped<AttachmentService>();

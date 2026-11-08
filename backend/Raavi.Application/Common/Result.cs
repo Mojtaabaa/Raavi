@@ -17,6 +17,9 @@ public enum ErrorKind
 
     /// <summary>428: the request must be conditional (If-Match).</summary>
     PreconditionRequired,
+
+    /// <summary>429: a per-user or per-tenant limit was reached; try again later.</summary>
+    TooManyRequests,
 }
 
 /// <summary>Outcome of an application use case. Expected failures are values; exceptions are reserved for bugs and infrastructure faults.</summary>

@@ -56,6 +56,7 @@ const nav = computed(() => {
     items.push({ to: { name: 'admin-members' }, label: t('nav.members'), icon: 'pi pi-users' })
     items.push({ to: { name: 'admin-groups' }, label: t('nav.groups'), icon: 'pi pi-sitemap' })
     items.push({ to: { name: 'admin-providers' }, label: t('nav.providers'), icon: 'pi pi-key' })
+    items.push({ to: { name: 'admin-ai' }, label: t('nav.ai'), icon: 'pi pi-sparkles' })
     items.push({ to: { name: 'admin-permissions' }, label: t('nav.permissions'), icon: 'pi pi-shield' })
     items.push({ to: { name: 'admin-migrations' }, label: t('nav.migrations'), icon: 'pi pi-download' })
   }

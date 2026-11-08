@@ -28,6 +28,7 @@ public static class SandboxConfiguration
         "collaboration",
         "notifications",
         "migration",
+        "ai",
         "security",
         "feature-flags",
     ];

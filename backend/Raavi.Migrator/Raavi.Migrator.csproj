@@ -6,6 +6,7 @@
     <ProjectReference Include="..\Raavi.Identity\Raavi.Identity.csproj" />
     <ProjectReference Include="..\Raavi.Wiki\Raavi.Wiki.csproj" />
     <ProjectReference Include="..\Raavi.Migration\Raavi.Migration.csproj" />
+    <ProjectReference Include="..\Raavi.AI\Raavi.AI.csproj" />
   </ItemGroup>
 
   <ItemGroup>

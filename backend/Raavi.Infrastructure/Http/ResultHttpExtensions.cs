@@ -18,6 +18,7 @@ public static class ResultHttpExtensions
             ErrorKind.Unavailable => StatusCodes.Status503ServiceUnavailable,
             ErrorKind.PreconditionFailed => StatusCodes.Status412PreconditionFailed,
             ErrorKind.PreconditionRequired => StatusCodes.Status428PreconditionRequired,
+            ErrorKind.TooManyRequests => StatusCodes.Status429TooManyRequests,
             _ => StatusCodes.Status400BadRequest,
         };
         return Results.Problem(
