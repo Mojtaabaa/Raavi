@@ -1,10 +1,10 @@
 # Installing Raavi on a Windows server (IIS + services)
 
-> Written for release 0.13.0 (2026-11-08). The first real installation has not happened yet — treat this as a checklist to be corrected by the first run, and report what was wrong.
+> Written for releases 0.13.x (2026-11-08). The first real installation has not happened yet — treat this as a checklist to be corrected by the first run, and report what was wrong.
 
 ## 0. What you get
 
-`raavi-<version>.zip` (see `scripts/release/New-ReleasePackage.ps1`): `api/ workers/ migrator/ web/ collaboration/ schema/ sandbox-defaults/ docs/ scripts/ release.json`. It contains **no** settings, keys or secrets (`sandbox/` is yours). The `deployment/scripts/sql/*.sql` role scripts are **not** in 0.13.0 packages: copy them from the repository (`deployment/scripts/sql`) — fixed in the next package.
+`raavi-<version>.zip` (see `scripts/release/New-ReleasePackage.ps1`): `api/ workers/ migrator/ web/ collaboration/ schema/ sandbox-defaults/ docs/ scripts/ release.json`. It contains **no** settings, keys or secrets (`sandbox/` is yours). The SQL role scripts are in `scripts\sql\` (packages 0.13.1 and later; 0.13.0 lacked them).
 
 ## 1. Server prerequisites
 
@@ -43,7 +43,7 @@ Optional hosts the installation allows (empty = feature off): `Raavi:Ai:AllowedH
 
 1. Create an empty database (collation default is fine).
 2. Run the migrator once with a login that may create tables: `dotnet D:\Raavi\migrator\Raavi.Migrator.dll`.
-3. Run `01-database-roles.sql` and `02-logins.sql` (from the repository) as described in `DEPLOYMENT_GUIDE.md` §4, then point the **API and workers** at the restricted `raavi_app` login (`RAAVI_ConnectionStrings__System`). The application hosts never migrate.
+3. Run `scripts\sql\01-database-roles.sql` and `02-logins.sql` as described in `DEPLOYMENT_GUIDE.md` §4, then point the **API and workers** at the restricted `raavi_app` login (`RAAVI_ConnectionStrings__System`). The application hosts never migrate.
 4. Enable the FULL recovery model and schedule backups (`BACKUP_AND_RESTORE.md`, `scripts\backup`).
 
 ## 5. Run the services

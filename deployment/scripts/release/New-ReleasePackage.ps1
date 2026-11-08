@@ -63,6 +63,7 @@ Copy-Item -LiteralPath (Join-Path $repo 'sandbox/README.md') -Destination (Join-
 New-Item -ItemType Directory -Path (Join-Path $target 'scripts') | Out-Null
 Copy-Item -Recurse -LiteralPath (Join-Path $repo 'deployment/scripts/release') -Destination (Join-Path $target 'scripts/release')
 Copy-Item -Recurse -LiteralPath (Join-Path $repo 'deployment/scripts/backup') -Destination (Join-Path $target 'scripts/backup')
+Copy-Item -Recurse -LiteralPath (Join-Path $repo 'deployment/scripts/sql') -Destination (Join-Path $target 'scripts/sql')
 
 # Safety: never ship an installation's own files.
 $bad = Get-ChildItem -LiteralPath $target -Recurse -Force -Directory | Where-Object { $_.Name -in @('sandbox', 'secrets', 'DataProtection-Keys') -or ($_.FullName -like '*\data\keys') }
