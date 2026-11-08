@@ -45,6 +45,7 @@ public static class WikiModule
         // Comments, watching and notifications (Phase 7a). Push delivery (SignalR) is added by the API host: AddWikiRealtime().
         services.AddScoped<CommentService>();
         services.AddScoped<TaskService>();
+        services.AddScoped<CalendarService>();
         services.AddScoped<NotificationService>();
         services.AddScoped<IOutboxHandler, NotificationFanOut>();
         services.AddScoped<IOutboxHandler, NotificationEmailer>();

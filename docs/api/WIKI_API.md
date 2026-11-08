@@ -68,6 +68,22 @@ Page DTO `rights` gained `canComment`, `canModerateComments`. Push: WebSocket `/
 
 Task DTO: `{id, spaceKey, spaceName, contentId, title, notes, status: Open|Done, assigneeId, assigneeName, dueDate, isOverdue, completedAt, createdAt, createdByName, revision, rights{canEdit, canComplete, canDelete}}`.
 
+## Calendar (Phase 9b, ADR-027)
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/spaces/{key}/calendar/occurrences?from=&to=` | View; `yyyy-MM-dd`, window ≤ 400 days (`calendar.window_invalid`), ≤ 2 000 occurrences, cancelled ones omitted |
+| GET | `/calendar/occurrences?from=&to=` | the same across every space the caller may view |
+| POST | `/spaces/{key}/calendar/events` | Edit on an active space. `{title, description?, location?, allDay, startDate, startTime? ("HH:mm"), endDate?, endTime?, timeZone? (IANA, default UTC), recurrence?}` |
+| GET/PUT | `/calendar/events/{id}` | PUT needs **If-Match** `"r{n}"` (Edit) |
+| POST | `/calendar/events/{id}/exclusions` | `{date}` cancels one occurrence (`calendar.occurrence_invalid` if the rule does not produce it) |
+| DELETE | `/calendar/events/{id}` | Edit |
+| GET | `/spaces/{key}/calendar/export` | `text/calendar` (.ics); Persian monthly/yearly series become `RDATE` lists |
+
+`recurrence`: `{frequency: None|Daily|Weekly|Monthly|Yearly, interval 1–99, weekDays [0=Sunday…6], calendar: Gregorian|Persian, until? (yyyy-MM-dd) | count? (1–1000)}` — never both `until` and `count`; a weekly rule must include the start's weekday. Errors: `calendar.title_invalid`, `.time_invalid`, `.range_invalid`, `.range_too_long`, `.time_zone_invalid`, `.recurrence_invalid`, `.event_not_found`.
+
+Occurrence DTO: `{eventId, spaceKey, spaceName, title, location, allDay, startDate, startTime, endDate (inclusive), endTime, timeZone, startUtc, endUtc, isRecurring, occurrenceDate, canEdit}`.
+
 ## Real-time collaboration (Phase 6)
 
 | Method | Path | Notes |

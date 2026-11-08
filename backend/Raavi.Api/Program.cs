@@ -80,6 +80,7 @@ api.MapWikiEndpoints();
 api.MapCollaborationEndpoints();
 api.MapCommentEndpoints();
 api.MapTaskEndpoints();
+api.MapCalendarEndpoints();
 api.MapMigrationEndpoints();
 app.MapCollaborationInternalEndpoints();
 app.MapWikiRealtime();

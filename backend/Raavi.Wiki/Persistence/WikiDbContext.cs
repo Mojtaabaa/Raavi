@@ -59,6 +59,8 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
 
     public DbSet<WorkTask> WorkTasks => Set<WorkTask>();
 
+    public DbSet<CalendarEvent> CalendarEvents => Set<CalendarEvent>();
+
     public DbSet<CommentReaction> CommentReactions => Set<CommentReaction>();
 
     public DbSet<Watch> Watches => Set<Watch>();
@@ -296,6 +298,30 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
             b.Property(x => x.Revision).IsConcurrencyToken();
             b.HasIndex(x => new { x.TenantId, x.SpaceId, x.Status, x.DueDate });
             b.HasIndex(x => new { x.TenantId, x.AssigneeId, x.Status });
+            b.HasOne<Space>().WithMany().HasForeignKey(x => new { x.TenantId, x.SpaceId }).HasPrincipalKey(s => new { s.TenantId, s.Id }).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<CalendarEvent>(b =>
+        {
+            b.ToTable("CalendarEvents", "content");
+            Keys(b);
+            b.Property(x => x.Title).HasMaxLength(CalendarEvent.MaxTitleLength);
+            b.Property(x => x.Description).HasMaxLength(CalendarEvent.MaxDescriptionLength);
+            b.Property(x => x.Location).HasMaxLength(CalendarEvent.MaxLocationLength);
+            b.Property(x => x.StartDate).HasColumnType("date");
+            b.Property(x => x.EndDate).HasColumnType("date");
+            b.Property(x => x.RecurUntil).HasColumnType("date");
+            b.Property(x => x.StartTime).HasColumnType("time(0)");
+            b.Property(x => x.EndTime).HasColumnType("time(0)");
+            b.Property(x => x.TimeZone).HasMaxLength(64).IsUnicode(false);
+            b.Property(x => x.RecurFrequency).HasConversion<int>();
+            b.Property(x => x.RecurCalendar).HasConversion<int>();
+            b.Property(x => x.ExcludedDatesRaw).HasMaxLength(CalendarEvent.MaxExcluded * 11).IsUnicode(false);
+            b.Property(x => x.Revision).IsConcurrencyToken();
+            b.Ignore(x => x.Rule);
+            b.Ignore(x => x.SpanDays);
+            b.Ignore(x => x.ExcludedDates);
+            b.HasIndex(x => new { x.TenantId, x.SpaceId, x.StartDate });
             b.HasOne<Space>().WithMany().HasForeignKey(x => new { x.TenantId, x.SpaceId }).HasPrincipalKey(s => new { s.TenantId, s.Id }).OnDelete(DeleteBehavior.Restrict);
         });
 

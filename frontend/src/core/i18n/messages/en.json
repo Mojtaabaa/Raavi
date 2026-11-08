@@ -27,7 +27,8 @@
     "spaces": "Spaces",
     "permissions": "Global permissions",
     "migrations": "Migration",
-    "tasks": "Tasks"
+    "tasks": "Tasks",
+    "calendar": "Calendar"
   },
   "common": {
     "save": "Save",
@@ -303,6 +304,20 @@
       "assignee_invalid": "The assignee is not a member of this workspace.",
       "assignee_no_access": "The assignee cannot view this space. Give them access first.",
       "content_invalid": "The page must belong to the same space."
+    },
+    "calendar": {
+      "title_invalid": "An event needs a title of up to 200 characters.",
+      "description_too_long": "The description is too long.",
+      "location_invalid": "The location is not valid.",
+      "time_zone_invalid": "The time zone is not recognised.",
+      "range_invalid": "The event must end after it starts, and the dates must be valid.",
+      "range_too_long": "An event can span at most 366 days.",
+      "recurrence_invalid": "The repeat rule is not valid. A weekly event must repeat on the weekday it starts on, and an end date or a count — not both.",
+      "time_invalid": "Times must look like 09:30.",
+      "window_invalid": "Choose a shorter period.",
+      "occurrence_invalid": "That date is not an occurrence of this event.",
+      "too_many_exclusions": "Too many cancelled occurrences; change the series instead.",
+      "event_not_found": "Event not found."
     }
   },
   "profile": {
@@ -978,5 +993,49 @@
     "noneMine": "No tasks are assigned to you.",
     "noneSpace": "No tasks in this space.",
     "confirmDelete": "Delete the task “{title}”?"
+  },
+  "calendar": {
+    "nav": "Calendar",
+    "title": "Calendar",
+    "spaceTitle": "Calendar — {name}",
+    "system": "Calendar system",
+    "jalali": "Jalali",
+    "gregorian": "Gregorian",
+    "navigate": "Change month",
+    "previous": "Previous month",
+    "next": "Next month",
+    "today": "Today",
+    "new": "New event",
+    "edit": "Edit event",
+    "details": "Event",
+    "export": "Export iCalendar",
+    "none": "No events in this period.",
+    "addOn": "Add an event on {date}",
+    "more": "+{count} more",
+    "allDay": "All day",
+    "eventTitle": "Title",
+    "starts": "Starts",
+    "ends": "Ends",
+    "startTime": "Start time",
+    "endTime": "End time",
+    "location": "Location",
+    "description": "Description",
+    "repeat": "Repeat",
+    "every": "Every (interval)",
+    "onDays": "On",
+    "repeatIn": "Repeat by the",
+    "endsRule": "Ends",
+    "endNever": "Never",
+    "endUntil": "On date",
+    "endCount": "After N times",
+    "cancelOccurrence": "Cancel this occurrence",
+    "confirmDelete": "Delete the event “{title}” and all its occurrences?",
+    "freq": {
+      "None": "Does not repeat",
+      "Daily": "Daily",
+      "Weekly": "Weekly",
+      "Monthly": "Monthly",
+      "Yearly": "Yearly"
+    }
   }
 }

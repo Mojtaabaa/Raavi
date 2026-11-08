@@ -184,6 +184,100 @@ namespace Raavi.Wiki.Persistence.Migrations
                     b.ToTable("Attachments", "content");
                 });
 
+            modelBuilder.Entity("Raavi.Wiki.Domain.CalendarEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<TimeOnly?>("EndTime")
+                        .HasColumnType("time(0)");
+
+                    b.Property<string>("ExcludedDatesRaw")
+                        .HasMaxLength(2200)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(2200)");
+
+                    b.Property<bool>("IsAllDay")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("RecurCalendar")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RecurCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RecurFrequency")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RecurInterval")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly?>("RecurUntil")
+                        .HasColumnType("date");
+
+                    b.Property<int>("RecurWeekDays")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("SpaceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<TimeOnly?>("StartTime")
+                        .HasColumnType("time(0)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("TimeZone")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasAlternateKey("TenantId", "Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasAlternateKey("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "SpaceId", "StartDate");
+
+                    b.ToTable("CalendarEvents", "content");
+                });
+
             modelBuilder.Entity("Raavi.Wiki.Domain.CollaborationDocument", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1256,6 +1350,16 @@ namespace Raavi.Wiki.Persistence.Migrations
                     b.HasOne("Raavi.Wiki.Domain.ContentNode", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "ContentId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Raavi.Wiki.Domain.CalendarEvent", b =>
+                {
+                    b.HasOne("Raavi.Wiki.Domain.Space", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "SpaceId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();

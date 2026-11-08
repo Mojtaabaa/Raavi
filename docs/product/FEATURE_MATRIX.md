@@ -48,7 +48,7 @@ Baseline: Confluence Cloud. Status values as in `docs/IMPLEMENTATION_STATUS.md`.
 | Whiteboards | Infinite canvas, collaboration, export | yes | 9 | Planned |
 | Databases | Metadata-driven databases, views | yes | 9 | Planned |
 | Tasks | Tasks with assignees, due dates | yes | 9a | Tested |
-| Calendar | Team/space calendars, Jalali | Team Calendars app | 9 | Planned |
+| Calendar | Team/space calendars, Jalali | Team Calendars app | 9b | Tested |
 | Slides | Slide decks, presenter, PDF/PPTX | n/a | 9 | Planned |
 | Workflows | Workflow designer, approvals | apps | 10 | Planned |
 | Automation | Rules: triggers → conditions → actions | yes | 10 | Planned |

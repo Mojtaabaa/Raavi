@@ -1,10 +1,22 @@
 # Implementation Status
 
-**Last updated:** 2026-11-08 (Phase 9a: tasks)
+**Last updated:** 2026-11-08 (Phase 9b: calendar)
 
 Statuses: Not Started · Planned · In Progress · Implemented · Tested · Blocked · Deferred. "Tested" requires executed test evidence (listed).
 
-## Phase 9 — Advanced content types (split: 9a tasks done; 9b calendar, 9c databases, 9d slides, 9e whiteboards pending)
+## Phase 9 — Advanced content types (split: 9a tasks and 9b calendar done; 9c databases, 9d slides, 9e whiteboards pending)
+
+### 9b — Calendar (ADR-027)
+
+```
+cd backend && dotnet test Raavi.Tests    → Passed: 372, Failed: 0   (new: CalendarRecurrenceTests 10 pure, CalendarTests 4 API; isolation model test covers content.CalendarEvents)
+EF: has-pending-model-changes (Wiki)     → none; new migration Calendar (RLS + composite FK)
+cd frontend && npm run build && npm test → ok; 13 files, 109 tests (new: calendar.test.ts 6); vue-tsc clean
+```
+
+Space calendars with all-day and timed events (stored as wall-clock + IANA zone), daily/weekly/monthly/yearly recurrence with interval, weekdays, end date or count, evaluated in the Gregorian or the Persian calendar for monthly/yearly rules; cancelling single occurrences; ETag concurrency; permissions from the space; cross-space feed (`/calendar`) limited to viewable spaces; iCalendar export (Persian month/year series as explicit RDATE lists). UI: nav "Calendar" and a per-space link, month grid in Jalali or Gregorian (toggle, tenant default), RTL-aware navigation, create/edit dialog with the date shown in the active calendar next to the native date input. Verified through unit/API/component tests; **not exercised in a real browser** (no dev session this step).
+
+**Not in 9b:** editing one occurrence separately, attendees/reminders, iCalendar import/subscription, browser-side time-zone conversion, a Jalali date picker (the native `<input type=date>` is Gregorian; the Jalali date is shown beside it), search indexing.
 
 ### 9a — Tasks (ADR-026)
 

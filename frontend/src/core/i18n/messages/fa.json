@@ -27,7 +27,8 @@
     "spaces": "فضاها",
     "permissions": "مجوزهای سراسری",
     "migrations": "مهاجرت",
-    "tasks": "وظایف"
+    "tasks": "وظایف",
+    "calendar": "تقویم"
   },
   "common": {
     "save": "ذخیره",
@@ -303,6 +304,20 @@
       "assignee_invalid": "مسئول عضو این فضای کاری نیست.",
       "assignee_no_access": "مسئول به این فضا دسترسی ندارد. ابتدا به او دسترسی بدهید.",
       "content_invalid": "صفحه باید از همین فضا باشد."
+    },
+    "calendar": {
+      "title_invalid": "رویداد عنوانی تا ۲۰۰ نویسه می‌خواهد.",
+      "description_too_long": "توضیحات بیش از حد طولانی است.",
+      "location_invalid": "مکان معتبر نیست.",
+      "time_zone_invalid": "منطقهٔ زمانی شناخته نشد.",
+      "range_invalid": "رویداد باید پس از شروعش تمام شود و تاریخ‌ها معتبر باشند.",
+      "range_too_long": "یک رویداد حداکثر ۳۶۶ روز می‌تواند ادامه داشته باشد.",
+      "recurrence_invalid": "قاعدهٔ تکرار معتبر نیست. رویداد هفتگی باید در روزِ هفتهٔ شروعش تکرار شود و پایان یا تاریخ دارد یا تعداد، نه هر دو.",
+      "time_invalid": "ساعت باید مانند 09:30 باشد.",
+      "window_invalid": "بازهٔ کوتاه‌تری انتخاب کنید.",
+      "occurrence_invalid": "آن تاریخ یکی از دفعات این رویداد نیست.",
+      "too_many_exclusions": "دفعات لغوشده بیش از حد است؛ خود سری را تغییر دهید.",
+      "event_not_found": "رویداد پیدا نشد."
     }
   },
   "profile": {
@@ -978,5 +993,49 @@
     "noneMine": "وظیفه‌ای به شما سپرده نشده است.",
     "noneSpace": "در این فضا وظیفه‌ای نیست.",
     "confirmDelete": "وظیفهٔ «{title}» حذف شود؟"
+  },
+  "calendar": {
+    "nav": "تقویم",
+    "title": "تقویم",
+    "spaceTitle": "تقویم — {name}",
+    "system": "نوع تقویم",
+    "jalali": "شمسی",
+    "gregorian": "میلادی",
+    "navigate": "تغییر ماه",
+    "previous": "ماه قبل",
+    "next": "ماه بعد",
+    "today": "امروز",
+    "new": "رویداد تازه",
+    "edit": "ویرایش رویداد",
+    "details": "رویداد",
+    "export": "خروجی iCalendar",
+    "none": "در این بازه رویدادی نیست.",
+    "addOn": "افزودن رویداد در {date}",
+    "more": "{count}+ مورد دیگر",
+    "allDay": "تمام روز",
+    "eventTitle": "عنوان",
+    "starts": "شروع",
+    "ends": "پایان",
+    "startTime": "ساعت شروع",
+    "endTime": "ساعت پایان",
+    "location": "مکان",
+    "description": "توضیحات",
+    "repeat": "تکرار",
+    "every": "هر (فاصله)",
+    "onDays": "در روزهای",
+    "repeatIn": "تکرار بر پایهٔ تقویم",
+    "endsRule": "پایان",
+    "endNever": "هرگز",
+    "endUntil": "در تاریخ",
+    "endCount": "پس از N بار",
+    "cancelOccurrence": "لغو همین دفعه",
+    "confirmDelete": "رویداد «{title}» با همهٔ دفعاتش حذف شود؟",
+    "freq": {
+      "None": "تکرار نمی‌شود",
+      "Daily": "روزانه",
+      "Weekly": "هفتگی",
+      "Monthly": "ماهانه",
+      "Yearly": "سالانه"
+    }
   }
 }
