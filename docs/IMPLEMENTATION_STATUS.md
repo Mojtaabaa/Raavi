@@ -6,6 +6,14 @@ Statuses: Not Started · Planned · In Progress · Implemented · Tested · Bloc
 
 ## Phase 12 — Enterprise readiness (split: 12a workspace export and 12b backup/restore scripts and 12c performance baseline done; deletion/purge, scheduling, HA, large-scale/k6 load tests, hardening pending)
 
+### 12d — Release package and upgrade script (ADR-041)
+
+```
+powershell deployment/scripts/release/Test-ReleaseScripts.ps1   → 22 checks passed, 0 failed (real dotnet publish of api/workers/migrator, first install + upgrade in a temp folder)
+```
+
+`New-ReleasePackage.ps1` (folder + zip + release.json with SHA-256, refuses sandbox/secrets/local files), `Update-Raavi.ps1` (hash check, refuses while a service runs, rollback copy, replaces only application folders, keeps sandbox, `sandbox sync`, npm ci, optional migrator, `-WhatIf`). **Not done / not verified:** frontend build inside the package (skipped in the self-test), service stop/start, IIS/Windows service/systemd/Docker integration, automatic rollback, package signing, PowerShell 7/Linux, a real server install.
+
 ### Sandbox as home of instance files + upgrade sync (ADR-040)
 
 Key ring (`sandbox/data/keys`), mail pickup (`sandbox/data`), collaboration signing key and `collaboration.env` (`sandbox/secrets`) now live in the sandbox; relative paths resolve against the sandbox root. `sandbox-defaults/config` ships the version's settings; `Raavi.Migrator sandbox check|sync` adds new settings/files without touching existing values (originals to `sandbox/backups`); shipped scalar defaults are the lowest configuration layer; API/Workers warn on drift. `sandbox/README.md` lists what to keep. Tests: 6 new (sync, defaults layer, path resolution, repo drift guard). **Not done:** release packaging script, automatic migration of renamed keys, a hosted-environment (Linux/Docker) run of the sync, moving an old profile key ring automatically.
