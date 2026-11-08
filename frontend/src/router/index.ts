@@ -18,6 +18,7 @@ declare module 'vue-router' {
 
 export const routes: RouteRecordRaw[] = [
   { path: '/', name: 'home', component: () => import('@/modules/wiki/views/HomeView.vue'), meta: { host: 'tenant', requires: 'user' } },
+  { path: '/tasks', name: 'tasks', component: () => import('@/modules/tasks/TasksView.vue'), meta: { host: 'tenant', requires: 'user' } },
   { path: '/spaces', name: 'spaces', component: () => import('@/modules/wiki/views/SpacesView.vue'), meta: { host: 'tenant', requires: 'user' } },
   {
     path: '/spaces/:key',
@@ -25,6 +26,7 @@ export const routes: RouteRecordRaw[] = [
     meta: { host: 'tenant', requires: 'user' },
     children: [
       { path: '', name: 'space', component: () => import('@/modules/wiki/views/SpaceOverview.vue') },
+      { path: 'tasks', name: 'space-tasks', component: () => import('@/modules/tasks/TasksView.vue') },
       { path: 'settings', name: 'space-settings', component: () => import('@/modules/wiki/views/SpaceSettingsView.vue') },
       { path: 'create', name: 'page-create', component: () => import('@/modules/wiki/views/PageEditView.vue') },
       { path: 'pages/:id/edit', name: 'page-edit', component: () => import('@/modules/wiki/views/PageEditView.vue') },

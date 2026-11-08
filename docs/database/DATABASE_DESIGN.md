@@ -23,6 +23,7 @@ SQL Server 2022+ · shared database, logical tenant isolation (ADR-005) · EF Co
 
 | Phase | Tables | Notes |
 |---|---|---|
+| 9a | `content.Tasks` | Migration `Tasks` (RLS + composite FK to the space; no FK for the optional page link). |
 | 7a | `content.Comments`, `CommentReactions`, `Watches`, `Notifications`, `NotificationPreferences` | Migration `Comments` (RLS + tenant FKs). Unique `(TenantId, EventId, RecipientId)` makes notification fan-out idempotent. |
 | 6 | `content.CollaborationDocuments`, `CollaborationUpdates`, `CollaborationSnapshots` | Migration `Collaboration` (RLS + tenant FKs; patched with the idempotent RLS script). Snapshots inline (`varbinary`) until object storage (Phase 7). |
 | 5 | `content.PageDrafts`, `PageVersionContributors`, `PublishRequests`; columns `Spaces.RequirePublishApproval`, `Content.PublishedAt`, `PageVersions.RestoredFromVersionNumber` | Migrations `Publishing` (RLS + tenant FKs; backfill with RLS off inside the migration transaction: Publish grants next to Edit grants, PublishedAt, contributors) and `ContributorIndex`. |

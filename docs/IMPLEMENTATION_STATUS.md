@@ -1,8 +1,22 @@
 # Implementation Status
 
-**Last updated:** 2026-11-07 (Phase 8 in progress: comments added)
+**Last updated:** 2026-11-08 (Phase 9a: tasks)
 
 Statuses: Not Started · Planned · In Progress · Implemented · Tested · Blocked · Deferred. "Tested" requires executed test evidence (listed).
+
+## Phase 9 — Advanced content types (split: 9a tasks done; 9b calendar, 9c databases, 9d slides, 9e whiteboards pending)
+
+### 9a — Tasks (ADR-026)
+
+```
+cd backend && dotnet test Raavi.Tests    → Passed: 358, Failed: 0   (new: TaskTests 4; isolation model test covers content.Tasks)
+EF: has-pending-model-changes (Wiki)     → none; new migration Tasks (RLS + composite FK)
+cd frontend && npm run build && npm test → ok; 12 files, 103 tests (new: tasks.test.ts 3); npm audit (production) 0
+```
+
+Space tasks with assignee, due date, notes and optional page link; permissions from the space (Edit to write, the assignee may complete/reopen their own task, assignees must be able to view the space, a task of an invisible space does not exist); "My tasks" across spaces; ETag concurrency; CSV export (UTF-8 BOM, formula-safe). UI: nav "Tasks" (`/tasks`) and a "Tasks" link per space (`/spaces/:key/tasks`) with create/edit dialog, open/done filter, overdue tag, dates in the active calendar. Verified through API/unit tests; **not exercised in a real browser** (no dev session).
+
+**Not in 9a:** assignment notifications, recurring tasks and calendar views (9b), search indexing, linking inline editor task lists to this store, labels. Each of 9b–9e is a separate step.
 
 ## Phase 8 — Confluence migration (IN PROGRESS; source chosen: REST first, XML later)
 

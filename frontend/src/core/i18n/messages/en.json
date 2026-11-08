@@ -26,7 +26,8 @@
     "switchWorkspace": "Switch workspace",
     "spaces": "Spaces",
     "permissions": "Global permissions",
-    "migrations": "Migration"
+    "migrations": "Migration",
+    "tasks": "Tasks"
   },
   "common": {
     "save": "Save",
@@ -294,6 +295,14 @@
       "already_running": "This migration is already running.",
       "not_running": "This migration is not running.",
       "no_report": "There is no report yet."
+    },
+    "task": {
+      "title_invalid": "A task needs a title of up to 300 characters.",
+      "notes_too_long": "The notes are too long.",
+      "not_found": "Task not found.",
+      "assignee_invalid": "The assignee is not a member of this workspace.",
+      "assignee_no_access": "The assignee cannot view this space. Give them access first.",
+      "content_invalid": "The page must belong to the same space."
     }
   },
   "profile": {
@@ -944,5 +953,30 @@
     "userMapHelp": "One per line: Confluence user name=member e-mail. Takes precedence over the e-mail match.",
     "reconvert": "Re-convert pages that were already imported",
     "reconvertHelp": "Re-reads every version and refreshes the stored content and authors. History and dates are kept."
+  },
+  "tasks": {
+    "nav": "Tasks",
+    "myTitle": "My tasks",
+    "spaceTitle": "Tasks — {name}",
+    "filter": "Show",
+    "filterOpen": "Open",
+    "filterDone": "Done",
+    "filterAll": "All",
+    "new": "New task",
+    "edit": "Edit task",
+    "title": "Title",
+    "notes": "Notes",
+    "dueDate": "Due date",
+    "assignee": "Assignee",
+    "unassign": "Remove",
+    "complete": "Mark “{title}” as done",
+    "reopen": "Reopen “{title}”",
+    "overdue": "Overdue",
+    "due": "Due {date}",
+    "page": "Page",
+    "export": "Export CSV",
+    "noneMine": "No tasks are assigned to you.",
+    "noneSpace": "No tasks in this space.",
+    "confirmDelete": "Delete the task “{title}”?"
   }
 }

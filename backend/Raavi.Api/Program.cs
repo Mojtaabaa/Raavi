@@ -79,6 +79,7 @@ api.MapIdentityEndpoints();
 api.MapWikiEndpoints();
 api.MapCollaborationEndpoints();
 api.MapCommentEndpoints();
+api.MapTaskEndpoints();
 api.MapMigrationEndpoints();
 app.MapCollaborationInternalEndpoints();
 app.MapWikiRealtime();

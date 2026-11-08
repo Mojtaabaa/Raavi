@@ -57,6 +57,8 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
 
     public DbSet<Comment> Comments => Set<Comment>();
 
+    public DbSet<WorkTask> WorkTasks => Set<WorkTask>();
+
     public DbSet<CommentReaction> CommentReactions => Set<CommentReaction>();
 
     public DbSet<Watch> Watches => Set<Watch>();
@@ -281,6 +283,20 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
             b.HasIndex(x => new { x.TenantId, x.SourceSystem, x.SourceId }).IsUnique().HasFilter("[SourceSystem] IS NOT NULL");
             b.HasOne<ContentNode>().WithMany().HasForeignKey(x => new { x.TenantId, x.ContentId }).HasPrincipalKey(c => new { c.TenantId, c.Id }).OnDelete(DeleteBehavior.Restrict);
             b.HasOne<Comment>().WithMany().HasForeignKey(x => new { x.TenantId, x.ParentId }).HasPrincipalKey(c => new { c.TenantId, c.Id }).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<WorkTask>(b =>
+        {
+            b.ToTable("Tasks", "content");
+            Keys(b);
+            b.Property(x => x.Title).HasMaxLength(WorkTask.MaxTitleLength);
+            b.Property(x => x.Notes).HasMaxLength(WorkTask.MaxNotesLength);
+            b.Property(x => x.Status).HasConversion<int>();
+            b.Property(x => x.DueDate).HasColumnType("date");
+            b.Property(x => x.Revision).IsConcurrencyToken();
+            b.HasIndex(x => new { x.TenantId, x.SpaceId, x.Status, x.DueDate });
+            b.HasIndex(x => new { x.TenantId, x.AssigneeId, x.Status });
+            b.HasOne<Space>().WithMany().HasForeignKey(x => new { x.TenantId, x.SpaceId }).HasPrincipalKey(s => new { s.TenantId, s.Id }).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<CommentReaction>(b =>

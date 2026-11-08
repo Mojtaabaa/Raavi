@@ -29,3 +29,4 @@ Format: Context · Decision · Alternatives considered · Consequences. Status v
 | [023](ADR-023-wiki-module-and-outbox.md) | Wiki Core Module and Transactional Outbox | Accepted |
 | [024](ADR-024-comments-and-notifications.md) | Comments, Watching and Notifications | Accepted |
 | [025](ADR-025-confluence-import.md) | Confluence Import (REST source, idempotent importer, jobs) | Accepted |
+| [026](ADR-026-tasks.md) | Tasks (Phase 9a) | Accepted |

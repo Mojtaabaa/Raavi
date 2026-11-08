@@ -54,6 +54,20 @@ Paths under `/api/v1`, **tenant host only**, signed-in members (`AuthenticatedUs
 
 Page DTO `rights` gained `canComment`, `canModerateComments`. Push: WebSocket `/hubs/events` (SignalR, tenant host, same-origin only); the server sends the content-free message `notifications`, clients then call the REST endpoints above.
 
+## Tasks (Phase 9a, ADR-026)
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/spaces/{key}/tasks?status=&assignee=` | View on the space; open first, by due date, undated last (max 500) |
+| POST | `/spaces/{key}/tasks` | `{title, notes?, assigneeId?, dueDate? (yyyy-MM-dd), contentId?}`; Edit on an active space. `task.assignee_invalid`, `task.assignee_no_access`, `task.content_invalid`, `task.title_invalid` |
+| GET | `/spaces/{key}/tasks/export` | CSV (UTF-8 BOM, formula-safe) |
+| GET | `/tasks/mine?status=` | tasks assigned to the caller in spaces they can still view |
+| GET/PUT | `/tasks/{id}` | PUT needs **If-Match** `"r{n}"` (Edit) |
+| POST | `/tasks/{id}/complete` · `/reopen` | Edit, or the assignee |
+| DELETE | `/tasks/{id}` | Edit |
+
+Task DTO: `{id, spaceKey, spaceName, contentId, title, notes, status: Open|Done, assigneeId, assigneeName, dueDate, isOverdue, completedAt, createdAt, createdByName, revision, rights{canEdit, canComplete, canDelete}}`.
+
 ## Real-time collaboration (Phase 6)
 
 | Method | Path | Notes |
