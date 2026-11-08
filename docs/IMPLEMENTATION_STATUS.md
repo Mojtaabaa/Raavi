@@ -6,6 +6,14 @@ Statuses: Not Started · Planned · In Progress · Implemented · Tested · Bloc
 
 ## Phase 12 — Enterprise readiness (split: 12a workspace export and 12b backup/restore scripts and 12c performance baseline done; deletion/purge, scheduling, HA, large-scale/k6 load tests, hardening pending)
 
+### 13c — Browser walk-through of the running app (2026-11-08)
+
+Dev API + workers + Vite started; signed in as the dev workspace admin in the built-in browser. **Covered:** 15 global/admin routes (home, spaces, tasks, calendar, approvals, profile, members, groups, sign-in methods, AI, connectors, webhooks, export, permissions, Confluence migration) and 9 routes of a space (home, workflows, whiteboards, slides, databases, calendar, tasks, settings, create) loaded with correct headings and **no console errors**; a whiteboard was created, a rectangle drawn and saved ("saved" toast); the page editor opened an existing page with panel/math/Mermaid content, the new **/issue** command was offered, inserted the node and showed the "no tracker connected" state; the test draft was discarded afterwards.
+
+**Defect found and fixed:** the top navigation listed nine admin links next to the five main ones, overflowed an 800 px-wide window (horizontal scroll, wrapped labels). The admin links are now one "Administration" menu (aria-expanded, closes on Escape / navigation / outside click; test added). **Correction:** the "vue-tsc clean" statements for 13a/13b were not backed by a completed run (the compiler ran out of memory silently); a real run with a larger heap found a type error in `tests/issue-link.test.ts` (fixed). Now: `NODE_OPTIONS=--max-old-space-size=4096 npx vue-tsc --noEmit` clean, vitest 25 files / 161 tests. `whiteboards.test.ts` failed once in a loaded parallel run and passed alone and on re-run (timing, not reproduced).
+
+**Not covered:** creating/using slides, databases, workflows, approvals, tasks, calendar events; live co-editing between two browsers; AI, webhooks and connectors with real hosts (dev config allows none); PNG/SVG/PPTX/PDF downloads; mobile widths, dark mode, keyboard-only use, screen readers; English UI. Test data left in the dev DB: whiteboard "Browser check board" in space ENGINEERIN.
+
 ### 13a — Issue tracker connectors: GitHub, GitLab, Jira (ADR-043)
 
 ```

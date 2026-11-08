@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
-import { Editor } from '@tiptap/core'
-import { EditorContent } from '@tiptap/vue-3'
+import { Editor, EditorContent } from '@tiptap/vue-3'
 import { defineComponent, h } from 'vue'
 import PrimeVue from 'primevue/config'
 import { configureHttp } from '@/core/api/http'

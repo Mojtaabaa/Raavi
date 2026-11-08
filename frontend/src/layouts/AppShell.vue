@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import SelectButton from 'primevue/selectbutton'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
@@ -17,6 +17,7 @@ import NotificationBell from '@/modules/notifications/NotificationBell.vue'
 
 const { t } = useI18n()
 const router = useRouter()
+const route = useRoute()
 const store = useLocaleStore()
 const host = useHostStore()
 const auth = useAuthStore()
@@ -41,30 +42,52 @@ const brandName = computed(() => {
 })
 const isSystemHost = computed(() => host.context?.kind === 'system')
 
-const nav = computed(() => {
+type NavItem = { to: { name: string }; label: string; icon: string }
+
+const nav = computed<NavItem[]>(() => {
   const me = auth.me
   if (!me) return []
   if (isSystemHost.value) return me.isSystemAdministrator ? [{ to: { name: 'system-tenants' }, label: t('nav.tenants'), icon: 'pi pi-building' }] : []
-  const items = [
+  return [
     { to: { name: 'home' }, label: t('nav.home'), icon: 'pi pi-home' },
     { to: { name: 'spaces' }, label: t('nav.spaces'), icon: 'pi pi-th-large' },
     { to: { name: 'tasks' }, label: t('nav.tasks'), icon: 'pi pi-check-square' },
     { to: { name: 'calendar' }, label: t('nav.calendar'), icon: 'pi pi-calendar' },
     { to: { name: 'approvals' }, label: t('nav.approvals'), icon: 'pi pi-verified' },
   ]
-  if (me.isTenantAdministrator) {
-    items.push({ to: { name: 'admin-members' }, label: t('nav.members'), icon: 'pi pi-users' })
-    items.push({ to: { name: 'admin-groups' }, label: t('nav.groups'), icon: 'pi pi-sitemap' })
-    items.push({ to: { name: 'admin-providers' }, label: t('nav.providers'), icon: 'pi pi-key' })
-    items.push({ to: { name: 'admin-ai' }, label: t('nav.ai'), icon: 'pi pi-sparkles' })
-    items.push({ to: { name: 'admin-connectors' }, label: t('nav.connectors'), icon: 'pi pi-github' })
-    items.push({ to: { name: 'admin-webhooks' }, label: t('nav.webhooks'), icon: 'pi pi-link' })
-    items.push({ to: { name: 'admin-export' }, label: t('nav.export'), icon: 'pi pi-download' })
-    items.push({ to: { name: 'admin-permissions' }, label: t('nav.permissions'), icon: 'pi pi-shield' })
-    items.push({ to: { name: 'admin-migrations' }, label: t('nav.migrations'), icon: 'pi pi-download' })
-  }
-  return items
 })
+
+/** Administration pages of a workspace administrator: one menu instead of nine header links (the header overflowed on narrow screens). */
+const adminNav = computed<NavItem[]>(() => {
+  const me = auth.me
+  if (!me || isSystemHost.value || !me.isTenantAdministrator) return []
+  return [
+    { to: { name: 'admin-members' }, label: t('nav.members'), icon: 'pi pi-users' },
+    { to: { name: 'admin-groups' }, label: t('nav.groups'), icon: 'pi pi-sitemap' },
+    { to: { name: 'admin-providers' }, label: t('nav.providers'), icon: 'pi pi-key' },
+    { to: { name: 'admin-permissions' }, label: t('nav.permissions'), icon: 'pi pi-shield' },
+    { to: { name: 'admin-ai' }, label: t('nav.ai'), icon: 'pi pi-sparkles' },
+    { to: { name: 'admin-connectors' }, label: t('nav.connectors'), icon: 'pi pi-github' },
+    { to: { name: 'admin-webhooks' }, label: t('nav.webhooks'), icon: 'pi pi-link' },
+    { to: { name: 'admin-export' }, label: t('nav.export'), icon: 'pi pi-download' },
+    { to: { name: 'admin-migrations' }, label: t('nav.migrations'), icon: 'pi pi-cloud-download' },
+  ]
+})
+const adminOpen = ref(false)
+const adminRoot = ref<HTMLElement | null>(null)
+const adminActive = computed(() => adminNav.value.some((i) => route?.name === i.to.name))
+function onDocumentClick(e: MouseEvent) {
+  if (adminOpen.value && adminRoot.value && !adminRoot.value.contains(e.target as Node)) adminOpen.value = false
+}
+function onAdminKey(e: KeyboardEvent) {
+  if (e.key === 'Escape' && adminOpen.value) {
+    adminOpen.value = false
+    ;(adminRoot.value?.querySelector('button') as HTMLElement | null)?.focus()
+  }
+}
+watch(() => route?.fullPath, () => (adminOpen.value = false))
+onMounted(() => document.addEventListener('click', onDocumentClick))
+onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
 
 /** Workspace switcher: the signed-in user's own active workspaces (each workspace host has its own sign-in). */
 const workspaces = ref<Workspace[]>([])
@@ -104,10 +127,20 @@ async function signOut() {
       <span class="brand-name" data-testid="brand-name">{{ brandName }}</span>
       <Tag v-if="isSystemHost" severity="secondary" :value="t('host.systemBadge')" data-testid="system-badge" />
     </div>
-    <nav v-if="nav.length" class="nav" :aria-label="t('nav.administration')">
+    <nav v-if="nav.length" class="nav" :aria-label="t('nav.main')">
       <RouterLink v-for="item in nav" :key="item.label" :to="item.to" class="nav-link" active-class="active">
         <i :class="item.icon" aria-hidden="true" /> <span>{{ item.label }}</span>
       </RouterLink>
+      <div v-if="adminNav.length" ref="adminRoot" class="admin-menu" @keydown="onAdminKey">
+        <button type="button" :class="['nav-link', 'admin-toggle', { active: adminActive }]" aria-haspopup="true" :aria-expanded="adminOpen" data-testid="admin-menu" @click="adminOpen = !adminOpen">
+          <i class="pi pi-cog" aria-hidden="true" /> <span>{{ t('nav.administration') }}</span> <i class="pi pi-angle-down" aria-hidden="true" />
+        </button>
+        <ul v-if="adminOpen" class="admin-list" :aria-label="t('nav.administration')" data-testid="admin-list">
+          <li v-for="item in adminNav" :key="item.label">
+            <RouterLink :to="item.to" class="nav-link" active-class="active"><i :class="item.icon" aria-hidden="true" /> <span>{{ item.label }}</span></RouterLink>
+          </li>
+        </ul>
+      </div>
     </nav>
     <div class="end">
       <SelectButton v-model="current" :options="options" option-label="label" option-value="code" :allow-empty="false" :aria-label="t('shell.language')" data-testid="locale-switch" />
@@ -161,7 +194,26 @@ async function signOut() {
   color: var(--p-primary-contrast-color);
   font-family: var(--raavi-font-fa);
 }
-.nav { display: flex; gap: var(--raavi-space-1); }
+.nav { display: flex; gap: var(--raavi-space-1); flex-wrap: wrap; align-items: center; }
+.admin-menu { position: relative; }
+.admin-toggle { border: 0; background: transparent; font: inherit; cursor: pointer; }
+.admin-list {
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-start: 100%;
+  z-index: 20;
+  min-inline-size: 14rem;
+  margin: 0;
+  padding: var(--raavi-space-1);
+  list-style: none;
+  background: var(--raavi-surface);
+  border: 1px solid var(--raavi-border);
+  border-radius: var(--raavi-radius-sm);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  display: grid;
+  gap: 2px;
+}
+.admin-list .nav-link { display: flex; }
 .nav-link {
   display: inline-flex;
   align-items: center;

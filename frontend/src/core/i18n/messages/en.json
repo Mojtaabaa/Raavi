@@ -22,6 +22,7 @@
     "tenants": "Workspaces",
     "signOut": "Sign out",
     "administration": "Administration",
+    "main": "Main navigation",
     "providers": "Sign-in methods",
     "switchWorkspace": "Switch workspace",
     "spaces": "Spaces",

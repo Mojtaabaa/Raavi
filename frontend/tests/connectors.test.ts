@@ -139,6 +139,24 @@ describe('connectors', () => {
     expect(link.attributes('rel')).toContain('noopener')
   })
 
+  it('reaches the administration pages through one menu that closes on Escape and after navigating', async () => {
+    const f = fakeFetch({
+      ...base,
+      'GET /api/v1/integrations/connectors/catalog': () => json(catalog()),
+      'GET /api/v1/integrations/connectors': () => json([]),
+    })
+    const w = await open(f)
+    const links = () => [...document.body.querySelectorAll('[data-testid="admin-list"] a')].map((a) => a.getAttribute('href'))
+    expect(links()).toEqual([]) // closed by default: nine admin links no longer crowd the header
+    const toggle = w.get('[data-testid="admin-menu"]')
+    expect(toggle.attributes('aria-expanded')).toBe('false')
+    await toggle.trigger('click')
+    expect(toggle.attributes('aria-expanded')).toBe('true')
+    expect(links()).toEqual(expect.arrayContaining(['/admin/members', '/admin/connectors', '/admin/webhooks', '/admin/migrations/confluence']))
+    await w.get('[data-testid="admin-list"]').trigger('keydown', { key: 'Escape' })
+    expect(links()).toEqual([])
+  })
+
   it('explains that nothing can be created until the installation allows a connector host', async () => {
     const f = fakeFetch({
       ...base,
