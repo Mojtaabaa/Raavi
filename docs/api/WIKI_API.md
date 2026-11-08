@@ -90,6 +90,16 @@ Tenant administrators only (403 for members).
 | GET | `/integrations/webhooks/{id}/deliveries?take=` | Delivery log: event, status, HTTP status, attempts, error code |
 | DELETE | `/integrations/webhooks/{id}` | Also deletes the log |
 
+### Issue tracker connectors (Phase 13a, ADR-043)
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/integrations/connectors/catalog` | Admin. `{kinds, hostPolicyConfigured}` |
+| GET/POST | `/integrations/connectors` | Admin. POST `{name, kind: GitHub|GitLab|Jira, baseUrl, token?}`; the token is write-only (responses carry `hasToken`) |
+| GET/PUT/DELETE | `/integrations/connectors/{id}` | Admin. PUT needs **If-Match**; omit `token` to keep it, `""` removes it |
+| GET | `/integrations/issues/connectors` | Any member: enabled connectors, `{id, name, kind}` only |
+| GET | `/integrations/issues/lookup?connector=&reference=` | Any member: `{reference, title, status, url, type}`; references `owner/repo#1`, `group/project#1`, `KEY-1`; errors `issue.*` / `connector.*` |
+
 Request to the receiver: `POST` JSON `{id, type, occurredAt, tenant, data}` with ids only; headers `X-Raavi-Event`, `X-Raavi-Delivery` (event id), `X-Raavi-Signature: t=<unix>,v1=<hex(HMAC-SHA256(secret, "<t>.<body>"))>`. 2xx = delivered; 5xx/408/429/timeouts are retried by the outbox; other 4xx are final; 20 consecutive failures switch the webhook off. Global configuration (`sandbox/config/integrations.json`): `AllowedWebhookHosts` (empty = webhooks off), `TimeoutSeconds`. Errors: `webhook.name_invalid|url_invalid|host_not_allowed|host_forbidden|events_invalid|not_found|too_many`.
 
 ## AI assistant (Phase 11a, ADR-034)

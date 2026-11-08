@@ -6,6 +6,15 @@ Statuses: Not Started · Planned · In Progress · Implemented · Tested · Bloc
 
 ## Phase 12 — Enterprise readiness (split: 12a workspace export and 12b backup/restore scripts and 12c performance baseline done; deletion/purge, scheduling, HA, large-scale/k6 load tests, hardening pending)
 
+### 13a — Issue tracker connectors: GitHub, GitLab, Jira (ADR-043)
+
+```
+dotnet test Raavi.Tests → 455 passed (23 new: reference parsing incl. hostile input, host policy, admin CRUD/token handling, lookups for the three trackers, error mapping, cache, disabled connector, tenant isolation)
+npx vitest run (frontend) → 24 files / 154 tests passed (4 new); vue-tsc clean
+```
+
+Per-tenant read-only connectors (title, status, link) with a write-only encrypted token, installation allow-list `AllowedConnectorHosts`, SSRF-guarded client, strict reference patterns, 256 KB cap, 60 s cache, 300 lookups/user/hour. Admin page `/admin/connectors` with a "check a reference" panel; member API `GET /integrations/issues/lookup`. **Not verified:** any real GitHub/GitLab/Jira (fakes only), Jira Cloud, OAuth/App tokens, MRs. **Not done:** editor smart links, Teams, Outlook, Google, per-cluster rate limit. Migration `IssueConnectors` applied to RaaviDev.
+
 ### 12f — Backup scheduling, status and failure alerts (ADR-042)
 
 ```

@@ -48,8 +48,50 @@ export interface WebhookTestResult {
   durationMs: number
 }
 
+export type ConnectorKind = 'GitHub' | 'GitLab' | 'Jira'
+
+export interface Connector {
+  id: string
+  name: string
+  kind: ConnectorKind
+  baseUrl: string
+  hasToken: boolean
+  enabled: boolean
+  createdAt: string
+  revision: number
+}
+
+/** token: undefined/null keeps the stored one on update, '' removes it. */
+export interface ConnectorInput {
+  name: string
+  kind: ConnectorKind
+  baseUrl: string
+  token?: string | null
+  enabled?: boolean
+}
+
+export interface IssueInfo {
+  reference: string
+  title: string
+  status: string
+  url: string
+  type: 'issue' | 'pull_request'
+}
+
 const enc = encodeURIComponent
 const base = '/integrations/webhooks'
+const connectorBase = '/integrations/connectors'
+
+export const connectorsApi = {
+  catalog: () => api<{ kinds: ConnectorKind[]; hostPolicyConfigured: boolean }>('GET', `${connectorBase}/catalog`),
+  list: () => api<Connector[]>('GET', connectorBase),
+  create: (body: ConnectorInput) => api<Connector>('POST', connectorBase, body),
+  update: (c: Connector, body: ConnectorInput) => apiRequest<Connector>('PUT', `${connectorBase}/${enc(c.id)}`, body, { ifMatch: `"r${c.revision}"` }).then((r) => r.data),
+  remove: (id: string) => api<void>('DELETE', `${connectorBase}/${enc(id)}`),
+  /** Enabled connectors, names only (any member). */
+  available: () => api<{ id: string; name: string; kind: ConnectorKind }[]>('GET', '/integrations/issues/connectors'),
+  lookup: (connector: string, reference: string) => api<IssueInfo>('GET', `/integrations/issues/lookup?connector=${enc(connector)}&reference=${enc(reference)}`),
+}
 
 export const webhooksApi = {
   catalog: () => api<{ events: string[]; hostPolicyConfigured: boolean }>('GET', `${base}/catalog`),

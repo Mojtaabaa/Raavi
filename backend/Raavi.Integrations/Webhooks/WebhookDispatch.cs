@@ -21,6 +21,9 @@ public sealed class IntegrationsOptions
     /// <summary>Hosts webhooks may call (exact name or <c>*.suffix</c>). Empty = webhooks cannot be created or delivered (SSRF guard).</summary>
     public IList<string> AllowedWebhookHosts { get; } = [];
 
+    /// <summary>Hosts issue connectors (GitHub, GitLab, Jira) may call. Empty = connectors cannot be created or used (SSRF guard).</summary>
+    public IList<string> AllowedConnectorHosts { get; } = [];
+
     public int TimeoutSeconds { get; set; } = 10;
 }
 

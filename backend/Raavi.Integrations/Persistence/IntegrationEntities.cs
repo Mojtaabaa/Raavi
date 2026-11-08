@@ -186,7 +186,7 @@ public sealed class WebhookDelivery : Entity, ITenantOwned
     }
 }
 
-/// <summary>Tenant-scoped integration state (schema <c>integrations</c>): webhooks and their delivery log. Every table is RLS-protected.</summary>
+/// <summary>Tenant-scoped integration state (schema <c>integrations</c>): webhooks, their delivery log and issue connectors. Every table is RLS-protected.</summary>
 public sealed class IntegrationsDbContext(DbContextOptions<IntegrationsDbContext> options, ITenantContext tenantContext) : RaaviDbContextBase(options, tenantContext)
 {
     public const string HistorySchema = "integrations";
@@ -194,6 +194,8 @@ public sealed class IntegrationsDbContext(DbContextOptions<IntegrationsDbContext
     public DbSet<Webhook> Webhooks => Set<Webhook>();
 
     public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
+
+    public DbSet<IssueConnector> IssueConnectors => Set<IssueConnector>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -223,6 +225,18 @@ public sealed class IntegrationsDbContext(DbContextOptions<IntegrationsDbContext
             b.HasIndex(x => new { x.TenantId, x.WebhookId, x.EventId }).IsUnique();
             b.HasIndex(x => new { x.TenantId, x.WebhookId, x.At });
             b.HasOne<Webhook>().WithMany().HasForeignKey(x => new { x.TenantId, x.WebhookId }).HasPrincipalKey(w => new { w.TenantId, w.Id }).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<IssueConnector>(b =>
+        {
+            b.ToTable("IssueConnectors", HistorySchema);
+            Keys(b);
+            b.Property(x => x.Name).HasMaxLength(IssueConnector.MaxNameLength);
+            b.Property(x => x.Kind).HasConversion<int>();
+            b.Property(x => x.BaseUrl).HasMaxLength(IssueConnector.MaxUrlLength);
+            b.Property(x => x.ProtectedToken).HasMaxLength(2000);
+            b.Property(x => x.Revision).IsConcurrencyToken();
+            b.HasIndex(x => new { x.TenantId, x.Name }).IsUnique();
         });
 
         base.OnModelCreating(modelBuilder);

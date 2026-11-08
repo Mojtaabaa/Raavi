@@ -52,6 +52,7 @@ export const routes: RouteRecordRaw[] = [
   { path: '/admin/members', name: 'admin-members', component: () => import('@/modules/identity/views/MembersView.vue'), meta: { host: 'tenant', requires: 'tenantAdmin' } },
   { path: '/me', name: 'profile', component: () => import('@/modules/identity/views/ProfileView.vue'), meta: { host: 'tenant', requires: 'user' } },
   { path: '/admin/export', name: 'admin-export', component: () => import('@/modules/administration/views/ExportView.vue'), meta: { host: 'tenant', requires: 'tenantAdmin' } },
+  { path: '/admin/connectors', name: 'admin-connectors', component: () => import('@/modules/integrations/ConnectorsView.vue'), meta: { host: 'tenant', requires: 'tenantAdmin' } },
   { path: '/admin/webhooks', name: 'admin-webhooks', component: () => import('@/modules/integrations/WebhooksView.vue'), meta: { host: 'tenant', requires: 'tenantAdmin' } },
   { path: '/admin/ai', name: 'admin-ai', component: () => import('@/modules/ai/AiSettingsView.vue'), meta: { host: 'tenant', requires: 'tenantAdmin' } },
   { path: '/admin/providers', name: 'admin-providers', component: () => import('@/modules/identity/views/ProvidersView.vue'), meta: { host: 'tenant', requires: 'tenantAdmin' } },

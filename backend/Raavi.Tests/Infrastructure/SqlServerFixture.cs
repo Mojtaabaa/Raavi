@@ -56,6 +56,8 @@ public sealed class SqlServerFixture : IAsyncLifetime
 
     public FakeWebhookReceiver Hooks { get; } = new();
 
+    public FakeIssueTracker Tracker { get; } = new();
+
     public FakeLdapDirectory Ldap { get; } = new();
 
     public FakeEmailSender Mail { get; } = new();
@@ -79,6 +81,8 @@ public sealed class SqlServerFixture : IAsyncLifetime
         ["Raavi:Migration:AllowedSourceHosts:0"] = "wiki.example.test",
         ["Raavi:Ai:AllowedHosts:0"] = "ai.example.test",
         ["Raavi:Integrations:AllowedWebhookHosts:0"] = "hooks.example.test",
+        ["Raavi:Integrations:AllowedConnectorHosts:0"] = "git.example.test",
+        ["Raavi:Integrations:AllowedConnectorHosts:1"] = "jira.example.test",
         ["Raavi:Ai:MaxRequestsPerUserPerHour"] = "6",
         ["Raavi:Email:Mode"] = "Disabled", // replaced by FakeEmailSender (enabled) in RegisterFakes
         ["Raavi:Notifications:PushIntervalMilliseconds"] = "200",
@@ -193,6 +197,7 @@ public sealed class SqlServerFixture : IAsyncLifetime
     public void RegisterFakes(IServiceCollection services)
     {
         services.AddHttpClient(Raavi.Integrations.Webhooks.WebhookHttp.ClientName).ConfigurePrimaryHttpMessageHandler(() => new SharedHandler(Hooks));
+        services.AddHttpClient(Raavi.Integrations.Connectors.ConnectorHttp.ClientName).ConfigurePrimaryHttpMessageHandler(() => new SharedHandler(Tracker));
         services.AddHttpClient(Raavi.AI.AiHttp.ClientName).ConfigurePrimaryHttpMessageHandler(() => new SharedHandler(Ai));
         services.AddHttpClient(Raavi.Identity.Providers.IdentityHttp.ClientName).ConfigurePrimaryHttpMessageHandler(() => new SharedHandler(External));
         services.Replace(ServiceDescriptor.Singleton<Raavi.Identity.Providers.ILdapDirectoryFactory>(Ldap));
