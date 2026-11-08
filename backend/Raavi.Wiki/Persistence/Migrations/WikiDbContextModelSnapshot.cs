@@ -1658,6 +1658,9 @@ namespace Raavi.Wiki.Persistence.Migrations
                     b.Property<Guid>("SpaceId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int?>("StaleDays")
+                        .HasColumnType("int");
+
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uniqueidentifier");
 

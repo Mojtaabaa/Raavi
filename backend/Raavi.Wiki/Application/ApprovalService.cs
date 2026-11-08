@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Raavi.Application.Abstractions.Content;
 using Raavi.Application.Abstractions.Identity;
+using Raavi.Application.Abstractions.Jobs;
 using Raavi.Application.Abstractions.Time;
 using Raavi.Application.Common;
 using Raavi.Infrastructure.Messaging;
@@ -28,6 +29,8 @@ public static class ApprovalEventTypes
 {
     public const string Requested = "approval.requested";
     public const string Decided = "approval.decided";
+    public const string Reminder = "approval.reminder";
+    public const string Overdue = "approval.overdue";
 }
 
 public static class ApprovalNotificationKinds
@@ -36,10 +39,12 @@ public static class ApprovalNotificationKinds
     public const string Approved = "approval.approved";
     public const string Rejected = "approval.rejected";
     public const string Cancelled = "approval.cancelled";
+    public const string Reminder = "approval.reminder";
+    public const string Overdue = "approval.overdue";
 }
 
 /// <summary>Page approvals (Phase 10b, ADR-032): request, decide, cancel, inbox. Notifications come from <see cref="ApprovalNotifier"/>.</summary>
-public sealed class ApprovalService(WikiDbContext db, PageService pages, IPrincipalDirectory directory, WikiAuthorizer authz, ICurrentUser current, IClock clock)
+public sealed class ApprovalService(WikiDbContext db, PageService pages, IPrincipalDirectory directory, WikiAuthorizer authz, ICurrentUser current, IClock clock, ITenantJobScheduler jobs)
 {
     public static readonly Error NotFound = new("approval.not_found", "Approval request not found.", ErrorKind.NotFound);
     public static readonly Error NotAnApprover = new("approval.not_approver", "You are not an approver of this request.", ErrorKind.Forbidden);
@@ -108,6 +113,7 @@ public sealed class ApprovalService(WikiDbContext db, PageService pages, IPrinci
 
         Emit(ApprovalEventTypes.Requested, new ApprovalEvent(request.Id, node.SpaceId, node.Id, current.UserId, node.Title, request.Status.ToString()), now);
         await db.SaveChangesAsync(ct).ConfigureAwait(false);
+        ScheduleReminders(request, now);
         return await GetAsync(request.Id, ct).ConfigureAwait(false);
     }
 
@@ -230,6 +236,42 @@ public sealed class ApprovalService(WikiDbContext db, PageService pages, IPrinci
         return await GetAsync(id, ct).ConfigureAwait(false);
     }
 
+    /// <summary>A reminder one day before the due date (when that is still ahead) and an overdue notice at the due date. Both re-check the request when they run.</summary>
+    private void ScheduleReminders(ApprovalRequest request, DateTimeOffset now)
+    {
+        if (request.DueAt is not { } due)
+        {
+            return;
+        }
+
+        if (due.AddDays(-1) > now.AddMinutes(1))
+        {
+            jobs.Schedule<ApprovalReminderJob, ApprovalReminderArgs>(new ApprovalReminderArgs(request.Id, ApprovalReminderKind.Reminder, due), due.AddDays(-1));
+        }
+
+        jobs.Schedule<ApprovalReminderJob, ApprovalReminderArgs>(new ApprovalReminderArgs(request.Id, ApprovalReminderKind.Overdue, due), due);
+    }
+
+    /// <summary>Runs inside <see cref="ApprovalReminderJob"/> (no user): does nothing unless the request is still pending with the same due date.</summary>
+    public async Task RunReminderAsync(ApprovalReminderArgs args, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+        var request = await db.ApprovalRequests.AsNoTracking().FirstOrDefaultAsync(r => r.Id == args.RequestId, ct).ConfigureAwait(false);
+        if (request is null || request.Status != ApprovalStatus.Pending || request.DueAt != args.DueAt)
+        {
+            return;
+        }
+
+        var node = await db.Nodes.AsNoTracking().FirstOrDefaultAsync(n => n.Id == request.ContentId, ct).ConfigureAwait(false);
+        if (node is null)
+        {
+            return;
+        }
+
+        Emit(args.Kind == ApprovalReminderKind.Overdue ? ApprovalEventTypes.Overdue : ApprovalEventTypes.Reminder, new ApprovalEvent(request.Id, request.SpaceId, request.ContentId, Guid.Empty, node.Title, request.Status.ToString()), clock.UtcNow);
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
+    }
+
     private void Emit(string type, ApprovalEvent payload, DateTimeOffset now) => db.Outbox.Add(OutboxMessage.Create(db.CurrentTenantId, type, payload, now));
 
     private async Task<bool> CanViewAsync(ContentNode node, Space space, IContentProvider provider, Guid userId, CancellationToken ct)
@@ -290,7 +332,7 @@ public sealed class ApprovalService(WikiDbContext db, PageService pages, IPrinci
 /// </summary>
 public sealed class ApprovalNotifier(WikiDbContext db, WikiAuthorizer authz, IPrincipalDirectory directory, ContentProviderRegistry providers, IClock clock) : IOutboxHandler
 {
-    public bool CanHandle(string eventType) => eventType is ApprovalEventTypes.Requested or ApprovalEventTypes.Decided;
+    public bool CanHandle(string eventType) => eventType is ApprovalEventTypes.Requested or ApprovalEventTypes.Decided or ApprovalEventTypes.Reminder or ApprovalEventTypes.Overdue;
 
     public async Task HandleAsync(OutboxEvent outboxEvent, CancellationToken cancellationToken)
     {
@@ -310,6 +352,16 @@ public sealed class ApprovalNotifier(WikiDbContext db, WikiAuthorizer authz, IPr
         {
             kind = ApprovalNotificationKinds.Requested;
             recipients = await db.ApprovalAssignments.AsNoTracking().Where(a => a.RequestId == request.Id).Select(a => a.UserId).ToListAsync(ct).ConfigureAwait(false);
+        }
+        else if (outboxEvent.Type is ApprovalEventTypes.Reminder or ApprovalEventTypes.Overdue)
+        {
+            var overdue = outboxEvent.Type == ApprovalEventTypes.Overdue;
+            kind = overdue ? ApprovalNotificationKinds.Overdue : ApprovalNotificationKinds.Reminder;
+            recipients = await db.ApprovalAssignments.AsNoTracking().Where(a => a.RequestId == request.Id && a.Decision == ApprovalDecision.Pending).Select(a => a.UserId).ToListAsync(ct).ConfigureAwait(false);
+            if (overdue)
+            {
+                recipients.Add(request.RequestedBy); // the requester learns that nobody has decided in time
+            }
         }
         else
         {
@@ -343,4 +395,18 @@ public sealed class ApprovalNotifier(WikiDbContext db, WikiAuthorizer authz, IPr
 
         await db.SaveChangesAsync(ct).ConfigureAwait(false);
     }
+}
+
+public enum ApprovalReminderKind
+{
+    Reminder = 1,
+    Overdue = 2,
+}
+
+public sealed record ApprovalReminderArgs(Guid RequestId, ApprovalReminderKind Kind, DateTimeOffset DueAt);
+
+/// <summary>Tenant job behind the approval reminders and overdue notices (Phase 10c).</summary>
+public sealed class ApprovalReminderJob(ApprovalService approvals) : ITenantJob<ApprovalReminderArgs>
+{
+    public Task ExecuteAsync(ApprovalReminderArgs args, CancellationToken cancellationToken) => approvals.RunReminderAsync(args, cancellationToken);
 }

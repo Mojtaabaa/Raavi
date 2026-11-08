@@ -7,6 +7,7 @@ import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
+import WorkflowFlow from './WorkflowFlow.vue'
 import { OPERATORS, workflowsApi, type WfAction, type WfCondition, type WfField, type Workflow, type WorkflowRun } from '@/core/api/workflows'
 import { wikiApi, type Space } from '@/core/api/wiki'
 import { errorMessage } from '@/core/api/errors'
@@ -31,13 +32,14 @@ const loading = ref(true)
 const editing = ref(false)
 const editingId = ref<Workflow | null>(null)
 const saving = ref(false)
-const form = ref({ name: '', enabled: true, trigger: 'content.created', conditions: [] as WfCondition[], actions: [] as WfAction[] })
+const form = ref({ name: '', enabled: true, trigger: 'content.created', staleDays: null as number | null, conditions: [] as WfCondition[], actions: [] as WfAction[] })
 const runsOf = ref<Workflow | null>(null)
 const runs = ref<WorkflowRun[]>([])
 
 const fail = (e: unknown) => toast.add({ severity: 'error', summary: errorMessage(e, t, te), life: 6000 })
 const isAdmin = computed(() => !!space.value?.rights.canAdminister)
-const triggerLabel = (tr: string) => t(`workflows.triggers.${tr.replace('.', '_')}`)
+const triggerLabel = (tr: string, days: number | null = null) => (tr === 'content.stale' ? t('workflows.triggers.content_stale', { n: days ?? '…' }) : t(`workflows.triggers.${tr.replace('.', '_')}`))
+const showFlow = ref<string | null>(null)
 const when = (iso: string) => formatDate(iso, locale.locale, { dateStyle: 'medium', timeStyle: 'short' })
 
 async function load() {
@@ -61,9 +63,13 @@ watch(key, load)
 function openEditor(w: Workflow | null) {
   editingId.value = w
   form.value = w
-    ? { name: w.name, enabled: w.enabled, trigger: w.trigger, conditions: w.conditions.map((c) => ({ ...c })), actions: w.actions.map((a) => ({ ...a })) }
-    : { name: '', enabled: true, trigger: 'content.created', conditions: [], actions: [{ type: 'AddLabel', label: '', recipients: null, message: null }] }
+    ? { name: w.name, enabled: w.enabled, trigger: w.trigger, staleDays: w.staleDays, conditions: w.conditions.map((c) => ({ ...c })), actions: w.actions.map((a) => ({ ...a })) }
+    : { name: '', enabled: true, trigger: 'content.created', staleDays: null, conditions: [], actions: [{ type: 'AddLabel', label: '', recipients: null, message: null }] }
   editing.value = true
+}
+
+function triggerChanged() {
+  form.value.staleDays = form.value.trigger === 'content.stale' ? (form.value.staleDays ?? 90) : null
 }
 
 function addCondition() {
@@ -86,6 +92,7 @@ function actionChanged(a: WfAction) {
 const valid = computed(
   () =>
     form.value.name.trim() !== '' &&
+    (form.value.trigger !== 'content.stale' || (!!form.value.staleDays && form.value.staleDays >= 1 && form.value.staleDays <= 3650)) &&
     form.value.actions.length > 0 &&
     form.value.conditions.every((c) => c.value.trim() !== '') &&
     form.value.actions.every((a) => (a.type === 'AddLabel' ? !!a.label?.trim() && !/\s/.test(a.label.trim()) : !!a.message?.trim())),
@@ -98,6 +105,7 @@ async function save() {
     name: form.value.name.trim(),
     enabled: form.value.enabled,
     trigger: form.value.trigger,
+    staleDays: form.value.trigger === 'content.stale' ? form.value.staleDays : null,
     conditions: form.value.conditions.map((c) => ({ ...c, value: c.value.trim() })),
     actions: form.value.actions.map((a) => (a.type === 'AddLabel' ? { type: a.type, label: a.label!.trim(), recipients: null, message: null } : { type: a.type, label: null, recipients: a.recipients, message: a.message!.trim() })),
   }
@@ -115,7 +123,7 @@ async function save() {
 
 async function toggle(w: Workflow) {
   try {
-    await workflowsApi.update(w, { name: w.name, enabled: !w.enabled, trigger: w.trigger, conditions: w.conditions, actions: w.actions })
+    await workflowsApi.update(w, { name: w.name, enabled: !w.enabled, trigger: w.trigger, staleDays: w.staleDays, conditions: w.conditions, actions: w.actions })
     await load()
   } catch (e) {
     fail(e)
@@ -168,14 +176,16 @@ const fields: WfField[] = ['Title', 'ContentType', 'Label']
         <div class="main">
           <strong dir="auto">{{ w.name }}</strong>
           <span class="state" :class="{ on: w.enabled }">{{ w.enabled ? t('workflows.enabled') : t('workflows.disabled') }}</span>
-          <span class="muted">{{ t('workflows.when') }} {{ triggerLabel(w.trigger) }} · {{ t('workflows.summary', { conditions: w.conditions.length, actions: w.actions.length }) }}</span>
+          <span class="muted">{{ t('workflows.when') }} {{ triggerLabel(w.trigger, w.staleDays) }} · {{ t('workflows.summary', { conditions: w.conditions.length, actions: w.actions.length }) }}</span>
         </div>
         <div class="buttons">
           <Button size="small" text :label="w.enabled ? t('workflows.turnOff') : t('workflows.turnOn')" data-testid="toggle-workflow" @click="toggle(w)" />
+          <Button size="small" text icon="pi pi-sitemap" :label="showFlow === w.id ? t('workflows.hideFlow') : t('workflows.showFlow')" :aria-expanded="showFlow === w.id" data-testid="toggle-flow" @click="showFlow = showFlow === w.id ? null : w.id" />
           <Button size="small" text icon="pi pi-history" :label="t('workflows.runs')" data-testid="show-runs" @click="showRuns(w)" />
           <Button size="small" text icon="pi pi-pencil" :label="t('common.edit')" data-testid="edit-workflow" @click="openEditor(w)" />
           <Button size="small" text severity="danger" icon="pi pi-trash" :aria-label="t('common.delete')" data-testid="delete-workflow" @click="removeWorkflow(w)" />
         </div>
+        <WorkflowFlow v-if="showFlow === w.id" class="flowbox" :trigger="w.trigger" :stale-days="w.staleDays" :conditions="w.conditions" :actions="w.actions" />
       </li>
     </ul>
 
@@ -186,9 +196,14 @@ const fields: WfField[] = ['Title', 'ContentType', 'Label']
         <label class="check"><input v-model="form.enabled" type="checkbox" data-testid="wf-enabled" /> {{ t('workflows.enabled') }}</label>
 
         <label for="wf-trigger">{{ t('workflows.trigger') }}</label>
-        <select id="wf-trigger" v-model="form.trigger" data-testid="wf-trigger">
+        <select id="wf-trigger" v-model="form.trigger" data-testid="wf-trigger" @change="triggerChanged">
           <option v-for="tr in triggers" :key="tr" :value="tr">{{ triggerLabel(tr) }}</option>
         </select>
+        <template v-if="form.trigger === 'content.stale'">
+          <label for="wf-days">{{ t('workflows.staleDays') }}</label>
+          <input id="wf-days" v-model.number="form.staleDays" type="number" min="1" max="3650" data-testid="wf-stale-days" />
+          <p class="muted">{{ t('workflows.staleHint') }}</p>
+        </template>
 
         <fieldset>
           <legend>{{ t('workflows.conditions') }}</legend>
@@ -225,6 +240,11 @@ const fields: WfField[] = ['Title', 'ContentType', 'Label']
           </div>
           <Button type="button" size="small" severity="secondary" outlined icon="pi pi-plus" :label="t('workflows.addAction')" data-testid="add-action" :disabled="form.actions.length >= 5" @click="addAction" />
         </fieldset>
+
+        <section class="preview" :aria-label="t('workflows.flow')">
+          <h3>{{ t('workflows.flow') }}</h3>
+          <WorkflowFlow :trigger="form.trigger" :stale-days="form.staleDays" :conditions="form.conditions" :actions="form.actions" />
+        </section>
 
         <Button type="submit" :label="t('common.save')" :loading="saving" :disabled="!valid" data-testid="save-workflow" />
       </form>
@@ -263,6 +283,9 @@ h1 { margin: 0; font-size: 1.5rem; }
 .main { display: grid; gap: 0.2rem; min-inline-size: 0; }
 .state { font-size: 0.8rem; color: var(--raavi-text-muted); }
 .state.on { color: var(--raavi-success, #15803d); }
+.flowbox { inline-size: 100%; }
+.preview h3 { margin: 0 0 0.5rem; font-size: 0.95rem; }
+.form input[type='number'] { font: inherit; padding: 0.35rem; max-inline-size: 8rem; }
 .buttons { display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center; }
 .form { display: grid; gap: var(--raavi-space-2); }
 .form select, .row select { font: inherit; padding: 0.35rem; }

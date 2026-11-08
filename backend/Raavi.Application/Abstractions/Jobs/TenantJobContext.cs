@@ -20,6 +20,9 @@ public interface ITenantJobScheduler
 
     /// <summary>Runs the job at <paramref name="runAt"/> (UTC) in the current tenant. Jobs must re-check their preconditions when they run.</summary>
     string Schedule<TJob, TArgs>(TArgs args, DateTimeOffset runAt) where TJob : ITenantJob<TArgs>;
+
+    /// <summary>Enqueues the job for an explicit tenant. Only for system code that fans work out to tenants (it holds no tenant context itself).</summary>
+    string EnqueueForTenant<TJob, TArgs>(Guid tenantId, TArgs args) where TJob : ITenantJob<TArgs>;
 }
 
 /// <summary>Raised when a tenant job's tenant is missing or not active; the job is retried by the scheduler.</summary>

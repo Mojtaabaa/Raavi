@@ -36,7 +36,7 @@ Baseline: Confluence Cloud. Status values as in `docs/IMPLEMENTATION_STATUS.md`.
 | Versioning | Drafts (autosave), publish, history, diff, restore, trash | yes | 5 | Tested |
 | Versioning | Review / expiry dates, trash retention | yes | 12 | Planned |
 | Versioning | Scheduled publish, approval foundation | apps/premium | 5 | Tested |
-| Versioning | Approval workflows | apps/premium | 10b | Partial: page approval requests (All/Any, rejection with comment, inbox, notifications) Tested; chains, reminders/escalation, approval-before-publish planned |
+| Versioning | Approval workflows | apps/premium | 10b | Partial: page approval requests (All/Any, rejection with comment, inbox, notifications) Tested, with due-date reminders and overdue notices; chains, escalation to admins, approval-before-publish planned |
 | Collaboration | Real-time co-editing, presence, cursors | yes | 6 | Tested (single collaboration node) |
 | Collaboration | Offline edits | limited | 6 | Implemented (y-indexeddb; not browser-verified) |
 | Comments | Page + inline comments, reactions, resolve | yes | 7a | Tested |
@@ -50,7 +50,7 @@ Baseline: Confluence Cloud. Status values as in `docs/IMPLEMENTATION_STATUS.md`.
 | Tasks | Tasks with assignees, due dates | yes | 9a | Tested |
 | Calendar | Team/space calendars, Jalali | Team Calendars app | 9b | Tested |
 | Slides | Slide decks, presenter, PDF/PPTX | n/a | 9d | Tested (text slides, notes, PPTX on the server, PDF via browser print; no images/shapes) |
-| Workflows | Workflow designer, approvals | apps | 10a | Partial: rules engine (page-event triggers, conditions, label/notify actions, run log, retries, rate limit) Tested; approvals, designer, scheduling planned |
+| Workflows | Workflow designer, approvals | apps | 10c | Partial: rules engine, time-based stale-page trigger (daily sweep) and read-only flow view Tested; drag-and-drop designer, branching, webhooks planned |
 | Automation | Rules: triggers → conditions → actions | yes | 10 | Planned |
 | AI | Q&A, summarization, writing, tagging, related | Atlassian Intelligence | 11 | Planned |
 | Integrations | Jira, GitHub, GitLab, Teams, Outlook, Google, webhooks | yes | 11 | Planned |

@@ -14,14 +14,14 @@ public sealed record WfConditionDto(string Field, string Operator, string Value)
 public sealed record WfActionDto(string Type, string? Label, string? Recipients, string? Message);
 
 public sealed record WorkflowDto(
-    Guid Id, string SpaceKey, string SpaceName, string Name, bool Enabled, string Trigger, WfConditionDto[] Conditions, WfActionDto[] Actions,
+    Guid Id, string SpaceKey, string SpaceName, string Name, bool Enabled, string Trigger, int? StaleDays, WfConditionDto[] Conditions, WfActionDto[] Actions,
     string? CreatedByName, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, int Revision);
 
 public sealed record WfConditionRequest(string? Field, string? Operator, string? Value);
 
 public sealed record WfActionRequest(string? Type, string? Label, string? Recipients, string? Message);
 
-public sealed record WorkflowRequest(string? Name, bool? Enabled, string? Trigger, WfConditionRequest[]? Conditions, WfActionRequest[]? Actions);
+public sealed record WorkflowRequest(string? Name, bool? Enabled, string? Trigger, int? StaleDays, WfConditionRequest[]? Conditions, WfActionRequest[]? Actions);
 
 public sealed record WorkflowRunDto(Guid Id, Guid EventId, string EventType, Guid? ContentId, string? ContentTitle, string Status, string Message, int Attempts, DateTimeOffset StartedAt, DateTimeOffset FinishedAt);
 
@@ -90,7 +90,7 @@ public sealed class WorkflowService(WikiDbContext db, SpaceService spaces, WikiA
             return Result<WorkflowDto>.Failure(parsed.Error!);
         }
 
-        var w = Workflow.Create(space.Space.Id, request.Name, request.Enabled ?? true, request.Trigger, parsed.Value.Conditions, parsed.Value.Actions, current.UserId, clock.UtcNow);
+        var w = Workflow.Create(space.Space.Id, request.Name, request.Enabled ?? true, request.Trigger, request.StaleDays, parsed.Value.Conditions, parsed.Value.Actions, current.UserId, clock.UtcNow);
         db.Workflows.Add(w);
         await db.SaveChangesAsync(ct).ConfigureAwait(false);
         return Result<WorkflowDto>.Success(ToDto(w, space.Space, null));
@@ -117,7 +117,7 @@ public sealed class WorkflowService(WikiDbContext db, SpaceService spaces, WikiA
             return Result<WorkflowDto>.Failure(parsed.Error!);
         }
 
-        w.Update(request.Name, request.Enabled ?? w.Enabled, request.Trigger, parsed.Value.Conditions, parsed.Value.Actions, clock.UtcNow);
+        w.Update(request.Name, request.Enabled ?? w.Enabled, request.Trigger, request.StaleDays, parsed.Value.Conditions, parsed.Value.Actions, clock.UtcNow);
         await db.SaveChangesAsync(ct).ConfigureAwait(false);
         return Result<WorkflowDto>.Success(ToDto(w, space.Space, null));
     }
@@ -208,7 +208,7 @@ public sealed class WorkflowService(WikiDbContext db, SpaceService spaces, WikiA
     }
 
     private static WorkflowDto ToDto(Workflow w, Space space, string? createdBy) => new(
-        w.Id, space.Key, space.Name, w.Name, w.Enabled, w.Trigger,
+        w.Id, space.Key, space.Name, w.Name, w.Enabled, w.Trigger, w.StaleDays,
         w.Conditions.Select(c => new WfConditionDto(c.Field.ToString(), c.Operator.ToString(), c.Value)).ToArray(),
         w.Actions.Select(a => new WfActionDto(a.Type.ToString(), a.Label, a.Recipients?.ToString(), a.Message)).ToArray(),
         createdBy, w.CreatedAt, w.UpdatedAt, w.Revision);

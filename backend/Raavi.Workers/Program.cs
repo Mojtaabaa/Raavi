@@ -9,6 +9,7 @@ using Raavi.Tenancy.Application;
 using Raavi.Identity;
 using Raavi.Migration;
 using Raavi.Wiki;
+using Raavi.Wiki.Application;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -22,6 +23,7 @@ builder.Services.AddTenancyModule(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddIdentityCore(builder.Configuration);
 builder.Services.AddWikiModule(builder.Configuration, runOutboxPoller: true);
+builder.Services.AddScoped<TenantFanOut<StaleSweepJob, StaleSweepArgs>>();
 builder.Services.AddMigrationModule(builder.Configuration);
 
 var host = builder.Build();
@@ -33,5 +35,12 @@ recurring.AddOrUpdate<DomainVerificationJob>(
     "maintenance",
     j => j.RunAsync(CancellationToken.None),
     Cron.Hourly());
+
+// Time-based workflow trigger: once a day every active tenant gets a stale-page sweep (ADR-033).
+recurring.AddOrUpdate<TenantFanOut<StaleSweepJob, StaleSweepArgs>>(
+    StaleSweepJob.RecurringJobId,
+    "maintenance",
+    j => j.RunAsync(new StaleSweepArgs(1), CancellationToken.None),
+    Cron.Daily(3));
 
 await host.RunAsync().ConfigureAwait(false);

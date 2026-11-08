@@ -17,12 +17,12 @@ const space = (canAdminister: boolean) => ({ id: 's1', key: 'ENG', name: 'Engine
 const withEtag = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json', ETag: '"r1"' } })
 
 const workflow = (over: Record<string, unknown> = {}) => ({
-  id: 'w1', spaceKey: 'ENG', spaceName: 'Engineering', name: 'RFC intake', enabled: true, trigger: 'content.created',
+  id: 'w1', spaceKey: 'ENG', spaceName: 'Engineering', name: 'RFC intake', enabled: true, trigger: 'content.created', staleDays: null,
   conditions: [{ field: 'Title', operator: 'StartsWith', value: 'rfc:' }],
   actions: [{ type: 'AddLabel', label: 'needs-review', recipients: null, message: null }, { type: 'Notify', label: null, recipients: 'Actor', message: 'Received' }],
   createdByName: 'Sara', createdAt: '2026-11-07T08:00:00Z', updatedAt: '2026-11-07T08:00:00Z', revision: 3, ...over,
 })
-const catalog = { triggers: ['content.created', 'content.published'] }
+const catalog = { triggers: ['content.created', 'content.published', 'content.stale'] }
 
 describe('workflows', () => {
   let wrapper: VueWrapper | null = null
@@ -138,8 +138,49 @@ describe('workflows', () => {
       name: 'Label RFCs',
       enabled: true,
       trigger: 'content.created',
+      staleDays: null,
       conditions: [{ field: 'Title', operator: 'Contains', value: 'RFC:' }],
       actions: [{ type: 'AddLabel', label: 'rfc', recipients: null, message: null }],
     })
+  })
+
+  it('draws the rule as a flow, and the stale trigger asks for a day count', async () => {
+    const f = fakeFetch({
+      ...base,
+      'GET /api/v1/spaces/ENG': () => withEtag(space(true)),
+      'GET /api/v1/spaces/ENG/workflows': () => json([workflow({ trigger: 'content.stale', staleDays: 45 })]),
+      'POST /api/v1/spaces/ENG/workflows': () => json(workflow({ id: 'w3' }), 201),
+    })
+    const w = await open('/spaces/ENG/workflows', f)
+    expect(w.get('[data-testid="workflow"]').text()).toContain('not been updated for 45 days')
+    expect(w.find('[data-testid="flow"]').exists()).toBe(false)
+    await w.get('[data-testid="toggle-flow"]').trigger('click')
+    expect(w.get('[data-testid="flow-trigger"]').text()).toContain('45 days')
+    expect(w.findAll('[data-testid="flow-condition"]').map((c) => c.text())).toEqual(['Title starts with “rfc:”'])
+    expect(w.findAll('[data-testid="flow-action"]').map((a) => a.text())).toEqual(['Add label: needs-review', 'Send notification (Whoever triggered it): Received'])
+
+    await w.get('[data-testid="new-workflow"]').trigger('click')
+    await settle()
+    const q = <T extends HTMLElement>(sel: string) => document.body.querySelector<T>(sel)!
+    const set = async (el: HTMLInputElement, v: string) => {
+      el.value = v
+      el.dispatchEvent(new Event('input'))
+      await flushPromises()
+    }
+    await set(q<HTMLInputElement>('[data-testid="wf-name"]'), 'Stale pages')
+    await set(q<HTMLInputElement>('[data-testid="wf-action-label"]'), 'stale')
+    const trigger = q<HTMLSelectElement>('[data-testid="wf-trigger"]')
+    trigger.value = 'content.stale'
+    trigger.dispatchEvent(new Event('change'))
+    await settle()
+    const days = q<HTMLInputElement>('[data-testid="wf-stale-days"]')
+    expect(days.value).toBe('90') // sensible default
+    expect([...document.body.querySelectorAll('[data-testid="flow-trigger"]')].at(-1)!.textContent).toContain('90 days') // the preview follows the form
+    await set(days, '0')
+    expect(q<HTMLButtonElement>('[data-testid="save-workflow"]').disabled).toBe(true)
+    await set(days, '60')
+    q<HTMLButtonElement>('[data-testid="save-workflow"]').click()
+    await settle()
+    expect(f.calls.find((c) => c.method === 'POST')!.body).toMatchObject({ trigger: 'content.stale', staleDays: 60 })
   })
 })

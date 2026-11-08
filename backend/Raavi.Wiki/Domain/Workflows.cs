@@ -43,10 +43,13 @@ public sealed record WfActionInput(WfActionType Type, string? Label, WfRecipient
 
 public static class WorkflowTriggers
 {
+    /// <summary>Time-based trigger: a current page has not been updated for <see cref="Workflow.StaleDays"/> days. Fired by a daily sweep, not by an outbox event.</summary>
+    public const string Stale = "content.stale";
+
     /// <summary>Wiki events a workflow can start from (page events only; no workflow action emits any of them, so rules cannot loop).</summary>
     public static readonly IReadOnlyList<string> All =
     [
-        "content.created", "content.updated", "content.moved", "content.archived", "content.trashed", "content.published", "content.publish_requested",
+        "content.created", "content.updated", "content.moved", "content.archived", "content.trashed", "content.published", "content.publish_requested", Stale,
     ];
 
     public static bool IsValid(string? trigger) => trigger is not null && All.Contains(trigger);
@@ -80,6 +83,9 @@ public sealed class Workflow : Entity, ITenantOwned
 
     public bool Enabled { get; private set; }
 
+    /// <summary>Only for the <c>content.stale</c> trigger: days without an update (1–3650).</summary>
+    public int? StaleDays { get; private set; }
+
     public string Trigger { get; private set; } = string.Empty;
 
     public string ConditionsJson { get; private set; } = "[]";
@@ -98,21 +104,21 @@ public sealed class Workflow : Entity, ITenantOwned
 
     public IReadOnlyList<WfAction> Actions => JsonSerializer.Deserialize<List<WfAction>>(ActionsJson, WorkflowJson.Options) ?? [];
 
-    public static Workflow Create(Guid spaceId, string? name, bool enabled, string? trigger, IReadOnlyList<WfConditionInput>? conditions, IReadOnlyList<WfActionInput>? actions, Guid userId, DateTimeOffset now)
+    public static Workflow Create(Guid spaceId, string? name, bool enabled, string? trigger, int? staleDays, IReadOnlyList<WfConditionInput>? conditions, IReadOnlyList<WfActionInput>? actions, Guid userId, DateTimeOffset now)
     {
         var w = new Workflow { SpaceId = spaceId, CreatedBy = userId, CreatedAt = now, UpdatedAt = now };
-        w.Set(name, enabled, trigger, conditions ?? [], actions ?? []);
+        w.Set(name, enabled, trigger, staleDays, conditions ?? [], actions ?? []);
         return w;
     }
 
-    public void Update(string? name, bool enabled, string? trigger, IReadOnlyList<WfConditionInput>? conditions, IReadOnlyList<WfActionInput>? actions, DateTimeOffset now)
+    public void Update(string? name, bool enabled, string? trigger, int? staleDays, IReadOnlyList<WfConditionInput>? conditions, IReadOnlyList<WfActionInput>? actions, DateTimeOffset now)
     {
-        Set(name, enabled, trigger, conditions ?? [], actions ?? []);
+        Set(name, enabled, trigger, staleDays, conditions ?? [], actions ?? []);
         UpdatedAt = now;
         Revision++;
     }
 
-    private void Set(string? name, bool enabled, string? trigger, IReadOnlyList<WfConditionInput> conditions, IReadOnlyList<WfActionInput> actions)
+    private void Set(string? name, bool enabled, string? trigger, int? staleDays, IReadOnlyList<WfConditionInput> conditions, IReadOnlyList<WfActionInput> actions)
     {
         var n = (name ?? string.Empty).Trim();
         if (n.Length is 0 or > MaxNameLength || n.Any(char.IsControl))
@@ -123,6 +129,11 @@ public sealed class Workflow : Entity, ITenantOwned
         if (!WorkflowTriggers.IsValid(trigger))
         {
             throw new DomainException("workflow.trigger_invalid", "The trigger is not a supported page event.");
+        }
+
+        if (trigger == WorkflowTriggers.Stale ? staleDays is not (>= 1 and <= 3650) : staleDays is not null)
+        {
+            throw new DomainException("workflow.stale_days_invalid", "The stale trigger needs 1–3650 days; other triggers take no day count.");
         }
 
         if (conditions.Count > MaxConditions)
@@ -140,6 +151,7 @@ public sealed class Workflow : Entity, ITenantOwned
         Name = n;
         Enabled = enabled;
         Trigger = trigger!;
+        StaleDays = staleDays;
         ConditionsJson = JsonSerializer.Serialize(cs, WorkflowJson.Options);
         ActionsJson = JsonSerializer.Serialize(acts, WorkflowJson.Options);
     }

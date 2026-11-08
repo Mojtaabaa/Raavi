@@ -1,10 +1,22 @@
 # Implementation Status
 
-**Last updated:** 2026-11-08 (Phase 10b: approvals)
+**Last updated:** 2026-11-08 (Phase 10c: scheduling)
 
 Statuses: Not Started · Planned · In Progress · Implemented · Tested · Blocked · Deferred. "Tested" requires executed test evidence (listed).
 
-## Phase 10 — Workflows & automation (split: 10a rules engine and 10b approvals done; designer, scheduling, reminders pending)
+## Phase 10 — Workflows & automation (split: 10a rules engine, 10b approvals and 10c scheduling done; drag-and-drop designer, branching, external actions pending)
+
+### 10c — Scheduling, reminders, flow view (ADR-033)
+
+```
+cd backend && dotnet test Raavi.Tests    → Passed: 401, Failed: 0   (new: SchedulingTests 3 API/job, StaleTriggerDomainTests 1; jobs run directly in the tenant scope)
+EF: has-pending-model-changes (Wiki)     → none; new migration WorkflowStaleDays
+cd frontend && npm run build && npm test → ok; 18 files, 131 tests (workflows.test.ts now 3); npm audit (production) 0
+```
+
+Approvals with a due date get a reminder (one day before) and an overdue notice (at the due date) as per-request tenant jobs that re-check the request when they run. New workflow trigger `content.stale` (N days without an update): daily system job `TenantFanOut<StaleSweepJob,…>` enqueues a per-tenant sweep through the new `ITenantJobScheduler.EnqueueForTenant`; a page is handled once per update, within the workflow's hourly run budget. UI: stale-day field, read-only flow view (list toggle + live preview in the editor), two new notification kinds. **Not verified:** the Hangfire recurring registration and real execution by a running worker (tests call the job code directly; the fan-out was tested with a recording scheduler); UI not exercised in a real browser. Not covered: the "failed sweep run" path.
+
+**Not in 10c:** drag-and-drop designer, branching/parallel steps, per-workflow cron schedules, configurable reminder lead time, escalation to space administrators, reminders for tasks/calendar, run retention.
 
 ### 10b — Approvals (ADR-032)
 

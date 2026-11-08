@@ -39,6 +39,8 @@ const icon: Record<string, string> = {
   'approval.approved': 'pi pi-check-circle',
   'approval.rejected': 'pi pi-times-circle',
   'approval.cancelled': 'pi pi-ban',
+  'approval.reminder': 'pi pi-clock',
+  'approval.overdue': 'pi pi-exclamation-triangle',
 }
 
 function text(n: AppNotification) {

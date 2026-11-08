@@ -25,6 +25,8 @@ export interface Workflow {
   name: string
   enabled: boolean
   trigger: string
+  /** Only for the `content.stale` trigger. */
+  staleDays: number | null
   conditions: WfCondition[]
   actions: WfAction[]
   createdByName: string | null
@@ -37,6 +39,7 @@ export interface WorkflowInput {
   name: string
   enabled: boolean
   trigger: string
+  staleDays: number | null
   conditions: WfCondition[]
   actions: WfAction[]
 }

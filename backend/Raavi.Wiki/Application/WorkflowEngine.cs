@@ -36,7 +36,7 @@ public sealed class WorkflowEngine(
     public const int MaxWorkflowsPerEvent = 50;
     public const int MaxRecipients = 200;
 
-    public bool CanHandle(string eventType) => WorkflowTriggers.IsValid(eventType);
+    public bool CanHandle(string eventType) => WorkflowTriggers.IsValid(eventType) && eventType != WorkflowTriggers.Stale;
 
     public async Task HandleAsync(OutboxEvent outboxEvent, CancellationToken cancellationToken)
     {
@@ -49,7 +49,7 @@ public sealed class WorkflowEngine(
         {
             try
             {
-                await RunAsync(w, outboxEvent, e, ct).ConfigureAwait(false);
+                await RunAsync(w, outboxEvent.Id, outboxEvent.Type, e, ct).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -63,9 +63,10 @@ public sealed class WorkflowEngine(
         }
     }
 
-    private async Task RunAsync(Workflow w, OutboxEvent outboxEvent, WikiEvent e, CancellationToken ct)
+    /// <summary>Runs one workflow for one event. <paramref name="eventId"/> is the idempotency key (outbox event id, or a deterministic id for sweeps).</summary>
+    internal async Task RunAsync(Workflow w, Guid eventId, string eventType, WikiEvent e, CancellationToken ct)
     {
-        var run = await db.WorkflowRuns.FirstOrDefaultAsync(r => r.WorkflowId == w.Id && r.EventId == outboxEvent.Id, ct).ConfigureAwait(false);
+        var run = await db.WorkflowRuns.FirstOrDefaultAsync(r => r.WorkflowId == w.Id && r.EventId == eventId, ct).ConfigureAwait(false);
         if (run is not null && run.Status != WorkflowRunStatus.Failed)
         {
             return; // already handled
@@ -74,7 +75,7 @@ public sealed class WorkflowEngine(
         var now = clock.UtcNow;
         if (run is null)
         {
-            run = WorkflowRun.Start(w.Id, outboxEvent.Id, outboxEvent.Type, e.ContentId, now);
+            run = WorkflowRun.Start(w.Id, eventId, eventType, e.ContentId, now);
             db.WorkflowRuns.Add(run);
         }
 
@@ -87,7 +88,7 @@ public sealed class WorkflowEngine(
         }
 
         var node = e.ContentId is { } cid ? await db.Nodes.AsNoTracking().FirstOrDefaultAsync(n => n.Id == cid, ct).ConfigureAwait(false) : null;
-        if (node is null || node.Status != ContentStatus.Current && outboxEvent.Type != WikiEventTypes.ContentTrashed && outboxEvent.Type != WikiEventTypes.ContentArchived)
+        if (node is null || node.Status != ContentStatus.Current && eventType != WikiEventTypes.ContentTrashed && eventType != WikiEventTypes.ContentArchived)
         {
             await FinishAsync(run, WorkflowRunStatus.Skipped, "content_gone", ct).ConfigureAwait(false);
             return;
@@ -104,7 +105,7 @@ public sealed class WorkflowEngine(
             var notes = new List<string>();
             foreach (var action in w.Actions)
             {
-                notes.Add(action.Type == WfActionType.AddLabel ? await AddLabelAsync(w, node, action, now, ct).ConfigureAwait(false) : await NotifyAsync(w, outboxEvent, e, node, action, now, ct).ConfigureAwait(false));
+                notes.Add(action.Type == WfActionType.AddLabel ? await AddLabelAsync(w, node, action, now, ct).ConfigureAwait(false) : await NotifyAsync(w, eventId, e, node, action, now, ct).ConfigureAwait(false));
             }
 
             await FinishAsync(run, WorkflowRunStatus.Succeeded, string.Join("; ", notes), ct).ConfigureAwait(false);
@@ -112,10 +113,10 @@ public sealed class WorkflowEngine(
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             db.ChangeTracker.Clear();
-            var failed = await db.WorkflowRuns.FirstOrDefaultAsync(r => r.WorkflowId == w.Id && r.EventId == outboxEvent.Id, ct).ConfigureAwait(false);
+            var failed = await db.WorkflowRuns.FirstOrDefaultAsync(r => r.WorkflowId == w.Id && r.EventId == eventId, ct).ConfigureAwait(false);
             if (failed is null)
             {
-                failed = WorkflowRun.Start(w.Id, outboxEvent.Id, outboxEvent.Type, e.ContentId, now);
+                failed = WorkflowRun.Start(w.Id, eventId, eventType, e.ContentId, now);
                 db.WorkflowRuns.Add(failed);
             }
 
@@ -178,7 +179,7 @@ public sealed class WorkflowEngine(
         return $"label '{name}' added";
     }
 
-    private async Task<string> NotifyAsync(Workflow w, OutboxEvent outboxEvent, WikiEvent e, ContentNode node, WfAction action, DateTimeOffset now, CancellationToken ct)
+    private async Task<string> NotifyAsync(Workflow w, Guid eventId, WikiEvent e, ContentNode node, WfAction action, DateTimeOffset now, CancellationToken ct)
     {
         var recipients = action.Recipients == WfRecipients.Actor
             ? new List<Guid> { e.ActorId }
@@ -191,19 +192,19 @@ public sealed class WorkflowEngine(
 
         var space = await db.Spaces.AsNoTracking().FirstAsync(s => s.Id == node.SpaceId, ct).ConfigureAwait(false);
         var provider = providers.Get(node.ContentType);
-        var eventId = DeterministicId(w.Id, outboxEvent.Id, action.Message ?? string.Empty);
+        var notificationId = DeterministicId(w.Id, eventId, action.Message ?? string.Empty);
         var sent = 0;
         foreach (var userId in recipients)
         {
             var principal = await directory.GetPrincipalAsync(userId, fresh: true, ct).ConfigureAwait(false);
             var spaceRights = await authz.GetSpaceRightsAsync(space, principal, ct).ConfigureAwait(false);
             var rights = await authz.GetContentRightsAsync(node, spaceRights, provider, principal, ct).ConfigureAwait(false);
-            if (!rights.CanView || await db.Notifications.AnyAsync(n => n.EventId == eventId && n.RecipientId == userId, ct).ConfigureAwait(false))
+            if (!rights.CanView || await db.Notifications.AnyAsync(n => n.EventId == notificationId && n.RecipientId == userId, ct).ConfigureAwait(false))
             {
                 continue;
             }
 
-            db.Notifications.Add(Notification.Create(eventId, userId, WorkflowNotificationKinds.Workflow, node.SpaceId, node.Id, null, e.ActorId, node.Title, action.Message ?? string.Empty, false, now));
+            db.Notifications.Add(Notification.Create(notificationId, userId, WorkflowNotificationKinds.Workflow, node.SpaceId, node.Id, null, e.ActorId, node.Title, action.Message ?? string.Empty, false, now));
             sent++;
         }
 

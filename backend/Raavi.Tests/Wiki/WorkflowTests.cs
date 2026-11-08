@@ -16,7 +16,7 @@ public sealed class WorkflowDomainTests
     private static readonly WfActionInput Label = new(WfActionType.AddLabel, "Needs-Review", null, null);
 
     private static Workflow Make(string? trigger = "content.created", WfConditionInput[]? conditions = null, params WfActionInput[] actions) =>
-        Workflow.Create(Guid.NewGuid(), "Intake", true, trigger, conditions ?? [], actions.Length == 0 ? [Label] : actions, Guid.NewGuid(), Now);
+        Workflow.Create(Guid.NewGuid(), "Intake", true, trigger, null, conditions ?? [], actions.Length == 0 ? [Label] : actions, Guid.NewGuid(), Now);
 
     private static string Code(Action a) => Assert.Throws<DomainException>(a).Code;
 
@@ -29,18 +29,18 @@ public sealed class WorkflowDomainTests
         Assert.Equal("needs-review", w.Actions[0].Label);
         Assert.Equal(("Please review", WfRecipients.Watchers), (w.Actions[1].Message, w.Actions[1].Recipients));
 
-        w.Update("Intake 2", false, "content.published", [], [Label], Now);
+        w.Update("Intake 2", false, "content.published", null, [], [Label], Now);
         Assert.Equal((2, false, "content.published"), (w.Revision, w.Enabled, w.Trigger));
     }
 
     [Fact]
     public void Bad_definitions_are_rejected_with_stable_codes()
     {
-        Assert.Equal("workflow.name_invalid", Code(() => Workflow.Create(Guid.NewGuid(), " ", true, "content.created", [], [Label], Guid.NewGuid(), Now)));
+        Assert.Equal("workflow.name_invalid", Code(() => Workflow.Create(Guid.NewGuid(), " ", true, "content.created", null, [], [Label], Guid.NewGuid(), Now)));
         Assert.Equal("workflow.trigger_invalid", Code(() => Make("comment.created")));
         Assert.Equal("workflow.trigger_invalid", Code(() => Make(null)));
-        Assert.Equal("workflow.actions_invalid", Code(() => Workflow.Create(Guid.NewGuid(), "n", true, "content.created", [], [], Guid.NewGuid(), Now)));
-        Assert.Equal("workflow.actions_invalid", Code(() => Workflow.Create(Guid.NewGuid(), "n", true, "content.created", [], Enumerable.Repeat(Label, 6).ToList(), Guid.NewGuid(), Now)));
+        Assert.Equal("workflow.actions_invalid", Code(() => Workflow.Create(Guid.NewGuid(), "n", true, "content.created", null, [], [], Guid.NewGuid(), Now)));
+        Assert.Equal("workflow.actions_invalid", Code(() => Workflow.Create(Guid.NewGuid(), "n", true, "content.created", null, [], Enumerable.Repeat(Label, 6).ToList(), Guid.NewGuid(), Now)));
         Assert.Equal("workflow.too_many_conditions", Code(() => Make(conditions: Enumerable.Repeat(new WfConditionInput(WfField.Title, WfOperator.Contains, "x"), 11).ToArray())));
         Assert.Equal("workflow.condition_invalid", Code(() => Make(conditions: [new(WfField.Title, WfOperator.Has, "x")])));
         Assert.Equal("workflow.condition_invalid", Code(() => Make(conditions: [new(WfField.ContentType, WfOperator.Contains, "page")])));

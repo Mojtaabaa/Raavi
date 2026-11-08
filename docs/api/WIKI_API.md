@@ -79,7 +79,7 @@ Task DTO: `{id, spaceKey, spaceName, contentId, title, notes, status: Open|Done,
 | POST | `/approvals/{id}/decision` | Assigned approvers only. `{decision: Approved|Rejected, comment}`; a rejection needs a comment; 409 once final |
 | POST | `/approvals/{id}/cancel` | Requester or space administrator, while pending |
 
-Errors: `approval.not_found`, `approval.not_approver`, `approval.self_approver`, `approval.approvers_invalid`, `approval.already_pending`, `approval.not_pending`, `approval.already_decided`, `approval.note_invalid`, `approval.mode_invalid`, `approval.due_invalid`, `approval.decision_invalid`, `approval.comment_required`, `approval.comment_invalid`, `approval.scope_invalid`. Notification kinds: `approval.requested|approved|rejected|cancelled`.
+Errors: `approval.not_found`, `approval.not_approver`, `approval.self_approver`, `approval.approvers_invalid`, `approval.already_pending`, `approval.not_pending`, `approval.already_decided`, `approval.note_invalid`, `approval.mode_invalid`, `approval.due_invalid`, `approval.decision_invalid`, `approval.comment_required`, `approval.comment_invalid`, `approval.scope_invalid`. Notification kinds: `approval.requested|approved|rejected|cancelled|reminder|overdue`. With a `dueAt`, a reminder is sent one day before the due date and an overdue notice at the due date (approvers still waiting; the overdue notice also reaches the requester).
 
 ## Workflows (Phase 10a, ADR-031)
 
@@ -89,12 +89,12 @@ Space administrators only (403 for other viewers of the space, 404 when the spac
 |---|---|---|
 | GET | `/workflows/catalog` | Supported triggers |
 | GET | `/spaces/{key}/workflows` | Rules of the space |
-| POST | `/spaces/{key}/workflows` | `{name, enabled?, trigger, conditions: [{field: Title|ContentType|Label, operator: Contains|Equals|StartsWith|Has, value}], actions: [{type: AddLabel, label} | {type: Notify, recipients: Watchers|Actor, message}]}` — ≤ 10 conditions, 1–5 actions |
+| POST | `/spaces/{key}/workflows` | `{name, enabled?, trigger, staleDays? (only for content.stale, 1–3650), conditions: [{field: Title|ContentType|Label, operator: Contains|Equals|StartsWith|Has, value}], actions: [{type: AddLabel, label} | {type: Notify, recipients: Watchers|Actor, message}]}` — ≤ 10 conditions, 1–5 actions |
 | GET/PUT | `/workflows/{id}` | PUT replaces the definition, needs **If-Match** `"r{n}"` |
 | DELETE | `/workflows/{id}` | Also deletes the run history |
 | GET | `/workflows/{id}/runs?take=` | Latest runs (≤ 100): `status` Succeeded/Skipped/Failed, `message`, `attempts` |
 
-Triggers: `content.created|updated|moved|archived|trashed|published|publish_requested`. Errors: `workflow.name_invalid`, `workflow.trigger_invalid`, `workflow.too_many_conditions`, `workflow.actions_invalid`, `workflow.condition_invalid`, `workflow.action_invalid`, `label.invalid`, `workflow.not_found`.
+Triggers: `content.created|updated|moved|archived|trashed|published|publish_requested`, and the time-based `content.stale` (a daily sweep runs the rule for current pages not updated for `staleDays` days, once per page update; run history shows `eventType: content.stale`). Extra error: `workflow.stale_days_invalid`. Errors: `workflow.name_invalid`, `workflow.trigger_invalid`, `workflow.too_many_conditions`, `workflow.actions_invalid`, `workflow.condition_invalid`, `workflow.action_invalid`, `label.invalid`, `workflow.not_found`.
 
 ## Whiteboards (Phase 9e, ADR-030)
 

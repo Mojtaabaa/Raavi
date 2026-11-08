@@ -906,7 +906,9 @@
       "approval_requested": "{name} asked you to approve “{title}”",
       "approval_approved": "“{title}” was approved",
       "approval_rejected": "“{title}” was rejected",
-      "approval_cancelled": "{name} cancelled the approval of “{title}”"
+      "approval_cancelled": "{name} cancelled the approval of “{title}”",
+      "approval_reminder": "Reminder: “{title}” is waiting for your approval",
+      "approval_overdue": "Overdue: the approval of “{title}” has not been decided in time"
     }
   },
   "migration": {
@@ -1266,7 +1268,8 @@
       "content_archived": "a page is archived",
       "content_trashed": "a page is trashed",
       "content_published": "a page is published",
-      "content_publish_requested": "publishing is requested"
+      "content_publish_requested": "publishing is requested",
+      "content_stale": "a page has not been updated for {n} days"
     },
     "fields": {
       "Title": "Title",
@@ -1292,7 +1295,15 @@
       "conditions_not_met": "Conditions not met",
       "content_gone": "The page no longer exists",
       "rate_limited": "Skipped: more than 100 runs in the last hour"
-    }
+    },
+    "flow": "Flow",
+    "showFlow": "Show flow",
+    "hideFlow": "Hide flow",
+    "ifAll": "If all of these hold",
+    "always": "Always",
+    "then": "Then",
+    "staleDays": "Days without an update",
+    "staleHint": "Checked once a day. A page is handled once per update; editing it starts the count again."
   },
   "approvals": {
     "title": "Approvals",

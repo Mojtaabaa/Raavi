@@ -63,6 +63,17 @@ public sealed class HangfireTenantJobScheduler(IBackgroundJobClient client, ITen
         return client.Schedule<TenantJobRunner<TJob, TArgs>>(r => r.RunAsync(envelope, args, CancellationToken.None), runAt);
     }
 
+    public string EnqueueForTenant<TJob, TArgs>(Guid tenantId, TArgs args) where TJob : ITenantJob<TArgs>
+    {
+        if (tenantId == Guid.Empty)
+        {
+            throw new ArgumentException("A tenant id is required.", nameof(tenantId));
+        }
+
+        var envelope = new TenantJobContext(tenantId, null, Activity.Current?.TraceId.ToString() ?? Guid.NewGuid().ToString("N"));
+        return client.Enqueue<TenantJobRunner<TJob, TArgs>>(r => r.RunAsync(envelope, args, CancellationToken.None));
+    }
+
     private TenantJobContext Envelope<TJob>()
     {
         if (!tenantContext.IsResolved)

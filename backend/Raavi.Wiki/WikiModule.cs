@@ -52,7 +52,9 @@ public static class WikiModule
         services.AddScoped<WorkflowService>();
         services.AddScoped<ApprovalService>();
         services.AddScoped<IOutboxHandler, ApprovalNotifier>();
-        services.AddScoped<IOutboxHandler, WorkflowEngine>();
+        services.AddScoped<WorkflowEngine>();
+        services.AddScoped<IOutboxHandler>(sp => sp.GetRequiredService<WorkflowEngine>());
+        services.AddScoped<StaleSweep>();
         services.AddScoped<NotificationService>();
         services.AddScoped<IOutboxHandler, NotificationFanOut>();
         services.AddScoped<IOutboxHandler, NotificationEmailer>();

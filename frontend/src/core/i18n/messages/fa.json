@@ -906,7 +906,9 @@
       "approval_requested": "{name} از شما خواست «{title}» را تأیید کنید",
       "approval_approved": "«{title}» تأیید شد",
       "approval_rejected": "«{title}» رد شد",
-      "approval_cancelled": "{name} تأییدیهٔ «{title}» را لغو کرد"
+      "approval_cancelled": "{name} تأییدیهٔ «{title}» را لغو کرد",
+      "approval_reminder": "یادآوری: «{title}» منتظر تأیید شماست",
+      "approval_overdue": "گذشته از مهلت: تأیید «{title}» به‌موقع تصمیم‌گیری نشد"
     }
   },
   "migration": {
@@ -1266,7 +1268,8 @@
       "content_archived": "صفحه‌ای بایگانی شود",
       "content_trashed": "صفحه‌ای به زباله‌دان برود",
       "content_published": "صفحه‌ای منتشر شود",
-      "content_publish_requested": "درخواست انتشار ثبت شود"
+      "content_publish_requested": "درخواست انتشار ثبت شود",
+      "content_stale": "صفحه‌ای {n} روز به‌روز نشده باشد"
     },
     "fields": {
       "Title": "عنوان",
@@ -1292,7 +1295,15 @@
       "conditions_not_met": "شرط‌ها برقرار نبود",
       "content_gone": "صفحه دیگر وجود ندارد",
       "rate_limited": "ردشد: بیش از ۱۰۰ اجرا در یک ساعت گذشته"
-    }
+    },
+    "flow": "جریان",
+    "showFlow": "نمایش جریان",
+    "hideFlow": "پنهان کردن جریان",
+    "ifAll": "اگر همهٔ این‌ها برقرار باشد",
+    "always": "همیشه",
+    "then": "آنگاه",
+    "staleDays": "روزهای بدون به‌روزرسانی",
+    "staleHint": "روزی یک بار بررسی می‌شود. هر صفحه برای هر به‌روزرسانی یک بار پردازش می‌شود؛ ویرایش آن شمارش را از نو شروع می‌کند."
   },
   "approvals": {
     "title": "تأییدیه‌ها",
