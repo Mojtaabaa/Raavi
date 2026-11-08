@@ -34,3 +34,5 @@ sandbox/backups/
 
 # Development e-mail pickup directory (Raavi:Email:Mode = Pickup)
 dev-mail/
+
+artifacts/

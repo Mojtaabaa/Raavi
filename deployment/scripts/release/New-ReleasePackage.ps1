@@ -15,7 +15,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][string]$Version,
-    [string]$OutputDirectory = (Join-Path (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))) 'artifacts'),
+    [string]$OutputDirectory,
     [switch]$SkipFrontend,
     [switch]$SkipTests
 )
@@ -25,6 +25,7 @@ $ErrorActionPreference = 'Stop'
 
 if ($Version -notmatch '^[0-9A-Za-z][0-9A-Za-z._+-]{0,63}$') { throw "Invalid version '$Version'." }
 $repo = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
+if (-not $OutputDirectory) { $OutputDirectory = Join-Path $repo 'artifacts' }
 $name = "raavi-$Version"
 $target = Join-Path $OutputDirectory $name
 if (Test-Path -LiteralPath $target) { throw "Package folder already exists (refusing to overwrite): $target" }
