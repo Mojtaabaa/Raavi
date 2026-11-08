@@ -29,6 +29,17 @@
 
 Rules built into the scripts: every backup has `CHECKSUM`, is verified and gets a manifest with a SHA-256 that the restore checks first; a restore never touches an existing database unless `-Replace` is combined with `-ConfirmOverwrite <exact name>`; backups are never overwritten; retention (`-RetentionDays`) deletes only files the script itself wrote. `Test-BackupScripts.ps1` is the self-test of all of this on a throw-away database (16 checks).
 
+**Scheduling and alerts (Phase 12f, ADR-042):**
+
+```powershell
+# register (Task Scheduler): full 02:00 daily, differential every 6 h, optionally log every 15 min
+.\Register-RaaviBackupTasks.ps1 -ServerInstance sql01 -Database Raavi -BackupDirectory D:\backups\raavi -IncludeLog -AlertScript D:\ops\raavi-alert.ps1 -WhatIf
+# monitoring: non-zero exit when stale / failed / file missing
+.\Test-BackupFreshness.ps1 -Database Raavi -BackupDirectory D:\backups\raavi -MaxFullAgeHours 30 -MaxDifferentialAgeHours 8 -MaxLogAgeMinutes 45
+```
+
+The scheduler calls `Invoke-ScheduledBackup.ps1` (status file, log, alert on failure and on recovery). Self-test: `Test-BackupSchedule.ps1` (21 checks). Run the freshness check from your monitoring system too: it is what notices a scheduler that stopped.
+
 **Production settings to decide:** the recovery model (FULL is required for log backups and point in time), the schedule (strategy table above), the backup certificate and where its private key is kept (outside the backups!), the off-site copy, and who is alerted when a script exits non-zero.
 
 **Measured once** (development database, LocalDB, local disk): 66 tables, 5 530 rows → backup 4.9 s / 131 MB, restore 5.1 s, CHECKDB 1.9 s, drill passed including the row-level-security policy. This is a lower bound of the RTO, not an RTO.

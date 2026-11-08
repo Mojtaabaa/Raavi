@@ -6,6 +6,14 @@ Statuses: Not Started · Planned · In Progress · Implemented · Tested · Bloc
 
 ## Phase 12 — Enterprise readiness (split: 12a workspace export and 12b backup/restore scripts and 12c performance baseline done; deletion/purge, scheduling, HA, large-scale/k6 load tests, hardening pending)
 
+### 12f — Backup scheduling, status and failure alerts (ADR-042)
+
+```
+powershell deployment/scripts/backup/Test-BackupSchedule.ps1 -ServerInstance '(localdb)\MSSQLLocalDB'   → 21 checks passed, 0 failed
+```
+
+`Invoke-ScheduledBackup.ps1` (status + log + alerts on failure/recovery), `Test-BackupFreshness.ps1` (monitoring exit codes), `Register-RaaviBackupTasks.ps1` (Task Scheduler, -WhatIf/-Replace/-Unregister). **Not done / not verified:** webhook, SMTP and Event Log alerts against real endpoints (only the script hook was exercised), tasks under SYSTEM/service accounts, Linux cron/SQL Agent registration, off-site copy, scheduled restore drills.
+
 ### 12e — Security review notes and endpoint authorization guard
 
 ```
