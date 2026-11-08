@@ -68,6 +68,22 @@ Page DTO `rights` gained `canComment`, `canModerateComments`. Push: WebSocket `/
 
 Task DTO: `{id, spaceKey, spaceName, contentId, title, notes, status: Open|Done, assigneeId, assigneeName, dueDate, isOverdue, completedAt, createdAt, createdByName, revision, rights{canEdit, canComplete, canDelete}}`.
 
+## Webhooks (Phase 11d, ADR-036)
+
+Tenant administrators only (403 for members).
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/integrations/webhooks/catalog` | Subscribable events and whether the installation allows any host |
+| GET/POST | `/integrations/webhooks` | POST `{name, url, events[], spaceId?}` → `{webhook, secret}` — the signing secret is returned **only here** (`Cache-Control: no-store`) |
+| GET/PUT | `/integrations/webhooks/{id}` | PUT needs **If-Match**; `enabled: true` after an automatic switch-off resets the failure counter |
+| POST | `/integrations/webhooks/{id}/rotate-secret` | New secret, returned once |
+| POST | `/integrations/webhooks/{id}/test` | Sends a signed `ping` now: `{success, httpStatus, error, durationMs}` (no response body) |
+| GET | `/integrations/webhooks/{id}/deliveries?take=` | Delivery log: event, status, HTTP status, attempts, error code |
+| DELETE | `/integrations/webhooks/{id}` | Also deletes the log |
+
+Request to the receiver: `POST` JSON `{id, type, occurredAt, tenant, data}` with ids only; headers `X-Raavi-Event`, `X-Raavi-Delivery` (event id), `X-Raavi-Signature: t=<unix>,v1=<hex(HMAC-SHA256(secret, "<t>.<body>"))>`. 2xx = delivered; 5xx/408/429/timeouts are retried by the outbox; other 4xx are final; 20 consecutive failures switch the webhook off. Global configuration (`sandbox/config/integrations.json`): `AllowedWebhookHosts` (empty = webhooks off), `TimeoutSeconds`. Errors: `webhook.name_invalid|url_invalid|host_not_allowed|host_forbidden|events_invalid|not_found|too_many`.
+
 ## AI assistant (Phase 11a, ADR-034)
 
 | Method | Path | Notes |

@@ -7,6 +7,7 @@ using Raavi.Infrastructure.Logging;
 using Raavi.Identity;
 using Raavi.Identity.Persistence;
 using Raavi.AI;
+using Raavi.Integrations;
 using Raavi.Migration;
 using Raavi.Tenancy;
 using Raavi.Tenancy.Persistence;
@@ -32,6 +33,7 @@ builder.Services.AddIdentityCore(builder.Configuration);
 builder.Services.AddWikiModule(builder.Configuration);
 builder.Services.AddMigrationModule(builder.Configuration);
 builder.Services.AddAiModule(builder.Configuration);
+builder.Services.AddIntegrationsModule(builder.Configuration);
 
 using var host = builder.Build();
 
@@ -41,5 +43,6 @@ await IdentityMigrations.ApplyAsync(host.Services).ConfigureAwait(false);
 await WikiMigrations.ApplyAsync(host.Services).ConfigureAwait(false);
 await Raavi.Migration.Persistence.MigrationMigrations.ApplyAsync(host.Services).ConfigureAwait(false);
 await Raavi.AI.Persistence.AiMigrations.ApplyAsync(host.Services).ConfigureAwait(false);
+await Raavi.Integrations.Persistence.IntegrationsMigrations.ApplyAsync(host.Services).ConfigureAwait(false);
 HangfireExtensions.InstallSchema(builder.Configuration.GetConnectionString("System")!);
 Console.WriteLine("Raavi database is up to date.");

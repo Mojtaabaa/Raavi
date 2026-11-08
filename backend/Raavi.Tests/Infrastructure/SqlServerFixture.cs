@@ -1,4 +1,5 @@
 using Raavi.AI;
+using Raavi.Integrations;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Hosting;
@@ -53,6 +54,8 @@ public sealed class SqlServerFixture : IAsyncLifetime
 
     public FakeAiProvider Ai { get; } = new();
 
+    public FakeWebhookReceiver Hooks { get; } = new();
+
     public FakeLdapDirectory Ldap { get; } = new();
 
     public FakeEmailSender Mail { get; } = new();
@@ -75,6 +78,7 @@ public sealed class SqlServerFixture : IAsyncLifetime
         ["Raavi:Attachments:MaxBytes"] = "1048576",
         ["Raavi:Migration:AllowedSourceHosts:0"] = "wiki.example.test",
         ["Raavi:Ai:AllowedHosts:0"] = "ai.example.test",
+        ["Raavi:Integrations:AllowedWebhookHosts:0"] = "hooks.example.test",
         ["Raavi:Ai:MaxRequestsPerUserPerHour"] = "6",
         ["Raavi:Email:Mode"] = "Disabled", // replaced by FakeEmailSender (enabled) in RegisterFakes
         ["Raavi:Notifications:PushIntervalMilliseconds"] = "200",
@@ -142,6 +146,7 @@ public sealed class SqlServerFixture : IAsyncLifetime
         await WikiMigrations.ApplyAsync(Services);
         await Raavi.Migration.Persistence.MigrationMigrations.ApplyAsync(Services);
         await Raavi.AI.Persistence.AiMigrations.ApplyAsync(Services);
+        await Raavi.Integrations.Persistence.IntegrationsMigrations.ApplyAsync(Services);
         HangfireExtensions.InstallSchema(ConnectionString);
     }
 
@@ -178,6 +183,7 @@ public sealed class SqlServerFixture : IAsyncLifetime
         services.AddWikiModule(configuration);
         services.AddMigrationModule(configuration);
         services.AddAiModule(configuration);
+        services.AddIntegrationsModule(configuration);
         services.Replace(ServiceDescriptor.Singleton<IDnsTxtResolver>(Dns));
         RegisterFakes(services);
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
@@ -186,6 +192,7 @@ public sealed class SqlServerFixture : IAsyncLifetime
     /// <summary>Routes identity-provider HTTP traffic to the in-process fakes and replaces the LDAP directory.</summary>
     public void RegisterFakes(IServiceCollection services)
     {
+        services.AddHttpClient(Raavi.Integrations.Webhooks.WebhookHttp.ClientName).ConfigurePrimaryHttpMessageHandler(() => new SharedHandler(Hooks));
         services.AddHttpClient(Raavi.AI.AiHttp.ClientName).ConfigurePrimaryHttpMessageHandler(() => new SharedHandler(Ai));
         services.AddHttpClient(Raavi.Identity.Providers.IdentityHttp.ClientName).ConfigurePrimaryHttpMessageHandler(() => new SharedHandler(External));
         services.Replace(ServiceDescriptor.Singleton<Raavi.Identity.Providers.ILdapDirectoryFactory>(Ldap));

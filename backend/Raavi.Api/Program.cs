@@ -5,6 +5,7 @@ using Raavi.Identity;
 using Raavi.Identity.Api;
 using Raavi.Identity.Security;
 using Raavi.AI;
+using Raavi.Integrations;
 using Raavi.Migration;
 using Raavi.Infrastructure;
 using Raavi.Infrastructure.Configuration;
@@ -55,6 +56,7 @@ builder.Services.AddWikiModule(builder.Configuration);
 builder.Services.AddWikiRealtime();
 builder.Services.AddMigrationModule(builder.Configuration);
 builder.Services.AddAiModule(builder.Configuration);
+builder.Services.AddIntegrationsModule(builder.Configuration);
 builder.Services.AddOpenApi("v1");
 
 var app = builder.Build();
@@ -90,6 +92,7 @@ api.MapWorkflowEndpoints();
 api.MapApprovalEndpoints();
 api.MapMigrationEndpoints();
 api.MapAiEndpoints();
+api.MapIntegrationsEndpoints();
 app.MapCollaborationInternalEndpoints();
 app.MapWikiRealtime();
 

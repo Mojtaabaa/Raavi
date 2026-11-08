@@ -1,10 +1,22 @@
 # Implementation Status
 
-**Last updated:** 2026-11-08 (Phase 11c: live whiteboards)
+**Last updated:** 2026-11-08 (Phase 11d: webhooks)
 
 Statuses: Not Started · Planned · In Progress · Implemented · Tested · Blocked · Deferred. "Tested" requires executed test evidence (listed).
 
 ## Phase 11 — AI & integrations (split: 11a AI assistant done; RAG, integrations, webhooks pending)
+
+### 11d — Outbound webhooks (ADR-036)
+
+```
+cd backend && dotnet test Raavi.Tests    → Passed: 420, Failed: 0   (new: WebhookUnitTests 4 pure, WebhookTests 3 API/outbox against an in-process receiver)
+EF: has-pending-model-changes (Integrations) → none; new module context IntegrationsDbContext, migration Initial (RLS)
+cd frontend && npm run build && npm test → ok; 22 files, 148 tests (new: webhooks.test.ts 3); npm audit (production) 0
+```
+
+Tenant administrators define webhooks (URL, events, optional space); Raavi POSTs signed JSON (ids only, no titles or text) through the outbox: idempotent per (webhook, event), retried with back-off on 5xx/timeouts/unreachable, final on other 4xx, automatic switch-off after 20 failures in a row, delivery log without bodies, secret shown once and stored protected, installation-wide host allow-list with connect-time address checks. UI: admin "Webhooks" page (create/edit with event groups and space, test ping, secret rotation, delivery log). **Never run against a real receiver or in a real browser**: the receiver is an in-process fake and the real SSRF connect callback (DNS resolution) is not exercised by tests; the signature scheme was verified by recomputing it on the receiver side in the tests.
+
+**Not in 11d:** payload templates, replay of failed deliveries, inbound webhooks, per-receiver rate limits, secret rotation overlap, named integrations (Jira/GitHub/GitLab/Teams/Outlook/Google), RAG (11b).
 
 ### 11c — Live whiteboards with Yjs (ADR-035)
 

@@ -8,6 +8,7 @@ using Raavi.Tenancy;
 using Raavi.Tenancy.Application;
 using Raavi.Identity;
 using Raavi.Migration;
+using Raavi.Integrations;
 using Raavi.Wiki;
 using Raavi.Wiki.Application;
 
@@ -25,6 +26,7 @@ builder.Services.AddIdentityCore(builder.Configuration);
 builder.Services.AddWikiModule(builder.Configuration, runOutboxPoller: true);
 builder.Services.AddScoped<TenantFanOut<StaleSweepJob, StaleSweepArgs>>();
 builder.Services.AddMigrationModule(builder.Configuration);
+builder.Services.AddIntegrationsModule(builder.Configuration);
 
 var host = builder.Build();
 

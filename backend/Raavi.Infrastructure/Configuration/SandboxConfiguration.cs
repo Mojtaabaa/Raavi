@@ -29,6 +29,7 @@ public static class SandboxConfiguration
         "notifications",
         "migration",
         "ai",
+        "integrations",
         "security",
         "feature-flags",
     ];

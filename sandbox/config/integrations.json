@@ -1,0 +1,8 @@
+{
+  "Raavi": {
+    "Integrations": {
+      "AllowedWebhookHosts": [],
+      "TimeoutSeconds": 10
+    }
+  }
+}
