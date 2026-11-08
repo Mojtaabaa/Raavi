@@ -51,4 +51,6 @@ The 30 scenarios of the product specification (§35) are tracked as Playwright s
 
 ## 6. Performance tests
 
+**Implemented (Phase 12c):** in-process load tests and a query-count check, see `PERFORMANCE_BASELINE.md` (80 users / 4 000 pages on a dev machine). **Not implemented:** the k6 scripts below.
+
 k6 (HTTP, WebSocket) scripts under `deployment/scripts/perf` from Phase 6: 500 concurrent users, 100 editors on one document, 100k pages / 1M attachment metadata data sets. Targets are test targets, not guarantees.

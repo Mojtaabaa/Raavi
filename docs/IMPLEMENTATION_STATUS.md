@@ -1,10 +1,21 @@
 # Implementation Status
 
-**Last updated:** 2026-11-08 (Phase 12b: backup and restore scripts)
+**Last updated:** 2026-11-08 (Phase 12c: performance baseline)
 
 Statuses: Not Started · Planned · In Progress · Implemented · Tested · Blocked · Deferred. "Tested" requires executed test evidence (listed).
 
-## Phase 12 — Enterprise readiness (split: 12a workspace export and 12b backup/restore scripts done; deletion/purge, scheduling, HA, load tests, hardening pending)
+## Phase 12 — Enterprise readiness (split: 12a workspace export and 12b backup/restore scripts and 12c performance baseline done; deletion/purge, scheduling, HA, large-scale/k6 load tests, hardening pending)
+
+### 12c — Performance baseline (ADR-039)
+
+```
+dotnet test Raavi.Tests                                  → 425 passed (load tests inert without RAAVI_LOAD=1)
+RAAVI_LOAD=1 … --filter Category=Load                    → 1 000 pages/40 users: 152 req/s, 0 errors; 4 000 pages/80 users: 198 req/s, 0 errors, p99 ≤ 1.1 s
+```
+
+Hot reads issue 1–13 SQL statements, not growing with item count (no N+1). No code optimisation was needed. Details: `docs/development/PERFORMANCE_BASELINE.md`.
+
+**Not done / not proven:** 500 users, 100k pages, attachments, WebSocket load, OpenSearch; k6 scripts; closed-loop, client and server share one i5-3470, LocalDB — not a capacity statement.
 
 ### 12b — Backup, restore and restore drill for SQL Server (ADR-038)
 

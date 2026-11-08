@@ -37,6 +37,7 @@ Format: Context · Decision · Alternatives considered · Consequences. Status v
 | [031](ADR-031-workflows.md) | Workflows: rules engine on the outbox (Phase 10a) | Accepted |
 | [032](ADR-032-approvals.md) | Page approvals (Phase 10b) | Accepted |
 | [033](ADR-033-scheduling-and-flow-view.md) | Reminders, stale-page trigger, flow view (Phase 10c) | Accepted |
+| [039](ADR-039-performance-baseline.md) | Performance baseline and load tests (Phase 12c) | Accepted |
 | [038](ADR-038-backup-and-restore-scripts.md) | Backup, restore and restore-drill scripts (Phase 12b) | Accepted |
 | [037](ADR-037-workspace-export.md) | Workspace data export (Phase 12a) | Accepted |
 | [036](ADR-036-webhooks.md) | Outbound webhooks (Phase 11d) | Accepted |
