@@ -787,6 +787,7 @@
     "slash": {
       "label": "درج",
       "none": "فرمانی پیدا نشد",
+      "issue": "پیوند مسئله (GitHub، GitLab، Jira)",
       "heading1": "عنوان ۱",
       "heading2": "عنوان ۲",
       "heading3": "عنوان ۳",
@@ -831,6 +832,16 @@
       "untitled": "جزئیات",
       "expand": "باز کردن",
       "collapse": "بستن"
+    },
+    "issue": {
+      "placeholder": "ارجاع مسئله",
+      "connector": "ردیاب",
+      "reference": "ارجاع (owner/repo#1، group/project#1، KEY-1)",
+      "none": "برای این فضای کاری ردیاب کاری وصل نشده است.",
+      "pick": "ردیاب را انتخاب و ارجاع را بنویسید",
+      "unavailable": "در دسترس نیست",
+      "loading": "در حال بارگذاری…",
+      "open": "باز کردن در ردیاب"
     },
     "status": {
       "placeholder": "وضعیت",

@@ -13,7 +13,7 @@ dotnet test Raavi.Tests → 455 passed (23 new: reference parsing incl. hostile 
 npx vitest run (frontend) → 24 files / 154 tests passed (4 new); vue-tsc clean
 ```
 
-Per-tenant read-only connectors (title, status, link) with a write-only encrypted token, installation allow-list `AllowedConnectorHosts`, SSRF-guarded client, strict reference patterns, 256 KB cap, 60 s cache, 300 lookups/user/hour. Admin page `/admin/connectors` with a "check a reference" panel; member API `GET /integrations/issues/lookup`. **Not verified:** any real GitHub/GitLab/Jira (fakes only), Jira Cloud, OAuth/App tokens, MRs. **Not done:** editor smart links, Teams, Outlook, Google, per-cluster rate limit. Migration `IssueConnectors` applied to RaaviDev.
+Per-tenant read-only connectors (title, status, link) with a write-only encrypted token, installation allow-list `AllowedConnectorHosts`, SSRF-guarded client, strict reference patterns, 256 KB cap, 60 s cache, 300 lookups/user/hour. Admin page `/admin/connectors` with a "check a reference" panel; member API `GET /integrations/issues/lookup`. **Not verified:** any real GitHub/GitLab/Jira (fakes only), Jira Cloud, OAuth/App tokens, MRs. **Not done:** Teams, Outlook, Google, per-cluster rate limit. Migration `IssueConnectors` applied to RaaviDev. Editor node `raavi.issue` ("Issue link" slash command; shared manifest + fixture, so backend/frontend/collaboration parity tests cover it; 5 view tests): backend 455 / frontend 159 / collaboration 14 passed.
 
 ### 12f — Backup scheduling, status and failure alerts (ADR-042)
 

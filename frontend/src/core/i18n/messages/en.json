@@ -787,6 +787,7 @@
     "slash": {
       "label": "Insert",
       "none": "No matching command",
+      "issue": "Issue link (GitHub, GitLab, Jira)",
       "heading1": "Heading 1",
       "heading2": "Heading 2",
       "heading3": "Heading 3",
@@ -831,6 +832,16 @@
       "untitled": "Details",
       "expand": "Expand",
       "collapse": "Collapse"
+    },
+    "issue": {
+      "placeholder": "Issue reference",
+      "connector": "Tracker",
+      "reference": "Reference (owner/repo#1, group/project#1, KEY-1)",
+      "none": "No issue tracker is connected for this workspace.",
+      "pick": "Choose a tracker and type the reference",
+      "unavailable": "Not available",
+      "loading": "Loading…",
+      "open": "Open in the tracker"
     },
     "status": {
       "placeholder": "STATUS",

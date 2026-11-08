@@ -16,6 +16,7 @@ import type { SuggestionEntry } from './types'
 import PanelView from './views/PanelView.vue'
 import ExpandView from './views/ExpandView.vue'
 import StatusView from './views/StatusView.vue'
+import IssueView from './views/IssueView.vue'
 import TocView from './views/TocView.vue'
 import SourceRenderView from './views/SourceRenderView.vue'
 import ImageView from './views/ImageView.vue'
@@ -136,6 +137,7 @@ export function createEditorRegistry(env?: EditorEnvironment): EditorRegistry {
   }))))
   r.register(custom('raavi.expand', ExpandView, [{ labelKey: 'editor.slash.expand', icon: 'pi pi-angle-down', keywords: ['expand', 'collapse', 'details', 'بازشو'], run: insert('expand', { title: '' }, true) }]))
   r.register(custom('raavi.status', StatusView, [{ labelKey: 'editor.slash.status', icon: 'pi pi-tag', keywords: ['status', 'lozenge', 'وضعیت'], run: insert('status', { text: 'TODO', color: 'neutral' }) }], 'span'))
+  r.register(custom('raavi.issue', IssueView, [{ labelKey: 'editor.slash.issue', icon: 'pi pi-github', keywords: ['issue', 'jira', 'github', 'gitlab', 'ticket', 'مسئله', 'تیکت'], run: insert('issue', { connector: null, reference: '' }) }], 'span'))
   r.register(custom('raavi.toc', TocView, [{ labelKey: 'editor.slash.toc', icon: 'pi pi-list', keywords: ['toc', 'contents', 'فهرست مطالب'], run: insert('toc', { maxLevel: 3 }) }]))
   r.register(custom('raavi.children', ChildrenView, [{ labelKey: 'editor.slash.children', icon: 'pi pi-sitemap', keywords: ['children', 'child', 'pages', 'زیرصفحه', 'فرزند'], run: insert('children', { depth: 1 }) }]))
   r.register(custom('raavi.contentByLabel', ContentByLabelView, [{ labelKey: 'editor.slash.contentByLabel', icon: 'pi pi-tags', keywords: ['label', 'labels', 'pages by label', 'برچسب'], run: insert('contentByLabel', { labels: '', maxItems: 20, currentSpaceOnly: false }) }]))

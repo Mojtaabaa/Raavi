@@ -1,0 +1,24 @@
+{
+  "id": "raavi.issue",
+  "name": "issue",
+  "version": 1,
+  "kind": "node",
+  "group": "inline",
+  "inline": true,
+  "atom": true,
+  "attributes": {
+    "connector": {
+      "type": "string",
+      "nullable": true,
+      "format": "guid",
+      "default": null
+    },
+    "reference": {
+      "type": "string",
+      "maxLength": 300,
+      "default": ""
+    }
+  },
+  "search": "attr:reference",
+  "migrations": []
+}

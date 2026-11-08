@@ -50,7 +50,7 @@ public sealed class EditorApiTests(SqlServerFixture fx)
         Assert.True(JsonNode.DeepEquals(everything, JsonNode.Parse(reopened.GetProperty("body").GetRawText())), "document changed between save and reopen");
 
         var html = (await admin.GetJsonAsync($"api/v1/content/{id}/html")).GetProperty("html").GetString()!;
-        foreach (var expected in new[] { "<table", "raavi-panel-warning", "<details", "raavi-status-blue", "raavi-mermaid", "raavi-math", "<pre dir=\"ltr\"><code class=\"language-csharp\"", "data-checked=\"true\"", "/api/v1/attachments/", "rel=\"noopener noreferrer nofollow\"", "raavi-unsupported" })
+        foreach (var expected in new[] { "<table", "raavi-panel-warning", "<details", "raavi-status-blue", "raavi-issue", "acme/wiki#42", "raavi-mermaid", "raavi-math", "<pre dir=\"ltr\"><code class=\"language-csharp\"", "data-checked=\"true\"", "/api/v1/attachments/", "rel=\"noopener noreferrer nofollow\"", "raavi-unsupported" })
         {
             Assert.Contains(expected, html, StringComparison.Ordinal);
         }

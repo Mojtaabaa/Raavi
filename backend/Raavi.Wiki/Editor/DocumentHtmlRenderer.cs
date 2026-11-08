@@ -192,6 +192,10 @@ public sealed class DocumentHtmlRenderer
             case "status":
                 sb.Append("<span class=\"raavi-status raavi-status-").Append(E(Attr(n, "color") ?? "neutral")).Append("\">").Append(E(Attr(n, "text"))).Append("</span>");
                 break;
+            case "issue":
+                // Server-rendered HTML never calls a tracker (no token, no network); the viewer's browser resolves the reference.
+                sb.Append("<span class=\"raavi-issue\" data-reference=\"").Append(E(Attr(n, "reference"))).Append("\">").Append(E(Attr(n, "reference"))).Append("</span>");
+                break;
             case "toc":
                 var max = int.Parse(Attr(n, "maxLevel") ?? "3", CultureInfo.InvariantCulture);
                 sb.Append("<nav class=\"raavi-toc\"><ul>");
