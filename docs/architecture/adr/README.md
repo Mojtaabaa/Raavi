@@ -33,3 +33,4 @@ Format: Context · Decision · Alternatives considered · Consequences. Status v
 | [027](ADR-027-calendar.md) | Calendar (Phase 9b) | Accepted |
 | [028](ADR-028-databases.md) | Databases (Phase 9c) | Accepted |
 | [029](ADR-029-slides.md) | Slides (Phase 9d) | Accepted |
+| [030](ADR-030-whiteboards.md) | Whiteboards, Konva vs Fabric (Phase 9e) | Accepted |

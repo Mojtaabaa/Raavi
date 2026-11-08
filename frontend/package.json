@@ -35,6 +35,7 @@
     "@tiptap/suggestion": "3.33.0",
     "@tiptap/vue-3": "3.33.0",
     "katex": "0.19.1",
+    "konva": "10.9.1",
     "mermaid": "11.17.2",
     "pinia": "3.0.4",
     "primeicons": "7.0.0",

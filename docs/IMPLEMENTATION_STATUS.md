@@ -1,10 +1,22 @@
 # Implementation Status
 
-**Last updated:** 2026-11-08 (Phase 9d: slides)
+**Last updated:** 2026-11-08 (Phase 9e: whiteboards)
 
 Statuses: Not Started · Planned · In Progress · Implemented · Tested · Blocked · Deferred. "Tested" requires executed test evidence (listed).
 
-## Phase 9 — Advanced content types (split: 9a tasks, 9b calendar, 9c databases and 9d slides done; 9e whiteboards pending)
+## Phase 9 — Advanced content types (split: 9a tasks, 9b calendar, 9c databases, 9d slides and 9e whiteboards done; live board co-editing and advanced macros pending)
+
+### 9e — Whiteboards (ADR-030)
+
+```
+cd backend && dotnet test Raavi.Tests    → Passed: 387, Failed: 0   (new: WhiteboardDomainTests 2 pure, WhiteboardTests 3 API incl. SVG well-formedness/escaping)
+EF: has-pending-model-changes (Wiki)     → none; new migration Whiteboards (RLS + composite FK)
+cd frontend && npm run build && npm test → ok; 16 files, 124 tests (new: whiteboards.test.ts 7); npm audit (production) 0
+```
+
+Konva chosen over Fabric after measuring (62 KB vs 90 KB gzip for a comparable editor; ADR-030). Boards per space: rect, ellipse, text, sticky note, arrow, pen; select/move/resize/rotate (transformer), pan/zoom/fit, colours, line width, duplicate, stacking order, undo/redo, element list + inspector as the accessible path, unsaved-changes guard, whole-board ETag saves, permissions from the space, PNG export (canvas) and SVG export (server). The Konva canvas was **driven in a real browser through a throw-away harness page** (select, drag-move, creation of rect/pen/arrow/text, anchor resize 160×90 → 220×150, PNG export 2× opaque, stage restored); the signed-in editor page (toolbar, inspector, save) was only exercised through component tests with a stand-in canvas, because no signed-in browser session was available. One timing-sensitive frontend test (`databases`) failed once while the backend suite ran concurrently and passed on an unloaded rerun.
+
+**Not in 9e:** live co-editing (Yjs — needs a "board" kind in the collaboration server, ADR-030), images, attached connectors, re-shaping arrows/strokes, grouping, snapping, board history, PDF export.
 
 ### 9d — Slides (ADR-029)
 

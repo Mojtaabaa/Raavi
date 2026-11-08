@@ -57,6 +57,7 @@ function open(node: TreeNode) {
       </div>
       <nav class="side-actions">
         <Button v-if="space.rights.canCreate" as="router-link" :to="{ name: 'page-create', params: { key: space.key } }" size="small" icon="pi pi-plus" :label="t('wiki.page.create')" data-testid="create-page" />
+        <Button as="router-link" :to="{ name: 'space-whiteboards', params: { key: space.key } }" size="small" text icon="pi pi-palette" :label="t('whiteboards.nav')" data-testid="space-whiteboards-link" />
         <Button as="router-link" :to="{ name: 'space-slides', params: { key: space.key } }" size="small" text icon="pi pi-desktop" :label="t('slides.nav')" data-testid="space-slides-link" />
         <Button as="router-link" :to="{ name: 'space-databases', params: { key: space.key } }" size="small" text icon="pi pi-table" :label="t('databases.nav')" data-testid="space-databases-link" />
         <Button as="router-link" :to="{ name: 'space-calendar', params: { key: space.key } }" size="small" text icon="pi pi-calendar" :label="t('calendar.nav')" data-testid="space-calendar-link" />

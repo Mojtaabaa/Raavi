@@ -23,6 +23,7 @@ SQL Server 2022+ · shared database, logical tenant isolation (ADR-005) · EF Co
 
 | Phase | Tables | Notes |
 |---|---|---|
+| 9e | `content.Whiteboards` | Migration `Whiteboards` (RLS + composite FK to the space). Elements are validated JSON (`ElementsJson`), saved as a whole with a revision. |
 | 9d | `content.SlideDecks` | Migration `Slides` (RLS + composite FK to the space). Slides are validated JSON (`SlidesJson`), direction stored as `Ltr`/`Rtl`. |
 | 9c | `content.Databases`, `content.DatabaseRows` | Migration `Databases` (RLS + composite FKs rows → database → space). Schema and row values are JSON keyed by stable column ids; no runtime DDL. |
 | 9b | `content.CalendarEvents` | Migration `Calendar` (RLS + composite FK to the space). Wall-clock dates/times + IANA zone; recurrence as flat columns; cancelled occurrences as a comma-separated date list. |

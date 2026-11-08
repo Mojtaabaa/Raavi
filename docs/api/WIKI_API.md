@@ -68,6 +68,18 @@ Page DTO `rights` gained `canComment`, `canModerateComments`. Push: WebSocket `/
 
 Task DTO: `{id, spaceKey, spaceName, contentId, title, notes, status: Open|Done, assigneeId, assigneeName, dueDate, isOverdue, completedAt, createdAt, createdByName, revision, rights{canEdit, canComplete, canDelete}}`.
 
+## Whiteboards (Phase 9e, ADR-030)
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/spaces/{key}/whiteboards` | View; boards with `elementCount` (the `elements` array is empty in lists) |
+| POST | `/spaces/{key}/whiteboards` | Edit on an active space. `{title, elements: [{id, type: Rect|Ellipse|Text|Sticky|Arrow|Pen, x, y, w, h, rotation, stroke, fill, strokeWidth, text, fontSize, rtl, points}]}` |
+| GET/PUT | `/whiteboards/{id}` | PUT replaces title and the whole element list (order = stacking order), needs **If-Match** `"r{n}"` |
+| DELETE | `/whiteboards/{id}` | Edit |
+| GET | `/whiteboards/{id}/export` | View; SVG (`image/svg+xml`). PNG is rendered by the browser from the canvas |
+
+Elements are validated and normalised (colours `#rrggbb`, finite bounded coordinates, ≤ 2 000 elements, text ≤ 2 000 characters, arrows 2 points, pen ≤ 2 000 points). Errors: `board.title_invalid`, `board.too_many`, `board.element_invalid`, `board.not_found`.
+
 ## Slides (Phase 9d, ADR-029)
 
 | Method | Path | Notes |

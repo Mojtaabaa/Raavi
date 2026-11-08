@@ -44,6 +44,7 @@ Raavi is distributed to customers for on-premises installation, so every bundled
 | DocumentFormat.OpenXml **3.5.1** | MIT | PPTX export of slide decks (Phase 9d). No PDF library: PDF comes from the browser print dialog (ADR-029) |
 | HtmlSanitizer (Ganss.Xss) **11.0.16** (+ AngleSharp, AngleSharp.Css) | MIT | Defence-in-depth HTML sanitizing (Phase 4) |
 | Tiptap **3.33.0** packages: vue-3, core, pm, starter-kit, extension-link, -table, -list, -text-align, -text-style, -highlight, -mention, suggestion, extensions | MIT | Phase 4; open-source only |
+| Konva **10.9.1** | MIT | Whiteboard canvas (Phase 9e, ADR-030; chosen over Fabric 7.4.0 after measuring) |
 | KaTeX **0.19.1** (also forced for Mermaid via npm `overrides`) | MIT | Phase 4 |
 | Hocuspocus **4.8.0** (server, provider, extension-redis), Yjs **13.6.33**, y-indexeddb **9.0.12**, y-protocols 1.0.7, @tiptap/y-tiptap 3.2.0, @tiptap/extension-collaboration(-caret) 3.33.0, prosemirror-model 1.25.12, jose **6.2.15**, ws 8.22.1 (dev) | MIT | Phase 6 |
 | Mermaid **11.17.2** | MIT | Phase 4. **Not 12.x**: 12.x depends on `elkjs` (EPL-2.0 OR GPL-3.0-or-later). Re-check before upgrading. |

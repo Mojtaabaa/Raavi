@@ -67,6 +67,8 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
 
     public DbSet<SlideDeck> SlideDecks => Set<SlideDeck>();
 
+    public DbSet<Whiteboard> Whiteboards => Set<Whiteboard>();
+
     public DbSet<CommentReaction> CommentReactions => Set<CommentReaction>();
 
     public DbSet<Watch> Watches => Set<Watch>();
@@ -364,6 +366,18 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
             b.Property(x => x.SlidesJson).HasColumnType("nvarchar(max)");
             b.Property(x => x.Revision).IsConcurrencyToken();
             b.Ignore(x => x.Slides);
+            b.HasIndex(x => new { x.TenantId, x.SpaceId, x.Title });
+            b.HasOne<Space>().WithMany().HasForeignKey(x => new { x.TenantId, x.SpaceId }).HasPrincipalKey(s => new { s.TenantId, s.Id }).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Whiteboard>(b =>
+        {
+            b.ToTable("Whiteboards", "content");
+            Keys(b);
+            b.Property(x => x.Title).HasMaxLength(Whiteboard.MaxTitleLength);
+            b.Property(x => x.ElementsJson).HasColumnType("nvarchar(max)");
+            b.Property(x => x.Revision).IsConcurrencyToken();
+            b.Ignore(x => x.Elements);
             b.HasIndex(x => new { x.TenantId, x.SpaceId, x.Title });
             b.HasOne<Space>().WithMany().HasForeignKey(x => new { x.TenantId, x.SpaceId }).HasPrincipalKey(s => new { s.TenantId, s.Id }).OnDelete(DeleteBehavior.Restrict);
         });

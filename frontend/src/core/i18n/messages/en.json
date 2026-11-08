@@ -338,6 +338,12 @@
       "too_many": "A deck can have at most 100 slides.",
       "slide_invalid": "A slide is not valid: check its layout, length and characters.",
       "not_found": "Slide deck not found."
+    },
+    "board": {
+      "title_invalid": "A whiteboard needs a title of up to 200 characters.",
+      "too_many": "A whiteboard can have at most 2000 elements.",
+      "element_invalid": "An element is not valid: check its size, colours, text and points.",
+      "not_found": "Whiteboard not found."
     }
   },
   "profile": {
@@ -1131,5 +1137,58 @@
     "exportPptx": "Export PPTX",
     "exportPdf": "Export PDF",
     "printSave": "Print / Save as PDF"
+  },
+  "whiteboards": {
+    "nav": "Whiteboards",
+    "spaceTitle": "Whiteboards — {name}",
+    "new": "New whiteboard",
+    "none": "No whiteboards in this space.",
+    "summary": "{count} elements",
+    "boardTitle": "Board title",
+    "tools": "Drawing tools",
+    "toolNames": {
+      "select": "Select and move",
+      "hand": "Pan",
+      "rect": "Rectangle",
+      "ellipse": "Ellipse",
+      "sticky": "Sticky note",
+      "text": "Text",
+      "arrow": "Arrow",
+      "pen": "Pen"
+    },
+    "undo": "Undo",
+    "redo": "Redo",
+    "stroke": "Line colour",
+    "fill": "Fill colour",
+    "noFill": "No fill",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "fit": "Fit board to view",
+    "canvasHint": "Whiteboard canvas. Use the element list on the side to select and edit items with the keyboard.",
+    "canvasLabel": "Whiteboard {title} with {count} elements",
+    "inspector": "Selected element",
+    "text": "Text",
+    "fontSize": "Font size",
+    "lineWidth": "Line width",
+    "duplicate": "Duplicate",
+    "toFront": "Bring to front",
+    "toBack": "Send to back",
+    "elements": "Elements",
+    "emptyBoard": "Nothing on the board yet. Pick a tool and draw.",
+    "deleteBoard": "Delete whiteboard",
+    "confirmDelete": "Delete the whiteboard “{name}”?",
+    "unsaved": "You have unsaved changes. Leave without saving?",
+    "exportAfterSave": "Save your changes to export SVG.",
+    "exportPng": "Export PNG",
+    "exportSvg": "Export SVG",
+    "emptyExport": "The board is empty.",
+    "types": {
+      "Rect": "Rectangle",
+      "Ellipse": "Ellipse",
+      "Text": "Text",
+      "Sticky": "Sticky note",
+      "Arrow": "Arrow",
+      "Pen": "Pen stroke"
+    }
   }
 }
