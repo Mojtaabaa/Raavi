@@ -14,6 +14,14 @@ Dev API + workers + Vite started; signed in as the dev workspace admin in the bu
 
 **Not covered:** creating/using slides, databases, workflows, approvals, tasks, calendar events; live co-editing between two browsers; AI, webhooks and connectors with real hosts (dev config allows none); PNG/SVG/PPTX/PDF downloads; mobile widths, dark mode, keyboard-only use, screen readers; English UI. Test data left in the dev DB: whiteboard "Browser check board" in space ENGINEERIN.
 
+### 13d — Browser walk-through, second round (2026-11-08)
+
+Same dev stack and browser as 13c; only the two console errors of the signed-out start-up (`/auth/me` 401) appeared during the whole session. **Verified end to end in the real UI:** slide deck (create, add slide, presentation mode); database (create, add rows, edit a cell, value persisted after reload); workflow (create → publish a new page → the run log shows "label 'newpage' added" and the page carries the label); page (create draft, task list, publish with the publish dialog); workspace task (create); calendar event (create, shown on the Persian-calendar grid with accessible day buttons); whiteboard and editor from 13c. No application defect found in this round.
+
+**Observed, not defects:** inline task lists in pages are not linked to the tasks store (documented in 9a); "My tasks" lists only tasks assigned to the user. A doubled line in my test page came from my own repeated typing, confirmed in the saved document.
+
+**Still not covered:** approvals (needs a second user), live co-editing between two browsers, AI/webhook/connector calls with real hosts, PPTX/PDF/PNG/SVG/CSV downloads (downloads need explicit permission), mobile widths, dark mode, keyboard-only and screen-reader use, English UI. **Test data left in the dev DB (space ENGINEERIN):** whiteboard "Browser check board", deck "Browser check deck", database "Browser check db", workflow "Browser check rule", page "Browser check page", task "Browser check task", event "Browser check event".
+
 ### 13a — Issue tracker connectors: GitHub, GitLab, Jira (ADR-043)
 
 ```
