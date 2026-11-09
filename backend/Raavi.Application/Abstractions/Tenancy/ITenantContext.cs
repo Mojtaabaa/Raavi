@@ -29,6 +29,12 @@ public enum TenantResolutionSource
     ExplicitDiscovery = 3,
     BackgroundJob = 4,
     ServicePrincipal = 5,
+
+    /// <summary>Address path prefix on the platform host (<c>/t/{slug}/...</c>, ADR-045).</summary>
+    PathPrefix = 6,
+
+    /// <summary>The installation's default workspace (<c>Raavi:Hosting:DefaultTenantCode</c>) for requests that name none.</summary>
+    DefaultTenant = 7,
 }
 
 public sealed class TenantNotResolvedException : InvalidOperationException

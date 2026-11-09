@@ -37,6 +37,24 @@ public sealed class TenantResolver(ITenantDirectory directory, IOptions<HostingO
         return TenantResolutionResult.Rejected("not_a_tenant_host");
     }
 
+    public async ValueTask<TenantResolutionResult> ResolveSlugAsync(string slug, string normalizedHost, CancellationToken cancellationToken)
+    {
+        var bySlug = await directory.FindBySlugAsync(slug, cancellationToken).ConfigureAwait(false);
+        return bySlug is null ? TenantResolutionResult.Rejected("unknown_slug") : Accept(bySlug, TenantResolutionSource.PathPrefix, normalizedHost);
+    }
+
+    public async ValueTask<TenantResolutionResult> ResolveDefaultAsync(string normalizedHost, CancellationToken cancellationToken)
+    {
+        var code = options.Value.NormalizedDefaultTenantCode;
+        if (code.Length == 0)
+        {
+            return TenantResolutionResult.Rejected("no_default_tenant");
+        }
+
+        var byCode = await directory.FindByCodeAsync(code, cancellationToken).ConfigureAwait(false);
+        return byCode is null ? TenantResolutionResult.Rejected("default_tenant_unknown") : Accept(byCode, TenantResolutionSource.DefaultTenant, normalizedHost);
+    }
+
     private static TenantResolutionResult Accept(TenantSnapshot tenant, TenantResolutionSource source, string host) =>
         tenant.IsActive
             ? TenantResolutionResult.For(new ResolvedTenant(tenant.Id, tenant.Code, tenant.Slug, source, host))

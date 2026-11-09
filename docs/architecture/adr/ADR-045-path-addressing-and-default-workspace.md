@@ -1,0 +1,19 @@
+# ADR-045 — Path addressing of workspaces and a default workspace (Phase 13g)
+
+**Status:** Accepted (2026-11-09). Amends ADR-004 (tenant resolution by host).
+
+## Context
+Host-based addressing (`slug.<base domain>`) needs wildcard DNS and a wildcard certificate. The operator of a single-host installation asked for `raavi.example.com/t/dev` instead, and for a default workspace that answers when none is named. The operator accepted the isolation trade-off below.
+
+## Decisions
+1. **`Raavi:Hosting:Addressing`** = `Subdomain` (default, unchanged), `Path` or `Both`. Verified custom domains always work. `TenantBaseDomains` is required only when subdomains are accepted. Canonical workspace URLs (invitations, e-mails, discovery, workspace switcher): custom domain, else `…/t/<slug>/` in `Path` mode, else the subdomain.
+2. **Resolution stays centralised in the tenant-resolution middleware and happens before routing.** On the system host: `/system/api/…` → system area (`/system` moves to `PathBase`, the routes stay `/api/v1/…`; accepted in every installation); `/{PathPrefix}/{slug}/…` (when paths are accepted) → that workspace (`TenantResolutionSource.PathPrefix`; the prefix moves to `PathBase`); anything else → the **default workspace** when `Raavi:Hosting:DefaultTenantCode` is set (`TenantResolutionSource.DefaultTenant`), else the system area as before. Slugs are validated as lower-case DNS labels and only compared with stored slugs; unknown/inactive workspaces give the same generic 404 as before; a configured but missing default gives the 404 (never silently the system area) while `/system/…` still works; tenant hint headers still never select a workspace (a mismatch is `tenant.conflict`). The system API is reachable only under `/system/api` once a default exists — unprefixed system routes then belong to the default workspace and are refused by the host-kind enforcement (fail closed).
+3. **Links carry the path base:** invitation and external-login URLs are built from scheme + host + `PathBase`; server-rendered attachment links get the prefix; the OIDC relay URL uses `/system/api/…` when a default workspace exists.
+4. **SPA:** `core/runtime/base.ts` derives the area from the address bar (`/t/<slug>` for workspaces, `/system` for the administration area) — router base and the prefix of every API, hub, export and attachment URL. It never sends or chooses a tenant identifier; the server resolves it from the same path. The shipped IIS `web.config` and the Vite dev proxy forward `t/<slug>/(api|hubs|health)` and `system/api` with the original path.
+
+## Consequences and risks
+* **One browser origin for all workspaces:** one session cookie (a browser is signed in to one workspace *or* the administration area at a time; signing in elsewhere replaces the session, and the session check still refuses a session of another workspace), shared `localStorage`, and a script-injection flaw in one workspace could read another workspace's pages for the same signed-in user (host addressing lets the browser prevent that). Use `Path` only for workspaces of equally trusted owners.
+* A workspace slug named like a path of the SPA is not a problem (`/t/` is reserved), but slugs of existing workspaces become part of public URLs.
+* `Location` headers of created resources and the REST links in OpenAPI do not carry the prefix (the SPA does not use them).
+* OIDC/Jira sign-in for path-addressed workspaces was **not** tested (redirect URIs differ per workspace in `Path` mode); the relay URL change is untested beyond building. Collaboration (real-time editing) URLs were not reviewed for the prefix.
+* Verified: API tests against the real pipeline (22), SPA tests with fakes (14), and a manual browser check on the dev stack (`Both`, then default workspace): login at `/t/acme/`, 11 pages, system login at `/system/login`, root = default workspace. **Not** verified on a real IIS installation.

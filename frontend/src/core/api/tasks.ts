@@ -1,4 +1,5 @@
 import { api, apiRequest } from './http'
+import { prefixed } from '@/core/runtime/base'
 
 export interface Task {
   id: string
@@ -38,5 +39,5 @@ export const tasksApi = {
   complete: (id: string) => api<Task>('POST', `/tasks/${enc(id)}/complete`),
   reopen: (id: string) => api<Task>('POST', `/tasks/${enc(id)}/reopen`),
   remove: (id: string) => api<void>('DELETE', `/tasks/${enc(id)}`),
-  exportUrl: (spaceKey: string) => `/api/v1/spaces/${enc(spaceKey)}/tasks/export`,
+  exportUrl: (spaceKey: string) => prefixed(`/api/v1/spaces/${enc(spaceKey)}/tasks/export`),
 }

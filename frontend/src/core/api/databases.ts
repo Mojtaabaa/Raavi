@@ -1,4 +1,5 @@
 import { api, apiRequest } from './http'
+import { prefixed } from '@/core/runtime/base'
 
 export type ColumnType = 'Text' | 'Number' | 'Date' | 'Checkbox' | 'Select' | 'Url'
 
@@ -80,5 +81,5 @@ export const databasesApi = {
   addRow: (id: string, values: Record<string, CellValue>) => api<DbRow>('POST', `/databases/${enc(id)}/rows`, { values }),
   updateRow: (row: DbRow, values: Record<string, CellValue>) => apiRequest<DbRow>('PUT', `/database-rows/${enc(row.id)}`, { values }, { ifMatch: `"r${row.revision}"` }).then((r) => r.data),
   removeRow: (id: string) => api<void>('DELETE', `/database-rows/${enc(id)}`),
-  exportUrl: (id: string) => `/api/v1/databases/${enc(id)}/export`,
+  exportUrl: (id: string) => prefixed(`/api/v1/databases/${enc(id)}/export`),
 }

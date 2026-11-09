@@ -1,4 +1,5 @@
 import { api, apiRequest } from './http'
+import { prefixed } from '@/core/runtime/base'
 
 export type Frequency = 'None' | 'Daily' | 'Weekly' | 'Monthly' | 'Yearly'
 export type RecurrenceCalendar = 'Gregorian' | 'Persian'
@@ -80,5 +81,5 @@ export const calendarApi = {
     apiRequest<CalendarEvent>('PUT', `/calendar/events/${enc(event.id)}`, body, { ifMatch: `"r${event.revision}"` }).then((r) => r.data),
   cancelOccurrence: (id: string, date: string) => api<CalendarEvent>('POST', `/calendar/events/${enc(id)}/exclusions`, { date }),
   remove: (id: string) => api<void>('DELETE', `/calendar/events/${enc(id)}`),
-  exportUrl: (spaceKey: string) => `/api/v1/spaces/${enc(spaceKey)}/calendar/export`,
+  exportUrl: (spaceKey: string) => prefixed(`/api/v1/spaces/${enc(spaceKey)}/calendar/export`),
 }

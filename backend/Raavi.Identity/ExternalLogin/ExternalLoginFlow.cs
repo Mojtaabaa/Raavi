@@ -57,9 +57,9 @@ public sealed partial class ExternalLoginFlow(
             linkUser = currentUser.UserId;
         }
 
-        var tenantBase = $"{http.Request.Scheme}://{http.Request.Host}";
+        var tenantBase = $"{http.Request.Scheme}://{http.Request.Host}{http.Request.PathBase}";
         var callback = provider.CallbackMode == CallbackMode.Relay
-            ? new Uri(urls.SystemBaseUrl, $"/api/v1/auth/relay/{providerId}")
+            ? new Uri(urls.SystemBaseUrl, $"{urls.SystemApiPrefix}/api/v1/auth/relay/{providerId}")
             : new Uri($"{tenantBase}/api/v1/auth/callback/{providerId}");
 
         var state = OpaqueToken.Create();

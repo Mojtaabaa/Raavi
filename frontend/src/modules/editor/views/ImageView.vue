@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { prefixed } from '@/core/runtime/base'
 import { computed } from 'vue'
 import { NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
 import { useI18n } from 'vue-i18n'
@@ -6,7 +7,7 @@ import { useI18n } from 'vue-i18n'
 /** Images are page attachments served by the API after a View check; no external URLs (no tracking pixels). */
 const props = defineProps(nodeViewProps)
 const { t } = useI18n()
-const src = computed(() => (props.node.attrs.attachmentId ? `/api/v1/attachments/${encodeURIComponent(String(props.node.attrs.attachmentId))}` : null))
+const src = computed(() => (props.node.attrs.attachmentId ? prefixed(`/api/v1/attachments/${encodeURIComponent(String(props.node.attrs.attachmentId))}`) : null))
 const widths = [null, 160, 320, 480, 640, 960]
 </script>
 

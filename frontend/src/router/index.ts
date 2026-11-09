@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory, type RouteLocationNormalized, type RouteRecordRaw } from 'vue-router'
+import { routerBase } from '@/core/runtime/base'
 import { useHostStore } from '@/stores/host'
 import { useAuthStore } from '@/stores/auth'
 import { useLocaleStore } from '@/stores/locale'
@@ -109,7 +110,7 @@ export async function guard(to: RouteLocationNormalized) {
   return true
 }
 
-export function createRaaviRouter(history = createWebHistory()) {
+export function createRaaviRouter(history = createWebHistory(routerBase())) {
   const router = createRouter({ history, routes })
   router.beforeEach(guard)
   return router

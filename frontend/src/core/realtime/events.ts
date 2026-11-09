@@ -1,4 +1,5 @@
 import { HttpTransportType, HubConnectionBuilder, HubConnectionState, LogLevel, type HubConnection } from '@microsoft/signalr'
+import { prefixed } from '@/core/runtime/base'
 
 /**
  * In-app event channel (`/hubs/events`, ADR-024 §5). The server only sends content-free signals ("your inbox
@@ -26,7 +27,7 @@ export async function connectEvents(): Promise<void> {
   let c: HubConnection
   try {
     c = new HubConnectionBuilder()
-      .withUrl(new URL('/hubs/events', window.location.href).toString(), { transport: HttpTransportType.WebSockets, skipNegotiation: true })
+      .withUrl(new URL(prefixed('/hubs/events'), window.location.href).toString(), { transport: HttpTransportType.WebSockets, skipNegotiation: true })
       .withAutomaticReconnect([0, 2000, 5000, 10000, 30000, 60000])
       .configureLogging(LogLevel.None)
       .build()

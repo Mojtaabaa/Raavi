@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { prefixed } from '@/core/runtime/base'
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
@@ -16,7 +17,7 @@ async function download() {
   busy.value = true
   failed.value = ''
   try {
-    const response = await fetch('/api/v1/tenant/export', { credentials: 'same-origin' })
+    const response = await fetch(prefixed('/api/v1/tenant/export'), { credentials: 'same-origin' })
     if (!response.ok) {
       failed.value = response.status === 409 ? t('export.inProgress') : t('export.failed')
       return

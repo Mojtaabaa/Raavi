@@ -49,6 +49,35 @@ powershell -ExecutionPolicy Bypass -File C:\Deploy\raavi-0.13.2\scripts\release\
 
 فهرست‌های مجاز اختیاری (خالی یعنی آن قابلیت خاموش است): `Raavi:Ai:AllowedHosts`، `Raavi:Integrations:AllowedWebhookHosts`، `Raavi:Integrations:AllowedConnectorHosts` و `Raavi:Migration:AllowedSourceHosts`.
 
+## ۳ب. یک آدرس برای همه چیز (بدون DNS و TLS wildcard) — آدرس‌دهی مسیری و فضای پیش‌فرض
+
+با `Addressing = Path` همهٔ فضاهای کاری زیر **یک نام میزبان** (`SystemHost`) قرار می‌گیرند؛ پس یک رکورد DNS و یک گواهی کافی است:
+
+| چه چیزی | آدرس |
+|---|---|
+| فضای پیش‌فرض (اگر تنظیم شده باشد) | `https://raavi.example.com/` |
+| هر فضای کاری | `https://raavi.example.com/t/<زیردامنه‌ی-فضا>/` (مثلاً `/t/dev/`) |
+| بخش مدیریت سیستم | `https://raavi.example.com/system/login` |
+
+```json
+"Hosting": {
+  "SystemHost": "raavi.example.com",
+  "Addressing": "Path",
+  "PathPrefix": "t",
+  "DefaultTenantCode": "DEVELOPMENT",
+  "PublicScheme": "https",
+  "KnownProxies": [ "127.0.0.1" ]
+}
+```
+
+- `Addressing`: `Subdomain` (پیش‌فرض: `slug.<دامنهٔ پایه>` و نیازمند DNS و TLS wildcard)، `Path` (همین بالا؛ دیگر به `TenantBaseDomains` نیاز نیست) یا `Both` (هر دو پذیرفته می‌شوند؛ لینک‌ها زیردامنه‌ای ساخته می‌شوند). دامنهٔ سفارشی تأییدشده در هر حالت کار می‌کند.
+- `DefaultTenantCode`: **کد** فضایی که به هر درخواست روی همین میزبان که فضایی را نام نبرد (یعنی ریشهٔ `/`) پاسخ می‌دهد. خالی یعنی ریشه همان بخش مدیریت سیستم است (مثل قبل). وقتی پر باشد، بخش مدیریت فقط از `/system/...` در دسترس است (API آن `/system/api/...` است)؛ اگر کد وجود نداشته باشد، ریشه «فضای کاری یافت نشد» می‌دهد ولی `/system/login` همچنان کار می‌کند.
+- `PathPrefix` (پیش‌فرض `t`) قابل تغییر است؛ واژه‌های `system`، `api`، `hubs`، `health`، `internal` و `assets` پذیرفته نمی‌شوند.
+- لینک‌هایی که سیستم می‌سازد (دعوت‌نامه، ایمیل، «باز کردن فضا») در حالت `Path` به شکل `https://raavi.example.com/t/<slug>/` است.
+- **IIS:** فایل `web.config` همراه بسته در `web\` از قبل مسیرهای `t/<slug>/api|hubs|health` و `system/api` را با مسیر اصلی به API می‌فرستد؛ قاعدهٔ اضافه یا binding اضافه لازم نیست. بعد از تغییر تنظیمات، pool مربوط به API را ری‌استارت کنید.
+
+بهایی که می‌پردازید (مرورگر دیگر فضاها را از هم جدا نمی‌کند): همهٔ فضاها یک origin مشترک دارند، پس **یک کوکی نشست**: مرورگر در هر لحظه فقط به یک فضا (یا به بخش مدیریت) وارد است و ورود به فضای دیگر نشست قبلی را جایگزین می‌کند. همچنین حفرهٔ XSS در یک فضا می‌تواند صفحات فضای دیگر را برای همان کاربرِ واردشده بخواند. فقط وقتی `Path` را بگذارید که همهٔ فضاها متعلق به سازمان‌هایی باشند که به یک اندازه به آن‌ها اعتماد دارید (ADR-045).
+
 ## ۴. دیتابیس و migrator
 
 ۱. یک دیتابیس **خالی** بسازید (migrator جدول می‌سازد، خود دیتابیس را نمی‌سازد).

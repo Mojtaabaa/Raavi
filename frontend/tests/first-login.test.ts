@@ -31,6 +31,10 @@ async function mountAt(path: string, routes: Parameters<typeof fakeFetch>[0]) {
   return { wrapper, calls: f.calls, router }
 }
 
+/** The address bar is under /system, so every API call carries the /system prefix (core/runtime/base.ts). */
+const underSystem = (routes: Parameters<typeof fakeFetch>[0]): Parameters<typeof fakeFetch>[0] =>
+  Object.fromEntries(Object.entries(routes).map(([key, handler]) => [key.replace(' /api/v1/', ' /system/api/v1/'), handler]))
+
 const settle = async () => {
   for (let i = 0; i < 8; i++) {
     await new Promise((r) => setTimeout(r, 20))
@@ -82,13 +86,13 @@ describe('first sign-in of the bootstrap administrator', () => {
 
   it('sends the temporary and the new password, refuses a mismatching repeat locally and ends signed in', async () => {
     window.history.replaceState(null, '', `/system/setup#token=${TOKEN}`)
-    const { calls, router } = await mountAt('/system/setup', {
+    const { calls, router } = await mountAt('/system/setup', underSystem({
       ...base,
       'POST /api/v1/auth/system/setup/inspect': () => json({ email: 'admin@vesta.local', expiresAt: '2026-11-09T12:00:00Z', passwordChangeRequired: true }),
       'POST /api/v1/auth/system/setup/begin': () => json({ secret: 'JBSWY3DPEHPK3PXP', otpAuthUri: 'otpauth://totp/Raavi:admin@vesta.local?secret=JBSWY3DPEHPK3PXP&issuer=Raavi' }),
       'POST /api/v1/auth/system/setup/complete': () => json(systemMe),
       'GET /api/v1/system/tenants': () => json({ items: [], total: 0 }),
-    })
+    }))
     const start = [...document.body.querySelectorAll('button')].find((b) => b.textContent?.includes('Start setup'))!
     start.click()
     await settle()
@@ -111,11 +115,11 @@ describe('first sign-in of the bootstrap administrator', () => {
 
   it('keeps the ordinary invitation setup (no temporary password fields) for invited administrators', async () => {
     window.history.replaceState(null, '', `/system/setup#token=${TOKEN}`)
-    await mountAt('/system/setup', {
+    await mountAt('/system/setup', underSystem({
       ...base,
       'POST /api/v1/auth/system/setup/inspect': () => json({ email: 'new@vesta.local', expiresAt: '2026-11-09T12:00:00Z' }),
       'POST /api/v1/auth/system/setup/begin': () => json({ secret: 'JBSWY3DPEHPK3PXP', otpAuthUri: 'otpauth://totp/Raavi:new@vesta.local?secret=JBSWY3DPEHPK3PXP&issuer=Raavi' }),
-    })
+    }))
     ;[...document.body.querySelectorAll('button')].find((b) => b.textContent?.includes('Start setup'))!.click()
     await settle()
     expect(document.body.querySelector('#pw-new')).toBeNull()

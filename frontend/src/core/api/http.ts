@@ -3,6 +3,8 @@
  * State-changing requests carry the antiforgery token (X-XSRF-TOKEN), fetched lazily and refreshed after every
  * sign-in/out because tokens are bound to the authenticated identity. The client never sends a tenant identifier.
  */
+import { apiUrl } from '@/core/runtime/base'
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -34,7 +36,7 @@ export function resetAntiforgery(): void {
 async function antiforgeryToken(): Promise<string> {
   if (xsrfToken) return xsrfToken
   xsrfPromise ??= (async () => {
-    const r = await fetchImpl('/api/v1/auth/antiforgery', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+    const r = await fetchImpl(apiUrl('/auth/antiforgery'), { credentials: 'same-origin', headers: { Accept: 'application/json' } })
     if (!r.ok) throw new ApiError(r.status, 'csrf.unavailable', 'Could not obtain an anti-forgery token')
     const body = (await r.json()) as { token: string }
     xsrfToken = body.token
@@ -75,7 +77,7 @@ export async function apiRequest<T>(method: HttpMethod, path: string, body?: unk
   if (method !== 'GET') headers['X-XSRF-TOKEN'] = await antiforgeryToken()
   if (options.ifMatch) headers['If-Match'] = options.ifMatch
 
-  const r = await fetchImpl(`/api/v1${path}`, {
+  const r = await fetchImpl(apiUrl(path), {
     method,
     headers,
     credentials: 'same-origin',
@@ -100,7 +102,7 @@ export async function apiRequest<T>(method: HttpMethod, path: string, body?: unk
 
 /** Multipart upload (attachments). Same antiforgery and error handling as {@link api}. */
 export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
-  const r = await fetchImpl(`/api/v1${path}`, {
+  const r = await fetchImpl(apiUrl(path), {
     method: 'POST',
     headers: { Accept: 'application/json', 'X-XSRF-TOKEN': await antiforgeryToken() },
     credentials: 'same-origin',

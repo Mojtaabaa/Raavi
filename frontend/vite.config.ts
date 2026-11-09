@@ -21,6 +21,9 @@ export default defineConfig({
     allowedHosts: ['.raavi.localhost', 'localhost'],
     proxy: {
       '/api': { target: 'http://localhost:5180', changeOrigin: false },
+      // Path-addressed workspaces (/t/<slug>/api, /t/<slug>/hubs) and the system area's API (/system/api), ADR-045.
+      '^/t/[^/]+/(api|hubs|health)': { target: 'http://localhost:5180', changeOrigin: false, ws: true },
+      '^/system/api': { target: 'http://localhost:5180', changeOrigin: false },
       '/health': { target: 'http://localhost:5180', changeOrigin: false },
       // In-app event channel (SignalR over WebSockets).
       '/hubs': { target: 'http://localhost:5180', changeOrigin: false, ws: true },

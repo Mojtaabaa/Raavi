@@ -1,3 +1,5 @@
+import { apiUrl } from '@/core/runtime/base'
+
 /** Mirrors the backend HostContextDto (`GET /api/v1/host/context`). Contains no internal ids. */
 export interface TenantBranding {
   primaryColor: string | null
@@ -27,7 +29,7 @@ export type HostContext =
  */
 export async function fetchHostContext(fetchImpl: typeof fetch = fetch, signal?: AbortSignal): Promise<HostContext> {
   try {
-    const response = await fetchImpl('/api/v1/host/context', { signal, headers: { Accept: 'application/json' } })
+    const response = await fetchImpl(apiUrl('/host/context'), { signal, headers: { Accept: 'application/json' } })
     if (response.status === 404) return { kind: 'not-found' }
     if (!response.ok) return { kind: 'unavailable' }
     const body = (await response.json()) as { kind: string; tenant: TenantPublicContext | null }

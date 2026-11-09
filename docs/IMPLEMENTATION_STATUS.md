@@ -14,6 +14,15 @@ Dev API + workers + Vite started; signed in as the dev workspace admin in the bu
 
 **Not covered:** creating/using slides, databases, workflows, approvals, tasks, calendar events; live co-editing between two browsers; AI, webhooks and connectors with real hosts (dev config allows none); PNG/SVG/PPTX/PDF downloads; mobile widths, dark mode, keyboard-only use, screen readers; English UI. Test data left in the dev DB: whiteboard "Browser check board" in space ENGINEERIN.
 
+### 13g — Path addressing and a default workspace (ADR-045)
+
+```
+dotnet test Raavi.Tests → 481 passed (22 new: prefix parsing, option validation, real-pipeline requests); vitest 27 files / 178 tests (14 new); vue-tsc clean
+browser (dev stack, Addressing=Both then DefaultTenantCode=ACME): /t/acme/ login + 11 pages without errors; /system/login with /system/api calls; root = default workspace
+```
+
+`Raavi:Hosting:{Addressing,PathPrefix,DefaultTenantCode}`; workspaces at `system-host/t/<slug>/`, default workspace at the root, administration at `/system`. **Not verified:** a real IIS installation, OIDC/Jira sign-in and real-time editing under a path prefix; `Location` headers carry no prefix. Risk: one browser origin for all workspaces (ADR-045).
+
 ### 13f — Bootstrap system administrator (ADR-044)
 
 ```

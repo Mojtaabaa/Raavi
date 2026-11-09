@@ -11,6 +11,10 @@ namespace Raavi.Wiki.Api;
 /// <summary>Wiki core REST API (docs/api/WIKI_API.md). Tenant host only; every handler authorizes through the wiki authorizer.</summary>
 public static class WikiEndpoints
 {
+    /// <summary>Server-rendered HTML names attachments by absolute path; a path-addressed workspace (ADR-045) needs its prefix in front.</summary>
+    private static string WithPathBase(string html, HttpContext http) =>
+        http.Request.PathBase.HasValue ? html.Replace("=\"/api/v1/attachments/", $"=\"{http.Request.PathBase}/api/v1/attachments/", StringComparison.Ordinal) : html;
+
     public static void MapWikiEndpoints(this RouteGroupBuilder api)
     {
         ArgumentNullException.ThrowIfNull(api);
@@ -119,8 +123,8 @@ public static class WikiEndpoints
         // ── Editor & attachments (Phase 4) ─────────────────────────────────────────────────────
         g.MapGet("/editor/schema", () => Results.Ok(EditorService.Schema()));
 
-        g.MapGet("/content/{id:guid}/html", async (Guid id, EditorService svc, CancellationToken ct) =>
-            (await svc.RenderAsync(id, ct).ConfigureAwait(false)).ToHttp(html => Results.Ok(new { html })));
+        g.MapGet("/content/{id:guid}/html", async (Guid id, EditorService svc, HttpContext http, CancellationToken ct) =>
+            (await svc.RenderAsync(id, ct).ConfigureAwait(false)).ToHttp(html => Results.Ok(new { html = WithPathBase(html, http) })));
 
         g.MapGet("/content/{id:guid}/attachments", async (Guid id, AttachmentService svc, CancellationToken ct) =>
             (await svc.ListAsync(id, ct).ConfigureAwait(false)).ToHttp(Results.Ok));

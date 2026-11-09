@@ -185,7 +185,7 @@ public static class IdentityEndpoints
     }
 
     /// <summary>Public base URL of the current (already validated) host.</summary>
-    private static Uri BaseUrl(HttpContext http) => new($"{http.Request.Scheme}://{http.Request.Host}/");
+    private static Uri BaseUrl(HttpContext http) => new($"{http.Request.Scheme}://{http.Request.Host}{http.Request.PathBase}/");
 
     /// <summary>Claims helper used by tests and other modules.</summary>
     public static Guid? UserId(this ClaimsPrincipal principal) =>

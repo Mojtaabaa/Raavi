@@ -11,6 +11,12 @@ namespace Raavi.Tenancy.Resolution;
 public interface ITenantResolver
 {
     ValueTask<TenantResolutionResult> ResolveAsync(string normalizedHost, CancellationToken cancellationToken);
+
+    /// <summary>Workspace named by the path prefix of a platform-host request (<c>/t/{slug}</c>). The slug must already be validated.</summary>
+    ValueTask<TenantResolutionResult> ResolveSlugAsync(string slug, string normalizedHost, CancellationToken cancellationToken);
+
+    /// <summary>The installation's default workspace for platform-host requests that name none; rejected when none is configured or it is not active.</summary>
+    ValueTask<TenantResolutionResult> ResolveDefaultAsync(string normalizedHost, CancellationToken cancellationToken);
 }
 
 public enum TenantResolutionOutcome

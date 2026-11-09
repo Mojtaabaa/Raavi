@@ -1,4 +1,5 @@
 import { api, apiRequest } from './http'
+import { prefixed } from '@/core/runtime/base'
 
 export type SlideLayout = 'Title' | 'Bullets' | 'Text'
 export type SlideDirection = 'Ltr' | 'Rtl'
@@ -50,5 +51,5 @@ export const slidesApi = {
   create: (spaceKey: string, body: SlideDeckInput) => api<SlideDeck>('POST', `/spaces/${enc(spaceKey)}/slides`, body),
   update: (deck: SlideDeck, body: SlideDeckInput) => apiRequest<SlideDeck>('PUT', `/slides/${enc(deck.id)}`, body, { ifMatch: `"r${deck.revision}"` }).then((r) => r.data),
   remove: (id: string) => api<void>('DELETE', `/slides/${enc(id)}`),
-  exportUrl: (id: string) => `/api/v1/slides/${enc(id)}/export`,
+  exportUrl: (id: string) => prefixed(`/api/v1/slides/${enc(id)}/export`),
 }

@@ -49,6 +49,35 @@ Secrets are **not** written in files. They are environment variables of the API 
 
 Optional allow-lists (empty = feature off): `Raavi:Ai:AllowedHosts`, `Raavi:Integrations:AllowedWebhookHosts`, `Raavi:Integrations:AllowedConnectorHosts`, `Raavi:Migration:AllowedSourceHosts`.
 
+## 3b. One address for everything (no wildcard DNS/TLS) — path addressing and a default workspace
+
+With `Addressing = Path` the workspaces live under **one host name** (`SystemHost`), so one DNS record and one certificate are enough:
+
+| What | Address |
+|---|---|
+| default workspace (if configured) | `https://raavi.example.com/` |
+| any workspace | `https://raavi.example.com/t/<slug>/` (e.g. `/t/dev/`) |
+| administration area | `https://raavi.example.com/system/login` |
+
+```json
+"Hosting": {
+  "SystemHost": "raavi.example.com",
+  "Addressing": "Path",
+  "PathPrefix": "t",
+  "DefaultTenantCode": "DEVELOPMENT",
+  "PublicScheme": "https",
+  "KnownProxies": [ "127.0.0.1" ]
+}
+```
+
+- `Addressing`: `Subdomain` (default: `slug.<base domain>`, needs wildcard DNS/TLS), `Path` (as above; `TenantBaseDomains` is then not needed) or `Both` (both are accepted; links use subdomains). Verified custom domains work in every mode.
+- `DefaultTenantCode`: the **code** of the workspace that answers every request on the host that names no workspace (the root `/`). Empty = the root is the administration area, as before. When it is set the administration area is reached only through `/system/...` (its API is `/system/api/...`); if the code does not exist, the root answers "workspace not found" while `/system/login` keeps working.
+- `PathPrefix` (default `t`) may be changed; `system`, `api`, `hubs`, `health`, `internal`, `assets` are refused.
+- Links the system creates (invitations, e-mails, "open workspace") use `https://raavi.example.com/t/<slug>/` in `Path` mode.
+- **IIS:** the `web.config` shipped in `web\` already proxies `t/<slug>/api|hubs|health` and `system/api` to the API with the original path; no extra IIS rule or binding is needed. Restart the API pool after changing the settings.
+
+What you give up (the browser no longer separates workspaces): all workspaces share one browser origin, so **one session cookie** — a browser is signed in to one workspace (or the administration area) at a time; signing in to another replaces the session — and a cross-site-scripting flaw in one workspace could read another workspace's pages for the same signed-in user. Use `Path` only when all workspaces belong to organisations you trust equally (ADR-045).
+
 ## 4. Database and the migrator
 
 1. Create an **empty** database (the migrator creates tables, not the database).

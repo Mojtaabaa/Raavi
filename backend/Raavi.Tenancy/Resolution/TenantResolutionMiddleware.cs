@@ -37,6 +37,11 @@ public sealed partial class TenantResolutionMiddleware(RequestDelegate next, ILo
         }
 
         var result = await resolver.ResolveAsync(host, context.RequestAborted).ConfigureAwait(false);
+        if (result.Outcome == TenantResolutionOutcome.SystemHost)
+        {
+            result = await ResolvePlatformPathAsync(context, resolver, options.Value, host).ConfigureAwait(false);
+        }
+
         switch (result.Outcome)
         {
             case TenantResolutionOutcome.SystemHost:
@@ -73,6 +78,65 @@ public sealed partial class TenantResolutionMiddleware(RequestDelegate next, ILo
                 await Reject(context).ConfigureAwait(false);
                 return;
         }
+    }
+
+    /// <summary>
+    /// Requests on the system (platform) host (ADR-045). `/system/api/...` is the system area's API (prefix moved to PathBase so the routes stay
+    /// `/api/v1/...`); `/{prefix}/{slug}/...` selects a workspace when path addressing is on; any other request goes to the default workspace when one
+    /// is configured, else to the system area. The path is rewritten here, before routing; nothing outside the request path and the configuration decides.
+    /// </summary>
+    private static async ValueTask<TenantResolutionResult> ResolvePlatformPathAsync(HttpContext context, ITenantResolver resolver, HostingOptions hosting, string host)
+    {
+        var request = context.Request;
+        if (request.Path.StartsWithSegments("/system/api", StringComparison.Ordinal, out var systemRest))
+        {
+            request.PathBase = request.PathBase.Add("/system");
+            request.Path = "/api" + systemRest.Value;
+            return TenantResolutionResult.System();
+        }
+
+        if (hosting.AcceptsPaths && TryMatchPathTenant(request.Path, hosting.NormalizedPathPrefix, out var slug, out var rest))
+        {
+            request.PathBase = request.PathBase.Add($"/{hosting.NormalizedPathPrefix}/{slug}");
+            request.Path = rest;
+            return await resolver.ResolveSlugAsync(slug, host, context.RequestAborted).ConfigureAwait(false);
+        }
+
+        if (hosting.NormalizedDefaultTenantCode.Length > 0)
+        {
+            return await resolver.ResolveDefaultAsync(host, context.RequestAborted).ConfigureAwait(false);
+        }
+
+        return TenantResolutionResult.System();
+    }
+
+    /// <summary>Matches <c>/{prefix}/{slug}</c> or <c>/{prefix}/{slug}/rest</c>; the slug is lower-case DNS-label syntax (it is compared with stored slugs, never used as a path).</summary>
+    public static bool TryMatchPathTenant(PathString path, string prefix, out string slug, out PathString rest)
+    {
+        slug = string.Empty;
+        rest = PathString.Empty;
+        var value = path.Value;
+        if (value is null || !value.StartsWith('/'))
+        {
+            return false;
+        }
+
+        var segments = value.Split('/', 4);
+        // "" , prefix , slug [, rest]
+        if (segments.Length < 3 || !string.Equals(segments[1], prefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var candidate = segments[2].ToLowerInvariant();
+        if (candidate.Length is 0 or > 63 || candidate[0] == '-' || candidate[^1] == '-' || !candidate.All(ch => ch is (>= 'a' and <= 'z') or (>= '0' and <= '9') or '-'))
+        {
+            return false;
+        }
+
+        slug = candidate;
+        rest = segments.Length == 4 ? new PathString("/" + segments[3]) : new PathString("/");
+        return true;
     }
 
     private static bool HasTenantHint(HttpContext context, HostingOptions options) =>

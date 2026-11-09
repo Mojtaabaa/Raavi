@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import { prefixed } from '@/core/runtime/base'
 import { computed } from 'vue'
 import { NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps(nodeViewProps)
 const { t, n } = useI18n()
-const href = computed(() => (props.node.attrs.attachmentId ? `/api/v1/attachments/${encodeURIComponent(String(props.node.attrs.attachmentId))}` : null))
+const href = computed(() => (props.node.attrs.attachmentId ? prefixed(`/api/v1/attachments/${encodeURIComponent(String(props.node.attrs.attachmentId))}`) : null))
 const size = computed(() => {
   const bytes = Number(props.node.attrs.size ?? 0)
   return bytes >= 1048576 ? `${n(bytes / 1048576, { maximumFractionDigits: 1 })} MB` : `${n(Math.max(1, Math.round(bytes / 1024)))} KB`
