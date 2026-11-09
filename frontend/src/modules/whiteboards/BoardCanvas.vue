@@ -300,7 +300,26 @@ function toPng(): string | null {
   return url
 }
 
-defineExpose({ zoomBy, resetView, toPng })
+/** Centre of what the person sees, in board coordinates (where inserted templates go). */
+function viewCenter(): { x: number; y: number } {
+  if (!ready.value) return { x: 0, y: 0 }
+  const s = stage.scaleX()
+  return { x: (stage.width() / 2 - stage.x()) / s, y: (stage.height() / 2 - stage.y()) / s }
+}
+
+/** Fits the view to the given element (zoom to selection). */
+function focusOn(e: BoardElement) {
+  if (!ready.value) return
+  const b = bounds([e])
+  if (!b) return
+  const pad = 120
+  const scale = Math.min(2, Math.max(0.2, Math.min((stage.width() - pad * 2) / Math.max(b.w, 1), (stage.height() - pad * 2) / Math.max(b.h, 1))))
+  stage.scale({ x: scale, y: scale })
+  stage.position({ x: (stage.width() - b.w * scale) / 2 - b.x * scale, y: (stage.height() - b.h * scale) / 2 - b.y * scale })
+  redrawGrid()
+}
+
+defineExpose({ zoomBy, resetView, toPng, viewCenter, focusOn })
 </script>
 
 <template>

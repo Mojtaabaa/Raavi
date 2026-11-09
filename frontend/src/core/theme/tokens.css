@@ -81,6 +81,23 @@ a.p-button:hover {
 /* user line: picture + name */
 .who { display: inline-flex; align-items: center; gap: 0.4rem; }
 
+/* Material Design 3 look: larger corners, pill buttons, tonal elevation. Only the two material themes. */
+html[data-theme^='material'] {
+  --raavi-radius-sm: 8px;
+  --raavi-radius-md: 16px;
+  --raavi-radius-lg: 28px;
+  --raavi-shadow-1: 0 1px 2px rgb(0 0 0 / 0.3), 0 1px 3px 1px rgb(0 0 0 / 0.15);
+  --raavi-shadow-2: 0 1px 2px rgb(0 0 0 / 0.3), 0 2px 6px 2px rgb(0 0 0 / 0.15);
+  --p-button-border-radius: 999px;
+  --p-inputtext-border-radius: 8px;
+  --p-card-border-radius: 16px;
+  --p-dialog-border-radius: 28px;
+}
+html[data-theme^='material'] .p-button:not(.p-button-text) { box-shadow: var(--raavi-shadow-1); }
+html[data-theme^='material'] .p-card { box-shadow: var(--raavi-shadow-1); border: 0; }
+html[data-theme='material'] .p-card { background: #f3edf7; }
+html[data-theme='materialdark'] .p-card { background: #2b2930; }
+
 .visually-hidden { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* Responsive: wide tables scroll inside their own box instead of widening the page. */

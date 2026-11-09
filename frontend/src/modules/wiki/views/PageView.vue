@@ -20,6 +20,8 @@ import DocumentBody from '../components/DocumentBody.vue'
 import MoveDialog from '../components/MoveDialog.vue'
 import RestrictionsDialog from '../components/RestrictionsDialog.vue'
 import { useSpaceContext } from '../spaceContext'
+import { useCrumbsStore } from '@/stores/crumbs'
+import { spaceTrail } from '@/core/navigation/trail'
 import CommentsPanel from '../comments/CommentsPanel.vue'
 import PageApprovals from '@/modules/approvals/PageApprovals.vue'
 import PageAssistant from '@/modules/ai/PageAssistant.vue'
@@ -33,6 +35,7 @@ const toast = useToast()
 const confirm = useConfirm()
 const locale = useLocaleStore()
 const ctx = useSpaceContext()
+const crumbs = useCrumbsStore()
 
 const page = ref<Page | null>(null)
 const etag = ref<string | null>(null)
@@ -84,6 +87,7 @@ async function load() {
     etag.value = r.etag
     notFound.value = false
     ctx.activePath.value = [...r.value.breadcrumbs.map((b) => b.id), r.value.id]
+    crumbs.set(spaceTrail({ key: r.value.spaceKey, name: r.value.spaceName }, t, ...r.value.breadcrumbs.map((b) => ({ label: b.title, to: { name: 'page', params: { key: r.value.spaceKey, id: b.id } } })), { label: r.value.title }))
     children.value = r.value.status === 'Current' ? await wikiApi.tree(r.value.spaceKey, r.value.id).catch(() => []) : []
     // A page moved to another space is shown under its new space.
     if (r.value.spaceKey !== route.params.key) await router.replace({ name: 'page', params: { key: r.value.spaceKey, id: r.value.id, slug: r.value.slug || undefined } })
@@ -204,13 +208,6 @@ function onMoved(p: Page, newEtag: string | null) {
     <p class="muted">{{ t('wiki.page.notFoundHelp') }}</p>
   </div>
   <article v-else-if="page" class="page">
-    <nav class="crumbs" :aria-label="t('wiki.page.breadcrumbs')">
-      <ol>
-        <li><RouterLink :to="{ name: 'space', params: { key: page.spaceKey } }">{{ page.spaceName }}</RouterLink></li>
-        <li v-for="c in page.breadcrumbs" :key="c.id"><RouterLink :to="{ name: 'page', params: { key: page.spaceKey, id: c.id } }">{{ c.title }}</RouterLink></li>
-      </ol>
-    </nav>
-
     <header class="head">
       <h1 dir="auto">
         <i v-if="page.contentType === 'folder'" class="pi pi-folder" aria-hidden="true" />

@@ -24,6 +24,8 @@ public sealed class TenancyDbContext(DbContextOptions<TenancyDbContext> options,
 
     public DbSet<TenantLogo> TenantLogos => Set<TenantLogo>();
 
+    public DbSet<ErrorLogEntry> ErrorLog => Set<ErrorLogEntry>();
+
     public DbSet<SystemAuditLog> SystemAuditLogs => Set<SystemAuditLog>();
 
     public DbSet<TenantAuditLog> TenantAuditLogs => Set<TenantAuditLog>();
@@ -77,6 +79,25 @@ public sealed class TenancyDbContext(DbContextOptions<TenancyDbContext> options,
             b.Property(x => x.Calendar).HasMaxLength(16).IsUnicode(false);
             b.Property(x => x.RowVersion).IsRowVersion();
             b.HasOne<Tenant>().WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ErrorLogEntry>(b =>
+        {
+            b.ToTable("ErrorLog");
+            b.HasKey(x => x.Id).IsClustered(false);
+            b.Property(x => x.Id).ValueGeneratedNever();
+            b.Property(x => x.Source).HasMaxLength(8).IsUnicode(false);
+            b.Property(x => x.TenantCode).HasMaxLength(16).IsUnicode(false);
+            b.Property(x => x.Method).HasMaxLength(10).IsUnicode(false);
+            b.Property(x => x.Path).HasMaxLength(300);
+            b.Property(x => x.ExceptionType).HasMaxLength(200);
+            b.Property(x => x.Message).HasMaxLength(1100);
+            b.Property(x => x.StackTrace).HasMaxLength(6100);
+            b.Property(x => x.CorrelationId).HasMaxLength(64).IsUnicode(false);
+            b.Property(x => x.UserAgent).HasMaxLength(250);
+            b.Property(x => x.Fingerprint).HasMaxLength(16).IsUnicode(false);
+            b.HasIndex(x => x.OccurredAt).IsClustered();
+            b.HasIndex(x => new { x.Fingerprint, x.OccurredAt });
         });
 
         modelBuilder.Entity<TenantLogo>(b =>

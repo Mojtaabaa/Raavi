@@ -27,12 +27,14 @@ builder.Services.AddWikiModule(builder.Configuration, runOutboxPoller: true);
 builder.Services.AddScoped<TenantFanOut<StaleSweepJob, StaleSweepArgs>>();
 builder.Services.AddMigrationModule(builder.Configuration);
 builder.Services.AddIntegrationsModule(builder.Configuration);
+builder.Services.AddScoped<DatabaseMaintenanceJob>();
 
 var host = builder.Build();
 SandboxCommand.WarnIfDrifted(builder.Environment.ContentRootPath, builder.Configuration["Raavi:SandboxPath"]!, host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Raavi.Sandbox"));
 
 // Recurring system jobs. Tenant jobs are enqueued through ITenantJobScheduler and executed by TenantJobRunner.
 var recurring = host.Services.GetRequiredService<IRecurringJobManager>();
+recurring.AddOrUpdate<DatabaseMaintenanceJob>(DatabaseMaintenanceJob.RecurringJobId, "maintenance", j => j.RunAsync(CancellationToken.None), Cron.Daily(3, 30));
 recurring.AddOrUpdate<DomainVerificationJob>(
     DomainVerificationJob.RecurringJobId,
     "maintenance",

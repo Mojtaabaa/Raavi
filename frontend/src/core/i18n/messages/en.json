@@ -34,7 +34,9 @@
     "ai": "AI assistant",
     "webhooks": "Webhooks",
     "connectors": "Issue trackers",
-    "export": "Data export"
+    "export": "Data export",
+    "breadcrumbs": "You are here",
+    "breadcrumbsMore": "Show the hidden levels"
   },
   "common": {
     "save": "Save",
@@ -1373,7 +1375,39 @@
     "width": "Width",
     "height": "Height",
     "rotation": "Rotation",
-    "shortcuts": "Keys: V select · H pan · R rectangle · E ellipse · D diamond · G triangle · S sticky note · T text · A arrow · L line · P pen · arrow keys move (Shift = 20)"
+    "shortcuts": "Keys: V select · H pan · R rectangle · E ellipse · D diamond · G triangle · S sticky note · T text · A arrow · L line · P pen · Ctrl+C / Ctrl+V copy, paste · [ ] layer · + − 0 zoom · Tab next element · arrow keys move (Shift = 20)",
+    "templates": "Templates",
+    "copy": "Copy",
+    "paste": "Paste",
+    "forward": "Forward",
+    "backward": "Backward",
+    "alignGrid": "Align to grid",
+    "tooMany": "The board would have too many elements.",
+    "templateNames": {
+      "flowchart": "Flowchart",
+      "kanban": "Kanban board",
+      "swot": "SWOT analysis",
+      "mindmap": "Mind map"
+    },
+    "templateWords": {
+      "start": "Start",
+      "step": "Step",
+      "step2": "Other step",
+      "decision": "Decision?",
+      "yes": "yes",
+      "no": "no",
+      "end": "End",
+      "todo": "To do",
+      "doing": "Doing",
+      "done": "Done",
+      "task": "Task",
+      "strengths": "Strengths",
+      "weaknesses": "Weaknesses",
+      "opportunities": "Opportunities",
+      "threats": "Threats",
+      "topic": "Topic",
+      "idea": "Idea"
+    }
   },
   "workflows": {
     "nav": "Workflows",
@@ -1620,15 +1654,26 @@
       "forest": "Forest",
       "rose": "Rose",
       "midnight": "Midnight",
-      "contrast": "High contrast"
+      "contrast": "High contrast",
+      "material": "Material Design",
+      "materialdark": "Material Design (dark)"
     }
   },
   "crop": {
     "title": "Crop the picture",
-    "hint": "Drag the picture to move it; use the slider, the mouse wheel or the + and − keys to zoom.",
+    "hint": "Drag to move · wheel, pinch, + / − to zoom · R rotates · double-click resets",
     "zoom": "Zoom",
     "use": "Use this picture",
-    "failed": "This file could not be read as a picture. Choose a PNG, JPEG or WebP picture."
+    "failed": "This file could not be read as a picture. Choose a PNG, JPEG or WebP picture.",
+    "preview": "Preview",
+    "result": "Saved as {size} × {size} px",
+    "tools": "Picture tools",
+    "zoomOut": "Zoom out",
+    "zoomIn": "Zoom in",
+    "rotateLeft": "Rotate left",
+    "rotateRight": "Rotate right",
+    "mirror": "Mirror",
+    "reset": "Reset"
   },
   "errorHelp": {
     "whatToDo": "What you can do:",
@@ -1671,5 +1716,237 @@
         "1": "Pick a smaller picture, or crop it tighter; the cropped logo must be under 256 KB."
       }
     }
+  },
+  "status": {
+    "title": "System status",
+    "backHome": "Back to Raavi",
+    "lastCheck": "Last successful check",
+    "refresh": "Check now",
+    "pause": "Pause",
+    "resume": "Resume",
+    "every": "Check every",
+    "copy": "Copy report",
+    "copied": "Copied",
+    "kpis": "Key figures",
+    "charts": "Charts",
+    "noData": "No data yet.",
+    "footer": "Environment: {env} · figures cover the last 60 minutes of this server process.",
+    "units": {
+      "d": "d",
+      "h": "h",
+      "m": "m",
+      "s": "s"
+    },
+    "overall": {
+      "Healthy": "All systems operational",
+      "Degraded": "Working, with problems",
+      "Unhealthy": "Not working",
+      "Unreachable": "Cannot reach the server",
+      "Checking": "Checking…"
+    },
+    "overallHelp": {
+      "Healthy": "Raavi is up and every check passed.",
+      "Degraded": "Raavi answers, but something needs attention (see the list below). Some features may be on hold.",
+      "Unhealthy": "A critical part is down. People will see errors until it is fixed.",
+      "Unreachable": "This page cannot get an answer from the API. The numbers below are the last known ones and are greyed out.",
+      "Checking": "Asking the server…"
+    },
+    "state": {
+      "Healthy": "OK",
+      "Degraded": "Attention",
+      "Unhealthy": "Down"
+    },
+    "col": {
+      "component": "Component",
+      "state": "State",
+      "time": "Answered in",
+      "detail": "Details"
+    },
+    "components": {
+      "title": "Components",
+      "self": "API process",
+      "sql": "Database connection",
+      "sql_speed": "Database speed",
+      "workers": "Background worker",
+      "outbox": "Event queue (outbox)",
+      "disk": "Disk space"
+    },
+    "fix": {
+      "workers": "Install and start the RaaviWorkers service (see the install guide, section 6).",
+      "outbox": "Events are waiting for the worker: check that the RaaviWorkers service runs and its log has no errors.",
+      "sql_speed": "Check the SQL Server load, locks and the network path to it.",
+      "sql": "Check that SQL Server is running and the connection string of the application pool is right.",
+      "disk": "Free disk space on the drive of the application (backups, logs, attachments)."
+    },
+    "kpi": {
+      "availability": "Availability (this visit)",
+      "availabilityHelp": "{ok} of {all} checks answered",
+      "roundTrip": "Response time",
+      "roundTripHelp": "From your browser to the API and back",
+      "uptime": "Running for",
+      "version": "Version",
+      "requests": "Requests (60 min)",
+      "requestsHelp": "Served by this API process",
+      "errors": "Server errors",
+      "errorsHelp": "{count} requests failed (HTTP 5xx)",
+      "p95": "Slowest 5 % (p95)",
+      "p95Help": "Average {avg} ms",
+      "memory": "Memory",
+      "memoryHelp": "{threads} threads"
+    },
+    "chart": {
+      "requests": "Requests per minute",
+      "requestsHelp": "Requests per minute (red = server errors)",
+      "latency": "Average time per request",
+      "latencyHelp": "Average milliseconds per minute",
+      "roundTrip": "Your response time",
+      "roundTripHelp": "Milliseconds, this visit"
+    },
+    "unreachable": {
+      "title": "The API cannot be reached",
+      "since": "Unreachable for {time} · {tries} failed checks in a row.",
+      "lastOk": "last answer {time} ago",
+      "check": "What to check",
+      "stale": "The figures and components below are from the last successful check and may be out of date.",
+      "network": {
+        "1": "Check your own network or VPN connection and try opening another site.",
+        "2": "If only this site fails: the web site (IIS \"RaaviWeb\") may be stopped, or a firewall blocks the port.",
+        "3": "On the server, open the site in a browser to see whether the problem is only on your side.",
+        "what": "Your browser cannot reach the web server at all."
+      },
+      "gateway": {
+        "1": "In IIS, make sure the application pool \"RaaviAPI\" and the site \"RaaviApi\" are started (a stopped or crashed pool is the usual cause).",
+        "2": "On the server run: Invoke-WebRequest http://127.0.0.1:5180/health/ready -UseBasicParsing",
+        "3": "Open the Windows Event Log (Application) or the API log folder for the start-up error: wrong connection string, SQL Server stopped, or a missing .NET runtime.",
+        "4": "If the API was just restarted, wait up to a minute: the first start is slow.",
+        "what": "The web server answers, but it cannot reach the API behind it (HTTP 502, 503 or 504)."
+      },
+      "notApi": {
+        "1": "The proxy rule is missing or wrong: the web.config of the web site must forward /health, /api and /hubs to the API.",
+        "2": "Check that the URL Rewrite and ARR modules are installed and the proxy is enabled.",
+        "3": "Check that this address is served by the Raavi web site and not by another site.",
+        "what": "Something answered, but it was not the Raavi API (a web page instead of data)."
+      },
+      "disabled": {
+        "1": "An administrator set Raavi:Health:PublicStatus to false. The sign-in pages still work.",
+        "what": "The API is running, but the public status is switched off."
+      },
+      "timeout": {
+        "1": "The API may be overloaded or still starting: wait a minute and check again.",
+        "2": "Check CPU, memory and the SQL Server on the server.",
+        "3": "If it keeps happening, recycle the application pool \"RaaviAPI\".",
+        "what": "The server did not answer in time."
+      }
+    },
+    "banner": {
+      "down": "Cannot reach the server.",
+      "help": "Your changes are not lost; Raavi keeps trying.",
+      "retry": "Try now",
+      "details": "What is wrong?",
+      "restored": "Connection restored. Reload the page if something looks out of date."
+    }
+  },
+  "activityChart": {
+    "title": "Activity overview",
+    "range": "Period",
+    "days": "Last {n} days",
+    "failed": "The activity chart could not be loaded.",
+    "none": "No activity in this period.",
+    "total": "actions in {n} days",
+    "perDay": "per day on average",
+    "people": "active people",
+    "peakHour": "busiest hour",
+    "legend": "Kinds of work (click to hide)",
+    "alt": "{total} actions in {n} days, by kind of work",
+    "date": "Date",
+    "showChart": "Show chart",
+    "showTable": "Show as table",
+    "byHour": "When people work (hour of the day, UTC)",
+    "byHourAlt": "Actions per hour of the day",
+    "topPeople": "Most active people",
+    "groups": {
+      "created": "Created",
+      "edited": "Edited",
+      "published": "Published",
+      "organised": "Moved / archived / deleted",
+      "access": "Access changes",
+      "other": "Other"
+    }
+  },
+  "activityLog": {
+    "title": "Activity log",
+    "content": "Content and spaces",
+    "security": "Sign-ins and access",
+    "search": "Search everything: person, page, space, action, address, details…",
+    "kind": "Kind",
+    "allKinds": "All kinds",
+    "from": "From",
+    "to": "To",
+    "clear": "Clear filters",
+    "found": "{n} entries",
+    "empty": "Nothing matches.",
+    "failed": "The log could not be loaded.",
+    "exportPage": "Export this page (CSV)",
+    "perPage": "Rows per page",
+    "col": {
+      "time": "Time",
+      "person": "Person",
+      "action": "Action",
+      "target": "Page / item",
+      "space": "Space",
+      "type": "Type",
+      "by": "Done by",
+      "address": "Network address"
+    },
+    "detail": {
+      "kind": "Action code",
+      "version": "Version",
+      "person": "Person id",
+      "content": "Content id",
+      "event": "Event id",
+      "details": "Details",
+      "actor": "Actor"
+    }
+  },
+  "errorLog": {
+    "title": "Error log",
+    "intro": "Every unexpected error of the servers and of people’s browsers. Identical errors are counted together; open a row for the stack trace.",
+    "auto": "Refresh every 10 s",
+    "purge": "Clear the log",
+    "confirmPurge": "Delete ALL entries of the error log?",
+    "purged": "{n} entries deleted.",
+    "search": "Search everything: message, error type, address, workspace, id, stack…",
+    "source": "Source",
+    "allSources": "All sources",
+    "server": "Server",
+    "client": "Browser",
+    "clearGroup": "Show all errors",
+    "groups": "Most frequent errors (last 14 days)",
+    "perDay": "Errors per day",
+    "perDayHelp": "Errors per day (red = server)",
+    "kpi": {
+      "today": "Today",
+      "todayHelp": "{s} server · {c} browser",
+      "fourteen": "Last 14 days",
+      "kinds": "Different errors",
+      "kindsHelp": "Distinct problems seen"
+    },
+    "col": {
+      "count": "Count",
+      "error": "Error",
+      "where": "Request",
+      "last": "Last seen",
+      "workspace": "Workspace"
+    },
+    "d": {
+      "message": "Message",
+      "status": "HTTP status",
+      "correlation": "Correlation id",
+      "user": "User id",
+      "same": "Same error, all time",
+      "browser": "Browser",
+      "stack": "Stack trace"
+    },
+    "empty": "No errors recorded. 🎉"
   }
 }

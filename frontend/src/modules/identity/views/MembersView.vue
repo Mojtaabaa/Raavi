@@ -236,7 +236,7 @@ onMounted(load)
     </Dialog>
 
     <input ref="pictureInput" type="file" accept="image/png,image/jpeg,image/webp" class="visually-hidden" tabindex="-1" aria-hidden="true" data-testid="member-picture-input" @change="picked" />
-    <PictureCropDialog :file="cropFile" :title="t('members.changePicture')" @cancel="cropFile = null" @confirm="savePicture" />
+    <PictureCropDialog :file="cropFile" round :title="t('members.changePicture')" @cancel="cropFile = null" @confirm="savePicture" />
 
     <Dialog :visible="!!passwordTarget" modal :header="t('members.setPassword')" :style="{ inlineSize: 'min(28rem, 95vw)' }" @update:visible="(v: boolean) => !v && (passwordTarget = null)">
       <form class="form" @submit.prevent="savePassword">

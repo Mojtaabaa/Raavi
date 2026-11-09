@@ -235,6 +235,8 @@ public static class IdentityEndpoints
                 ? Results.Ok(await provider.TestConnectionAsync(ct).ConfigureAwait(false))
                 : Results.Problem(statusCode: StatusCodes.Status404NotFound, title: "Not Found"));
 
+        admin.MapGet("/security-events/search", async (string? q, string? type, DateTimeOffset? from, DateTimeOffset? to, int? skip, int? take, TenantIdentityAdminService svc, CancellationToken ct) =>
+            Results.Ok(await svc.SearchSecurityEventsAsync(q, type, from, to, skip ?? 0, take ?? 50, ct).ConfigureAwait(false)));
         admin.MapGet("/security-events", async (int? take, TenantIdentityAdminService svc, CancellationToken ct) => Results.Ok(await svc.ListSecurityEventsAsync(take ?? 100, ct).ConfigureAwait(false)));
 
         // ── System administration (system host) ────────────────────────────────────────────────

@@ -5,7 +5,7 @@ import { palette } from '@primeuix/themes'
  * scales and the icon colour are all derived from them, so every component and icon follows the theme. `light` and `dark` are the
  * built-in token sets (no overrides); `system` follows the device.
  */
-export type ThemeId = 'system' | 'light' | 'dark' | 'chocolate' | 'ocean' | 'forest' | 'rose' | 'midnight' | 'contrast'
+export type ThemeId = 'system' | 'light' | 'dark' | 'material' | 'materialdark' | 'chocolate' | 'ocean' | 'forest' | 'rose' | 'midnight' | 'contrast'
 
 export interface ThemeDef {
   id: ThemeId
@@ -24,6 +24,9 @@ export const THEMES: readonly ThemeDef[] = [
   { id: 'system', dark: false, swatch: ['#f7f8fa', '#161c25', '#0d9488'] },
   { id: 'light', dark: false, swatch: ['#f7f8fa', '#ffffff', '#0d9488'] },
   { id: 'dark', dark: true, swatch: ['#0f141b', '#161c25', '#2dd4bf'] },
+  // Material Design 3 baseline palette (purple) with its tonal surfaces; rounded corners and elevation come from tokens.css ([data-theme^='material']).
+  { id: 'material', dark: false, hue: 280, sat: 8, primary: '#6750a4', fixed: { bg: '#fef7ff', surface: '#ffffff', border: '#cac4d0', text: '#1d1b20', muted: '#49454f', icon: '#6750a4' }, swatch: ['#fef7ff', '#f3edf7', '#6750a4'] },
+  { id: 'materialdark', dark: true, hue: 280, sat: 8, primary: '#d0bcff', fixed: { bg: '#141218', surface: '#211f26', border: '#49454f', text: '#e6e0e9', muted: '#cac4d0', icon: '#d0bcff' }, swatch: ['#141218', '#211f26', '#d0bcff'] },
   { id: 'chocolate', dark: true, hue: 22, sat: 34, primary: '#d08c52', swatch: ['#1f1511', '#2c1f19', '#d08c52'] },
   { id: 'midnight', dark: true, hue: 228, sat: 45, primary: '#7f8fff', swatch: ['#0b1020', '#131a2f', '#7f8fff'] },
   { id: 'ocean', dark: false, hue: 205, sat: 50, primary: '#0b7fb8', swatch: ['#eaf4fa', '#ffffff', '#0b7fb8'] },

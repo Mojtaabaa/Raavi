@@ -4,6 +4,7 @@
  * sign-in/out because tokens are bound to the authenticated identity. The client never sends a tenant identifier.
  */
 import { apiUrl } from '@/core/runtime/base'
+import { isGatewayStatus, markDown, markUp } from './connection'
 
 export class ApiError extends Error {
   constructor(
@@ -22,6 +23,20 @@ let fetchImpl: FetchLike = (...args) => fetch(...args)
 let xsrfToken: string | null = null
 let xsrfPromise: Promise<string> | null = null
 
+/** Every request goes through here so the app notices when the API cannot be reached (banner + status page) and when it is back. */
+async function send(input: string, init?: RequestInit): Promise<Response> {
+  try {
+    const r = await fetchImpl(input, init)
+    if (isGatewayStatus(r.status)) markDown()
+    else markUp()
+    return r
+  } catch (e) {
+    // fetch rejects with a TypeError when the connection fails; an aborted request is not a connection problem
+    if (e instanceof TypeError) markDown()
+    throw e
+  }
+}
+
 /** For tests. */
 export function configureHttp(f: FetchLike): void {
   fetchImpl = f
@@ -36,7 +51,7 @@ export function resetAntiforgery(): void {
 async function antiforgeryToken(): Promise<string> {
   if (xsrfToken) return xsrfToken
   xsrfPromise ??= (async () => {
-    const r = await fetchImpl(apiUrl('/auth/antiforgery'), { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+    const r = await send(apiUrl('/auth/antiforgery'), { credentials: 'same-origin', headers: { Accept: 'application/json' } })
     if (!r.ok) throw new ApiError(r.status, 'csrf.unavailable', 'Could not obtain an anti-forgery token')
     const body = (await r.json()) as { token: string }
     xsrfToken = body.token
@@ -77,7 +92,7 @@ export async function apiRequest<T>(method: HttpMethod, path: string, body?: unk
   if (method !== 'GET') headers['X-XSRF-TOKEN'] = await antiforgeryToken()
   if (options.ifMatch) headers['If-Match'] = options.ifMatch
 
-  const r = await fetchImpl(apiUrl(path), {
+  const r = await send(apiUrl(path), {
     method,
     headers,
     credentials: 'same-origin',
@@ -102,7 +117,7 @@ export async function apiRequest<T>(method: HttpMethod, path: string, body?: unk
 
 /** Multipart upload (attachments). Same antiforgery and error handling as {@link api}. */
 export async function apiUpload<T>(path: string, form: FormData, method: 'POST' | 'PUT' = 'POST'): Promise<T> {
-  const r = await fetchImpl(apiUrl(path), {
+  const r = await send(apiUrl(path), {
     method,
     headers: { Accept: 'application/json', 'X-XSRF-TOKEN': await antiforgeryToken() },
     credentials: 'same-origin',

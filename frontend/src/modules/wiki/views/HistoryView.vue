@@ -14,6 +14,8 @@ import { formatDate } from '@/core/i18n/locales'
 import { useLocaleStore } from '@/stores/locale'
 import RaaviEditor from '@/modules/editor/components/RaaviEditor.vue'
 import { useSpaceContext } from '../spaceContext'
+import { useCrumbsStore } from '@/stores/crumbs'
+import { spaceTrail } from '@/core/navigation/trail'
 
 /** Page history (ADR-019): every published version stays available; compare any two, view, restore as a new version. */
 const { t, te } = useI18n()
@@ -23,6 +25,7 @@ const toast = useToast()
 const confirm = useConfirm()
 const locale = useLocaleStore()
 const ctx = useSpaceContext()
+const crumbs = useCrumbsStore()
 
 const id = computed(() => String(route.params.id))
 const page = ref<Page | null>(null)
@@ -41,6 +44,7 @@ async function load() {
     page.value = p.value
     etag.value = p.etag
     ctx.activePath.value = [...p.value.breadcrumbs.map((b) => b.id), p.value.id]
+    crumbs.set(spaceTrail({ key: p.value.spaceKey, name: p.value.spaceName }, t, ...p.value.breadcrumbs.map((b) => ({ label: b.title, to: { name: 'page', params: { key: p.value.spaceKey, id: b.id } } })), { label: p.value.title, to: { name: 'page', params: { key: p.value.spaceKey, id: p.value.id } } }, { label: t('wiki.page.history') }))
     versions.value = await wikiApi.versions(id.value)
     if (versions.value.length >= 2) {
       to.value = versions.value[0]!.version

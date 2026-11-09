@@ -1051,9 +1051,9 @@ namespace Raavi.Wiki.Persistence.Migrations
                     b.Property<Guid>("ContentId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("ContentJson")
+                    b.Property<byte[]>("ContentJson")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("varbinary(max)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");

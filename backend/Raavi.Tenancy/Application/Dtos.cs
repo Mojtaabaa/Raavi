@@ -34,6 +34,10 @@ public sealed record TenantPublicContextDto(string Slug, LocalizedText DisplayNa
 
 public sealed record LocalizedText(string Fa, string En);
 
+public sealed record ClientErrorRequest(string? Message, string? Stack, string? Url, string? Type);
+
+public sealed record PurgeErrorsRequest(int OlderThanDays);
+
 public sealed record LogoFile(byte[] Data, string ContentType, int Version);
 
 public sealed record HostContextDto(string Kind, TenantPublicContextDto? Tenant);

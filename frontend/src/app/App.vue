@@ -5,6 +5,7 @@ import { useRoute } from 'vue-router'
 import Toast from 'primevue/toast'
 import ConfirmDialog from 'primevue/confirmdialog'
 import AppShell from '@/layouts/AppShell.vue'
+import ConnectionBanner from '@/app/ConnectionBanner.vue'
 import { useLocaleStore } from '@/stores/locale'
 
 const route = useRoute()
@@ -18,6 +19,7 @@ watch(() => localeStore.locale, (value) => (locale.value = value), { immediate: 
 <template>
   <Toast position="bottom-center" />
   <ConfirmDialog />
+  <ConnectionBanner />
   <RouterView v-if="route.meta.bare" />
   <AppShell v-else>
     <RouterView />

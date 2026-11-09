@@ -16,6 +16,7 @@ namespace Raavi.Tenancy.Api;
 public static class TenancyEndpoints
 {
     public const string DiscoveryRateLimitPolicy = "raavi.discovery";
+    public const string ClientErrorRateLimitPolicy = "raavi.client-errors";
 
     public static void MapTenancyEndpoints(this RouteGroupBuilder api)
     {
@@ -34,6 +35,55 @@ public static class TenancyEndpoints
             http.GetHostKind() == RaaviHostKind.Tenant ? LogoResult(http, await config.GetLogoAsync(ct).ConfigureAwait(false)) : Results.NotFound())
             .WithName("GetHostLogo")
             .AllowAnonymous();
+
+        // ── Errors the browser reports (anonymous, rate limited, size limited): they join the error log as source "client". ──
+        api.MapPost("/errors/client", (ClientErrorRequest body, HttpContext http, IErrorSink sink, Raavi.Application.Abstractions.Tenancy.ITenantContext tenant) =>
+            {
+                string? code = null;
+                try
+                {
+                    code = tenant.IsResolved ? tenant.Tenant.Code : null;
+                }
+                catch (Exception)
+                {
+                    // system host
+                }
+
+                sink.Report(new ErrorReport(
+                    DateTimeOffset.UtcNow,
+                    "client",
+                    code,
+                    null,
+                    "GET",
+                    ErrorText.Clean(body.Url, 300),
+                    null,
+                    ErrorText.Clean(body.Type, 200),
+                    ErrorText.Clean(body.Message, ErrorText.MaxMessage),
+                    ErrorText.Clean(body.Stack, ErrorText.MaxStack),
+                    http.TraceIdentifier,
+                    ErrorText.Clean(http.Request.Headers.UserAgent.ToString(), 200)));
+                return Results.NoContent();
+            })
+            .WithName("ReportClientError")
+            .RequireRateLimiting(ClientErrorRateLimitPolicy)
+            .AllowAnonymous();
+
+        // ── System host, system administrators: the error log. ──
+        var errors = api.MapGroup("/system/errors")
+            .RequireHostKind(RaaviHostKind.System)
+            .RequireAuthorization(RaaviPolicies.SystemAdministrator);
+
+        errors.MapGet("/", async (string? q, string? source, DateTimeOffset? from, DateTimeOffset? to, string? fingerprint, int? skip, int? take, ErrorLogService svc, CancellationToken ct) =>
+            Results.Ok(await svc.SearchAsync(q, source, from, to, fingerprint, skip ?? 0, take ?? 50, ct).ConfigureAwait(false)));
+
+        errors.MapGet("/summary", async (int? days, ErrorLogService svc, CancellationToken ct) =>
+            Results.Ok(await svc.SummaryAsync(days ?? 14, ct).ConfigureAwait(false)));
+
+        errors.MapGet("/{id:guid}", async (Guid id, ErrorLogService svc, CancellationToken ct) =>
+            (await svc.GetAsync(id, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+
+        errors.MapPost("/purge", async (PurgeErrorsRequest body, ErrorLogService svc, CancellationToken ct) =>
+            Results.Ok(new { deleted = await svc.PurgeAsync(body.OlderThanDays, ct).ConfigureAwait(false) }));
 
         // ── System host, anonymous, rate-limited: login discovery by tenant code. ───────────────────
         api.MapGet("/discovery/tenants/{code}", async (string code, ITenantDirectory directory, ITenantUrlResolver urls, CancellationToken ct) =>

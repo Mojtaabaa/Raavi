@@ -8,6 +8,7 @@ import { useHostStore } from '@/stores/host'
 import { useLocaleStore } from '@/stores/locale'
 import { useAuthStore } from '@/stores/auth'
 import ActivityList from '../components/ActivityList.vue'
+import ActivityChart from '../components/ActivityChart.vue'
 
 const { t } = useI18n()
 const host = useHostStore()
@@ -44,6 +45,8 @@ onMounted(async () => {
       <h1>{{ t('wiki.home.greeting', { name: auth.me?.displayName ?? '' }) }}</h1>
       <p v-if="welcome" class="welcome" data-testid="welcome">{{ welcome }}</p>
     </header>
+
+    <ActivityChart />
 
     <div class="columns">
       <Card>

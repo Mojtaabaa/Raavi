@@ -140,6 +140,7 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
             b.Property(x => x.Title).HasMaxLength(ContentNode.MaxTitleLength);
             b.Property(x => x.ContentHash).HasMaxLength(64).IsUnicode(false).UseCollation(Bin2);
             b.Property(x => x.ChangeSummary).HasMaxLength(500);
+            b.Property(x => x.ContentJson).HasConversion(GzipText.Converter).HasColumnType("varbinary(max)"); // compressed (GzipText)
             b.Property(x => x.VersionType).HasConversion<int>();
             b.HasIndex(x => new { x.TenantId, x.ContentId, x.VersionNumber }).IsUnique();
             b.Property(x => x.SourceVersionIdentifier).HasMaxLength(64).IsUnicode(false);

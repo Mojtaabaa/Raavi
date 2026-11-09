@@ -9,6 +9,7 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import { databasesApi, type CellValue, type ColumnType, type DatabaseInput, type DbColumn, type DbRow, type NumberSummary, type SpaceDatabase } from '@/core/api/databases'
 import { parseCsv, planImport } from './csv'
+import { useEntityCrumbs } from '@/core/navigation/useEntityCrumbs'
 import { errorMessage } from '@/core/api/errors'
 import { formatDate } from '@/core/i18n/locales'
 import { useLocaleStore } from '@/stores/locale'
@@ -28,6 +29,7 @@ const locale = useLocaleStore()
 const PAGE = 50
 const id = computed(() => String(route.params.id))
 const database = ref<SpaceDatabase | null>(null)
+useEntityCrumbs(() => (database.value ? { spaceKey: database.value.spaceKey, spaceName: database.value.spaceName, title: database.value.name } : null), { labelKey: 'databases.nav', routeName: 'space-databases' })
 const rows = ref<DbRow[]>([])
 const total = ref(0)
 const loading = ref(true)

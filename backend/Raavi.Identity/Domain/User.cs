@@ -57,7 +57,7 @@ public sealed class User : Entity
     /// <summary>Colour theme chosen by the user (null = follow the device). Presentation only.</summary>
     public string? Theme { get; private set; }
 
-    public static readonly IReadOnlySet<string> Themes = new HashSet<string>(StringComparer.Ordinal) { "light", "dark", "chocolate", "ocean", "forest", "rose", "midnight", "contrast" };
+    public static readonly IReadOnlySet<string> Themes = new HashSet<string>(StringComparer.Ordinal) { "light", "dark", "material", "materialdark", "chocolate", "ocean", "forest", "rose", "midnight", "contrast" };
 
     public void SetTheme(string? theme) => Theme = theme is not null && Themes.Contains(theme) ? theme : null;
 

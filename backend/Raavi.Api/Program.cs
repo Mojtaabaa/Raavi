@@ -42,12 +42,25 @@ builder.Services.Configure<ForwardedHeadersOptions>(o =>
 builder.Services.AddRateLimiter(o =>
 {
     o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    o.AddPolicy(TenancyEndpoints.ClientErrorRateLimitPolicy, ctx => RateLimitPartition.GetFixedWindowLimiter(
+        ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     o.AddPolicy(TenancyEndpoints.DiscoveryRateLimitPolicy, ctx => RateLimitPartition.GetFixedWindowLimiter(
         ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 });
 
 builder.Services.AddRaaviHttpFoundation();
+// JSON answers (page trees, lists, status) shrink to a fraction on the wire; Brotli first, gzip as fallback. Responses that already are files (attachments, exports) are skipped by MIME type.
+builder.Services.AddResponseCompression(o =>
+{
+    o.EnableForHttps = true;
+    o.Providers.Add<Microsoft.AspNetCore.ResponseCompression.BrotliCompressionProvider>();
+    o.Providers.Add<Microsoft.AspNetCore.ResponseCompression.GzipCompressionProvider>();
+    o.MimeTypes = ["application/json", "application/problem+json", "text/plain", "text/csv", "image/svg+xml"];
+});
+builder.Services.Configure<Microsoft.AspNetCore.ResponseCompression.BrotliCompressionProviderOptions>(o => o.Level = System.IO.Compression.CompressionLevel.Fastest);
+builder.Services.AddRaaviPlatformStatus();
 builder.Services.AddRaaviInfrastructure(builder.Configuration);
 builder.Services.AddRaaviJobs(builder.Configuration, runServer: false);
 builder.Services.AddTenancyModule(builder.Configuration);
@@ -63,7 +76,10 @@ var app = builder.Build();
 SandboxCommand.WarnIfDrifted(app.Environment.ContentRootPath, builder.Configuration["Raavi:SandboxPath"]!, app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Raavi.Sandbox"));
 
 app.UseForwardedHeaders();
+app.UseResponseCompression();
 app.UseRaaviHttpFoundation();
+app.UseRaaviRequestMetrics();
+app.MapRaaviStatus();
 app.UseTenantResolution();
 app.UseCollaborationSignatures();
 app.UseRouting();

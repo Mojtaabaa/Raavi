@@ -51,6 +51,10 @@ public sealed record InvitationInfoDto(string Email, DateTimeOffset ExpiresAt, b
 
 public sealed record GroupDto(Guid Id, string Name, string? Description, string Source, int MemberCount);
 
+public sealed record SecurityEventRow(DateTimeOffset OccurredAt, string EventType, Guid? UserId, string? UserName, string ActorId, string? ActorName, string? IpAddress, string? Details);
+
+public sealed record SecurityEventPage(int Total, IReadOnlyList<SecurityEventRow> Items, IReadOnlyList<string> Types);
+
 public sealed record SecurityEventDto(DateTimeOffset OccurredAt, string EventType, Guid? UserId, string ActorId, string? IpAddress, string? Details);
 
 public sealed record SystemSetupBeginDto(string Secret, string OtpAuthUri);

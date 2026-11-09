@@ -128,6 +128,21 @@ export function reorder(elements: BoardElement[], id: string, to: 'front' | 'bac
   return to === 'front' ? [...rest, el] : [el, ...rest]
 }
 
+/** One step in the stacking order (the list order is the order of drawing): "forward" = drawn later = on top of one more element. */
+export function stepOrder(elements: BoardElement[], id: string, dir: 'forward' | 'backward'): BoardElement[] {
+  const i = elements.findIndex((e) => e.id === id)
+  const j = dir === 'forward' ? i + 1 : i - 1
+  if (i < 0 || j < 0 || j >= elements.length) return elements
+  const next = [...elements]
+  ;[next[i], next[j]] = [next[j]!, next[i]!]
+  return next
+}
+
+/** Copies of elements for pasting: new ids, shifted by (dx, dy). Arrows and strokes keep their relative points. */
+export function pasteCopies(source: BoardElement[], dx: number, dy: number, room: number): BoardElement[] {
+  return source.slice(0, Math.max(0, room)).map((e) => ({ ...e, id: newId(), x: round(e.x + dx), y: round(e.y + dy), points: [...e.points] }))
+}
+
 export function duplicate(elements: BoardElement[], id: string): { elements: BoardElement[]; id: string | null } {
   const el = elements.find((e) => e.id === id)
   if (!el || elements.length >= MAX_ELEMENTS) return { elements, id: null }

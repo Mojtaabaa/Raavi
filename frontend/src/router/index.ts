@@ -14,6 +14,8 @@ declare module 'vue-router' {
     guestOnly?: boolean
     /** Rendered without the application shell. */
     bare?: boolean
+    /** Reachable by anyone on any host, also when the API is down (the status page). */
+    public?: boolean
   }
 }
 
@@ -47,6 +49,7 @@ export const routes: RouteRecordRaw[] = [
     ],
   },
   { path: '/labels/:name', name: 'label', component: () => import('@/modules/wiki/views/LabelView.vue'), meta: { host: 'tenant', requires: 'user' } },
+  { path: '/admin/activity', name: 'admin-activity', component: () => import('@/modules/administration/views/ActivityLogView.vue'), meta: { host: 'tenant', requires: 'tenantAdmin' } },
   { path: '/admin/permissions', name: 'admin-permissions', component: () => import('@/modules/wiki/views/GlobalPermissionsView.vue'), meta: { host: 'tenant', requires: 'tenantAdmin' } },
   { path: '/login', name: 'login', component: () => import('@/modules/identity/views/LoginView.vue'), meta: { host: 'tenant', guestOnly: true } },
   { path: '/invitations/accept', name: 'accept-invitation', component: () => import('@/modules/identity/views/AcceptInvitationView.vue'), meta: { host: 'tenant' } },
@@ -62,7 +65,9 @@ export const routes: RouteRecordRaw[] = [
   { path: '/system', name: 'system-home', component: () => import('@/modules/tenants/views/DiscoveryView.vue'), meta: { host: 'system' } },
   { path: '/system/login', name: 'system-login', component: () => import('@/modules/identity/views/SystemLoginView.vue'), meta: { host: 'system', guestOnly: true } },
   { path: '/system/setup', name: 'system-setup', component: () => import('@/modules/identity/views/SystemSetupView.vue'), meta: { host: 'system' } },
+  { path: '/system/errors', name: 'system-errors', component: () => import('@/modules/administration/views/ErrorLogView.vue'), meta: { host: 'system', requires: 'systemAdmin' } },
   { path: '/system/tenants', name: 'system-tenants', component: () => import('@/modules/tenants/views/SystemTenantsView.vue'), meta: { host: 'system', requires: 'systemAdmin' } },
+  { path: '/status', name: 'status', component: () => import('@/modules/status/StatusView.vue'), meta: { bare: true, public: true } },
   { path: '/not-found', name: 'not-found', component: () => import('@/modules/tenants/views/WorkspaceNotFound.vue'), meta: { bare: true } },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
@@ -94,6 +99,9 @@ export async function guard(to: RouteLocationNormalized) {
   const auth = useAuthStore()
   const kind = host.context?.kind
 
+  if (to.meta.public) return true
+  // The API did not answer the very first request: explain why instead of looping between routes that all need it.
+  if (kind === 'unavailable') return { name: 'status' }
   if (kind === 'not-found') return to.name === 'not-found' ? true : { name: 'not-found' }
   if (to.name === 'not-found') return true
 

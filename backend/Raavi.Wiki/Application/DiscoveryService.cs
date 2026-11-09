@@ -119,6 +119,95 @@ public sealed class DiscoveryService(WikiDbContext db, WikiAuthorizer authz, Spa
             .ToList());
     }
 
+    private static string Like(string q) => "%" + q.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("%", "\\%", StringComparison.Ordinal).Replace("_", "\\_", StringComparison.Ordinal).Replace("[", "\\[", StringComparison.Ordinal) + "%";
+
+    /// <summary>
+    /// The activity log of the workspace (workspace administrators): every recorded event of every space, searchable by any of its fields — what was
+    /// done (kind), to what (title), where (space key or name), by whom (display name), which version, and when.
+    /// </summary>
+    public async Task<ActivityLogPage> ActivityLogAsync(string? q, string? kind, string? spaceKey, DateTimeOffset? from, DateTimeOffset? to, Guid? actorId, int skip, int take, CancellationToken ct)
+    {
+        var query = db.Activity.AsNoTracking().AsQueryable();
+        if (!string.IsNullOrWhiteSpace(kind))
+        {
+            var k = kind.Trim();
+            query = query.Where(a => a.Kind == k || a.Kind.StartsWith(k + "."));
+        }
+
+        if (!string.IsNullOrWhiteSpace(spaceKey))
+        {
+            var key = spaceKey.Trim().ToUpperInvariant();
+            query = query.Where(a => db.Spaces.Any(s => s.Id == a.SpaceId && s.Key == key));
+        }
+
+        if (from is { } f)
+        {
+            query = query.Where(a => a.OccurredAt >= f);
+        }
+
+        if (to is { } t)
+        {
+            query = query.Where(a => a.OccurredAt < t);
+        }
+
+        if (actorId is { } actor)
+        {
+            query = query.Where(a => a.ActorId == actor);
+        }
+
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var text = q.Trim();
+            var like = Like(text);
+            // Names live in the identity module: find the actors whose name matches, then filter by their ids.
+            var actorIds = await db.Activity.AsNoTracking().Select(a => a.ActorId).Distinct().Take(5000).ToListAsync(ct).ConfigureAwait(false);
+            var names = await directory.GetUserNamesAsync(actorIds, ct).ConfigureAwait(false);
+            var matchingActors = names.Where(n => n.Value.Contains(text, StringComparison.OrdinalIgnoreCase)).Select(n => n.Key).ToList();
+            int? version = int.TryParse(text, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var parsedVersion) ? parsedVersion : null;
+            query = query.Where(a =>
+                EF.Functions.Like(a.Title, like, "\\") ||
+                EF.Functions.Like(a.Kind, like, "\\") ||
+                matchingActors.Contains(a.ActorId) ||
+                (version != null && a.VersionNumber == version) ||
+                db.Spaces.Any(s => s.Id == a.SpaceId && (EF.Functions.Like(s.Key, like, "\\") || EF.Functions.Like(s.Name, like, "\\"))));
+        }
+
+        var total = await query.CountAsync(ct).ConfigureAwait(false);
+        var page = await query.OrderByDescending(a => a.OccurredAt).Skip(Math.Max(0, skip)).Take(Math.Clamp(take, 1, 200)).ToListAsync(ct).ConfigureAwait(false);
+        var spaceIds = page.Select(e => e.SpaceId).Distinct().ToList();
+        var keys = await db.Spaces.AsNoTracking().Where(s => spaceIds.Contains(s.Id)).ToDictionaryAsync(s => s.Id, s => s.Key, ct).ConfigureAwait(false);
+        var pageNames = await directory.GetUserNamesAsync(page.Select(e => e.ActorId).Distinct().ToList(), ct).ConfigureAwait(false);
+        var kinds = await db.Activity.AsNoTracking().Select(a => a.Kind).Distinct().OrderBy(k => k).ToListAsync(ct).ConfigureAwait(false);
+        var items = page.Select(e => new ActivityDto(e.Id, e.Kind, e.SpaceId, keys.GetValueOrDefault(e.SpaceId, string.Empty), e.ContentId, e.Title, e.VersionNumber, e.ActorId, pageNames.GetValueOrDefault(e.ActorId), e.OccurredAt)).ToList();
+        return new ActivityLogPage(total, items, kinds);
+    }
+
+    /// <summary>
+    /// Counts for the activity chart: per day and kind, per kind, per hour of the day and the most active people, over the spaces and content the
+    /// caller can view. Only numbers and names of people leave here, never titles.
+    /// </summary>
+    public async Task<ActivityStatsDto> ActivityStatsAsync(int days, CancellationToken ct)
+    {
+        days = Math.Clamp(days, 1, 120);
+        var spaceIds = (await authz.ViewableSpaceIdsAsync(ct).ConfigureAwait(false)).ToList();
+        var since = new DateTimeOffset(DateTime.UtcNow.Date.AddDays(-(days - 1)), TimeSpan.Zero);
+        var entries = await db.Activity.AsNoTracking().Where(a => spaceIds.Contains(a.SpaceId) && a.OccurredAt >= since)
+            .OrderByDescending(a => a.OccurredAt).Take(50_000).Select(a => new { a.ContentId, a.SpaceId, a.Kind, a.ActorId, a.OccurredAt }).ToListAsync(ct).ConfigureAwait(false);
+
+        var contentIds = entries.Where(e => e.ContentId != null).Select(e => e.ContentId!.Value).Distinct().ToList();
+        var locations = await db.Nodes.AsNoTracking().Where(n => contentIds.Contains(n.Id)).Select(n => new { n.Id, n.SpaceId }).ToListAsync(ct).ConfigureAwait(false);
+        var viewable = await authz.FilterViewableAsync(locations.Select(l => (l.Id, l.SpaceId)).ToList(), ct).ConfigureAwait(false);
+        var visible = entries.Where(e => e.ContentId is null || viewable.Contains(e.ContentId.Value)).ToList();
+
+        var perDay = Enumerable.Range(0, days).Select(i => DateOnly.FromDateTime(since.UtcDateTime.AddDays(i))).Select(d =>
+            new ActivityDayDto(d, visible.Where(e => DateOnly.FromDateTime(e.OccurredAt.UtcDateTime) == d).GroupBy(e => e.Kind).ToDictionary(g => g.Key, g => g.Count()))).ToList();
+        var byKind = visible.GroupBy(e => e.Kind).ToDictionary(g => g.Key, g => g.Count());
+        var byHour = Enumerable.Range(0, 24).Select(h => visible.Count(e => e.OccurredAt.UtcDateTime.Hour == h)).ToList();
+        var top = visible.GroupBy(e => e.ActorId).Select(g => new { g.Key, Count = g.Count() }).OrderByDescending(x => x.Count).Take(8).ToList();
+        var names = await directory.GetUserNamesAsync(top.Select(x => x.Key).ToList(), ct).ConfigureAwait(false);
+        return new ActivityStatsDto(visible.Count, perDay, byKind, top.Select(x => new ActivityActorDto(x.Key, names.GetValueOrDefault(x.Key), x.Count)).ToList(), byHour);
+    }
+
     private async Task<IReadOnlyList<ContentListItemDto>> ToListItemsAsync(List<ContentNode> candidates, int limit, CancellationToken ct)
     {
         var viewable = await authz.FilterViewableAsync(candidates.Select(n => (n.Id, n.SpaceId)).ToList(), ct).ConfigureAwait(false);

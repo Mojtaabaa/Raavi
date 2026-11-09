@@ -14,6 +14,16 @@ Dev API + workers + Vite started; signed in as the dev workspace admin in the bu
 
 **Not covered:** creating/using slides, databases, workflows, approvals, tasks, calendar events; live co-editing between two browsers; AI, webhooks and connectors with real hosts (dev config allows none); PNG/SVG/PPTX/PDF downloads; mobile widths, dark mode, keyboard-only use, screen readers; English UI. Test data left in the dev DB: whiteboard "Browser check board" in space ENGINEERIN.
 
+### 15 — Operations: status page, logs, activity chart, compression, navigation (ADR-048)
+
+```
+dotnet test Raavi.Tests → 508 passed (13 new: request metrics, status endpoint content/privacy/switch, gzip bodies in a varbinary column, client error reporting + search/group/purge/authorization, activity log search by every field, activity stats, security-event search, nightly maintenance); vitest 30 files / 205 tests (11 new); vue-tsc clean
+browser (dev stack): /status healthy-with-problems view, then API killed → "cannot reach the server" with the gateway cause; error log row opened with its stack; activity chart on the home page; breadcrumbs on 9 routes; Material theme applied; crop dialog (found and fixed an infinite render loop of the first version)
+dev database: content.PageVersions 114.7 MB -> 10.4 MB after the CompressPageVersions migration
+```
+
+Status page + `/health/status`, connection banner, error log (`system.ErrorLog`, browser reporter), activity log/chart, security-event search, compressed page bodies, nightly maintenance (`Raavi:Maintenance`), API response compression, breadcrumbs, Material themes, new crop dialog, whiteboard templates/copy-paste/layers/Tab. **Not verified:** a real IIS installation (proxy classification of 502/504/non-API answers was exercised only against the Vite dev proxy); the compression migration on a large database (only 5 000 rows; it switches the RLS policy off inside its transaction); response compression through IIS/ARR; Workers on a real server for the nightly job (tested against the test database only). **Not done:** alerting, metrics shared between API processes, logging of row-level changes of databases/slides/boards.
+
 ### 14 — Experience polish (ADR-047)
 
 ```

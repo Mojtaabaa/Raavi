@@ -454,6 +454,55 @@ public sealed class TenantIdentityAdminService(
             .Select(e => new SecurityEventDto(e.OccurredAt, e.EventType, e.UserId, e.ActorId, e.IpAddress, e.Details))
             .ToListAsync(ct).ConfigureAwait(false);
 
+    private static string Like(string q) => "%" + q.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("%", "\\%", StringComparison.Ordinal).Replace("_", "\\_", StringComparison.Ordinal).Replace("[", "\\[", StringComparison.Ordinal) + "%";
+
+    /// <summary>The security log of this workspace (sign-ins, member and role changes, password resets …), searchable by type, person, address and details.</summary>
+    public async Task<SecurityEventPage> SearchSecurityEventsAsync(string? q, string? type, DateTimeOffset? from, DateTimeOffset? to, int skip, int take, CancellationToken ct)
+    {
+        var query = db.TenantSecurityEvents.AsNoTracking().AsQueryable();
+        if (!string.IsNullOrWhiteSpace(type))
+        {
+            var t = type.Trim();
+            query = query.Where(e => e.EventType == t || e.EventType.StartsWith(t + "."));
+        }
+
+        if (from is { } f)
+        {
+            query = query.Where(e => e.OccurredAt >= f);
+        }
+
+        if (to is { } until)
+        {
+            query = query.Where(e => e.OccurredAt < until);
+        }
+
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var text = q.Trim();
+            var like = Like(text);
+            var matchingUsers = await db.Members.AsNoTracking()
+                .Join(db.Users.AsNoTracking(), m => m.UserId, u => u.Id, (m, u) => u)
+                .Where(u => EF.Functions.Like(u.DisplayName, like, "\\") || (u.Email != null && EF.Functions.Like(u.Email, like, "\\")))
+                .Select(u => u.Id).ToListAsync(ct).ConfigureAwait(false);
+            var matchingIds = matchingUsers.Select(id => id.ToString("D")).ToList();
+            query = query.Where(e =>
+                EF.Functions.Like(e.EventType, like, "\\") ||
+                (e.IpAddress != null && EF.Functions.Like(e.IpAddress, like, "\\")) ||
+                (e.Details != null && EF.Functions.Like(e.Details, like, "\\")) ||
+                EF.Functions.Like(e.ActorId, like, "\\") ||
+                (e.UserId != null && matchingUsers.Contains(e.UserId.Value)) ||
+                matchingIds.Contains(e.ActorId));
+        }
+
+        var total = await query.CountAsync(ct).ConfigureAwait(false);
+        var rows = await query.OrderByDescending(e => e.OccurredAt).Skip(Math.Max(0, skip)).Take(Math.Clamp(take, 1, 200)).ToListAsync(ct).ConfigureAwait(false);
+        var ids = rows.Where(r => r.UserId != null).Select(r => r.UserId!.Value).Concat(rows.Select(r => Guid.TryParse(r.ActorId, out var a) ? a : Guid.Empty).Where(g => g != Guid.Empty)).Distinct().ToList();
+        var names = await db.Users.AsNoTracking().Where(u => ids.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct).ConfigureAwait(false);
+        var types = await db.TenantSecurityEvents.AsNoTracking().Select(e => e.EventType).Distinct().OrderBy(x => x).ToListAsync(ct).ConfigureAwait(false);
+        var items = rows.Select(r => new SecurityEventRow(r.OccurredAt, r.EventType, r.UserId, r.UserId is { } u ? names.GetValueOrDefault(u) : null, r.ActorId, Guid.TryParse(r.ActorId, out var a) ? names.GetValueOrDefault(a) : null, r.IpAddress, r.Details)).ToList();
+        return new SecurityEventPage(total, items, types);
+    }
+
     private bool IsSelf(Guid userId) => currentUser.IsAuthenticated && currentUser.UserId == userId;
 
     private async Task<bool> IsLastActiveAdmin(Guid userId, CancellationToken ct)

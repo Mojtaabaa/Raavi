@@ -29,6 +29,7 @@ public static class ApiFoundationExtensions
         });
 
         services.AddExceptionHandler<DomainExceptionHandler>();
+        services.AddRaaviErrorReporting();
 
         services.AddHealthChecks()
             .AddCheck("self", () => HealthCheckResult.Healthy(), tags: [LiveTag, ReadyTag]);

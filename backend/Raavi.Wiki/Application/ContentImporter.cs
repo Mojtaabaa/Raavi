@@ -417,7 +417,7 @@ public sealed class ContentImporter(WikiDbContext db, IClock clock) : IContentIm
         var examples = new List<UnresolvedLink>();
         var contentOf = pages.ToDictionary(p => p.Id);
         var ids = await db.PageVersions.AsNoTracking()
-            .Where(v => v.VersionType == VersionType.Import && v.ContentJson.Contains(LinkPlaceholder))
+            .Where(v => v.VersionType == VersionType.Import)
             .Join(db.Nodes.Where(n => n.SourceSystem == sourceSystem), v => v.ContentId, n => n.Id, (v, n) => v.Id)
             .ToListAsync(ct).ConfigureAwait(false);
 
@@ -426,6 +426,11 @@ public sealed class ContentImporter(WikiDbContext db, IClock clock) : IContentIm
             var versions = await db.PageVersions.Where(v => batch.Contains(v.Id)).ToListAsync(ct).ConfigureAwait(false);
             foreach (var v in versions)
             {
+                if (!v.ContentJson.Contains(LinkPlaceholder, StringComparison.Ordinal))
+                {
+                    continue; // bodies are stored compressed, so this cannot be filtered in SQL
+                }
+
                 var root = JsonNode.Parse(v.ContentJson)!.AsObject();
                 var changed = false;
                 Rewrite(root["doc"]);

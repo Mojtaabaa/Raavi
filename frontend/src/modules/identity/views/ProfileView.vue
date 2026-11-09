@@ -191,7 +191,7 @@ onMounted(async () => {
       <p v-if="!emailAvailable" class="muted small">{{ t('profile.notifications.emailUnavailable') }}</p>
       <p v-else class="muted small">{{ t('profile.notifications.emailHelp') }}</p>
     </template>
-    <PictureCropDialog :file="cropFile" @cancel="cropFile = null" @confirm="savePicture" />
+    <PictureCropDialog :file="cropFile" round @cancel="cropFile = null" @confirm="savePicture" />
   </section>
 </template>
 

@@ -76,6 +76,14 @@ public sealed record TemplateDto(Guid Id, Guid? SpaceId, string Name, string? De
 
 public sealed record TemplateRequest(string Name, string? Description, JsonElement? Body);
 
+public sealed record ActivityLogPage(int Total, IReadOnlyList<ActivityDto> Items, IReadOnlyList<string> Kinds);
+
+public sealed record ActivityDayDto(DateOnly Date, IReadOnlyDictionary<string, int> ByKind);
+
+public sealed record ActivityActorDto(Guid ActorId, string? Name, int Count);
+
+public sealed record ActivityStatsDto(int Total, IReadOnlyList<ActivityDayDto> Days, IReadOnlyDictionary<string, int> ByKind, IReadOnlyList<ActivityActorDto> TopActors, IReadOnlyList<int> ByHour);
+
 public sealed record ActivityDto(Guid Id, string Kind, Guid SpaceId, string SpaceKey, Guid? ContentId, string Title, int? Version, Guid ActorId, string? ActorName, DateTimeOffset OccurredAt);
 
 public sealed record TenantPermissionsDto(IReadOnlyList<GrantDto> Grants);

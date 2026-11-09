@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useEntityCrumbs } from '@/core/navigation/useEntityCrumbs'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
@@ -11,6 +12,8 @@ import { errorMessage } from '@/core/api/errors'
 import { useAuthStore } from '@/stores/auth'
 import { liveBoardsAvailable, startBoardSession, type BoardSession } from './liveSession'
 import type { LivePeer, LiveStatus } from '@/modules/editor/collaboration'
+import { buildTemplate, TEMPLATE_IDS, type TemplateId } from './boardTemplates'
+import { pasteCopies, snapTo, stepOrder } from './boardModel'
 import { duplicate, FILLS, History, labelOf, MAX_ELEMENTS, PALETTE, patch, remove, reorder, STROKE_WIDTHS, type Tool } from './boardModel'
 
 /**
@@ -43,6 +46,7 @@ const tools: { id: Tool; icon: string }[] = [
 
 const id = computed(() => String(route.params.id))
 const board = ref<Whiteboard | null>(null)
+useEntityCrumbs(() => board.value, { labelKey: 'whiteboards.nav', routeName: 'space-whiteboards' })
 const title = ref('')
 const elements = ref<BoardElement[]>([])
 const selectedId = ref<string | null>(null)
@@ -72,7 +76,9 @@ const saved = ref('')
 const saving = ref(false)
 const history = new History()
 const historyTick = ref(0) // re-evaluates canUndo/canRedo
-const canvas = ref<{ zoomBy(f: number): void; resetView(): void; toPng(): string | null } | null>(null)
+const canvas = ref<{ zoomBy(f: number): void; resetView(): void; toPng(): string | null; viewCenter(): { x: number; y: number }; focusOn(e: BoardElement): void } | null>(null)
+const clipboard = ref<BoardElement[]>([])
+const templateChoice = ref<TemplateId | ''>('')
 
 const fail = (e: unknown) => toast.add({ severity: 'error', summary: errorMessage(e, t, te), life: 6000 })
 const canEdit = computed(() => !!board.value?.canEdit)
@@ -252,6 +258,52 @@ function order(to: 'front' | 'back') {
   if (selected.value && canEdit.value) commit(reorder(elements.value, selected.value.id, to))
 }
 
+function insertTemplate(id: TemplateId) {
+  if (!canEdit.value) return
+  const c = canvas.value?.viewCenter() ?? { x: 400, y: 300 }
+  const labels = Object.fromEntries(['start', 'step', 'step2', 'decision', 'yes', 'no', 'end', 'todo', 'doing', 'done', 'task', 'strengths', 'weaknesses', 'opportunities', 'threats', 'topic', 'idea'].map((k) => [k, t(`whiteboards.templateWords.${k}`)]))
+  const made = buildTemplate(id, Math.round(c.x), Math.round(c.y), labels).map((e) => ({ ...e, rtl: /[\u0590-\u08FF]/.test(e.text) }))
+  if (elements.value.length + made.length > MAX_ELEMENTS) {
+    toast.add({ severity: 'warn', summary: t('whiteboards.tooMany'), life: 5000 })
+    return
+  }
+  commit([...elements.value, ...made])
+  selectedId.value = null
+  templateChoice.value = ''
+}
+
+function copySelected() {
+  if (selected.value) clipboard.value = [{ ...selected.value, points: [...selected.value.points] }]
+}
+
+function pasteClipboard() {
+  if (!canEdit.value || clipboard.value.length === 0) return
+  const copies = pasteCopies(clipboard.value, 30, 30, MAX_ELEMENTS - elements.value.length)
+  if (copies.length === 0) return
+  commit([...elements.value, ...copies])
+  selectedId.value = copies[0]!.id
+  clipboard.value = clipboard.value.map((e) => ({ ...e, x: e.x + 30, y: e.y + 30 })) // the next paste lands a little further
+}
+
+function stepLayer(dir: 'forward' | 'backward') {
+  if (selected.value && canEdit.value) commit(stepOrder(elements.value, selected.value.id, dir))
+}
+
+function alignToGrid() {
+  if (!selected.value || !canEdit.value) return
+  onChange(selected.value.id, { x: snapTo(selected.value.x, true), y: snapTo(selected.value.y, true) })
+}
+
+/** Tab / Shift+Tab walks through the elements, so a board can be worked with the keyboard alone. */
+function cycleSelection(back: boolean) {
+  const list = elements.value
+  if (list.length === 0) return
+  const i = list.findIndex((e) => e.id === selectedId.value)
+  const next = list[(i + (back ? -1 : 1) + list.length) % list.length]!
+  selectedId.value = next.id
+  canvas.value?.focusOn(next)
+}
+
 function undo() {
   if (session && isLive.value) {
     session.board.undo()
@@ -334,6 +386,14 @@ function onKey(event: KeyboardEvent) {
   if (mod && event.key.toLowerCase() === 'z') (event.shiftKey ? redo() : undo())
   else if (mod && event.key.toLowerCase() === 'y') redo()
   else if (mod && event.key.toLowerCase() === 'd') duplicateSelected()
+  else if (mod && event.key.toLowerCase() === 'c') copySelected()
+  else if (mod && event.key.toLowerCase() === 'v') pasteClipboard()
+  else if (event.key === ']' && !mod) stepLayer('forward')
+  else if (event.key === '[' && !mod) stepLayer('backward')
+  else if ((event.key === '+' || event.key === '=') && !mod) canvas.value?.zoomBy(1.2)
+  else if (event.key === '-' && !mod) canvas.value?.zoomBy(1 / 1.2)
+  else if (event.key === '0' && !mod) canvas.value?.resetView()
+  else if (event.key === 'Tab' && !mod && elements.value.length > 0) cycleSelection(event.shiftKey)
   else if (event.key === 'Delete' || event.key === 'Backspace') removeSelected()
   else if (event.key === 'Escape') {
     tool.value = 'select'
@@ -378,6 +438,11 @@ onBeforeRouteLeave(() => !dirty.value || window.confirm(t('whiteboards.unsaved')
       <span class="sep" />
       <Button icon="pi pi-undo" text rounded size="small" :disabled="!canUndo" :aria-label="t('whiteboards.undo')" data-testid="undo" @click="undo" />
       <Button icon="pi pi-refresh" text rounded size="small" :disabled="!canRedo" :aria-label="t('whiteboards.redo')" class="redo" data-testid="redo" @click="redo" />
+      <span class="sep" />
+      <select v-model="templateChoice" class="tpl" :aria-label="t('whiteboards.templates')" data-testid="template-select" @change="templateChoice && insertTemplate(templateChoice as TemplateId)">
+        <option value="">{{ t('whiteboards.templates') }}…</option>
+        <option v-for="id in TEMPLATE_IDS" :key="id" :value="id">{{ t(`whiteboards.templateNames.${id}`) }}</option>
+      </select>
       <span class="sep" />
       <Button icon="pi pi-table" size="small" :severity="gridOn ? 'primary' : 'secondary'" :outlined="!gridOn" :aria-pressed="gridOn" :aria-label="t('whiteboards.grid')" :title="t('whiteboards.grid')" data-testid="toggle-grid" @click="toggle('grid')" />
       <Button icon="pi pi-th-large" size="small" :severity="snapOn ? 'primary' : 'secondary'" :outlined="!snapOn" :aria-pressed="snapOn" :aria-label="t('whiteboards.snap')" :title="t('whiteboards.snap')" data-testid="toggle-snap" @click="toggle('snap')" />
@@ -426,6 +491,11 @@ onBeforeRouteLeave(() => !dirty.value || window.confirm(t('whiteboards.unsaved')
           </div>
           <div class="actions">
             <Button size="small" severity="secondary" outlined icon="pi pi-clone" :label="t('whiteboards.duplicate')" data-testid="duplicate" @click="duplicateSelected" />
+            <Button size="small" severity="secondary" outlined icon="pi pi-copy" :label="t('whiteboards.copy')" data-testid="copy-element" @click="copySelected" />
+            <Button size="small" severity="secondary" outlined icon="pi pi-clipboard" :label="t('whiteboards.paste')" :disabled="clipboard.length === 0" data-testid="paste-element" @click="pasteClipboard" />
+            <Button size="small" severity="secondary" outlined icon="pi pi-angle-up" :label="t('whiteboards.forward')" data-testid="step-forward" @click="stepLayer('forward')" />
+            <Button size="small" severity="secondary" outlined icon="pi pi-angle-down" :label="t('whiteboards.backward')" data-testid="step-backward" @click="stepLayer('backward')" />
+            <Button size="small" severity="secondary" outlined icon="pi pi-th-large" :label="t('whiteboards.alignGrid')" data-testid="align-grid" @click="alignToGrid" />
             <Button size="small" severity="secondary" outlined icon="pi pi-angle-double-up" :label="t('whiteboards.toFront')" data-testid="to-front" @click="order('front')" />
             <Button size="small" severity="secondary" outlined icon="pi pi-angle-double-down" :label="t('whiteboards.toBack')" data-testid="to-back" @click="order('back')" />
             <Button size="small" severity="danger" outlined icon="pi pi-trash" :label="t('common.delete')" data-testid="delete-element" @click="removeSelected" />
@@ -458,6 +528,7 @@ onBeforeRouteLeave(() => !dirty.value || window.confirm(t('whiteboards.unsaved')
 h1 { margin: 0; font-size: 1.5rem; }
 h2 { margin: 0; font-size: 1rem; }
 .board-title { font-size: 1.25rem; font-weight: 600; }
+.tpl { font: inherit; padding: 0.25rem 0.4rem; border: 1px solid var(--raavi-border); border-radius: 4px; background: var(--raavi-surface); color: inherit; max-inline-size: 11rem; }
 .geometry { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--raavi-space-1) var(--raavi-space-2); }
 .geometry label { display: grid; gap: 2px; font-size: 0.8rem; color: var(--raavi-text-muted); }
 .geometry input { inline-size: 100%; }

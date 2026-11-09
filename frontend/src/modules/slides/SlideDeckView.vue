@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useEntityCrumbs } from '@/core/navigation/useEntityCrumbs'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
@@ -33,6 +34,7 @@ const confirm = useConfirm()
 const layouts: SlideLayout[] = ['Title', 'Bullets', 'Text']
 const id = computed(() => String(route.params.id))
 const deck = ref<SlideDeck | null>(null)
+useEntityCrumbs(() => deck.value, { labelKey: 'slides.nav', routeName: 'space-slides' })
 const title = ref('')
 const direction = ref<SlideDirection>('Ltr')
 const slides = ref<Draft[]>([])

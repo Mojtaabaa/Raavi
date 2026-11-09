@@ -34,6 +34,11 @@ public static class TenancyModule
         services.AddScoped<DomainVerificationJob>();
         services.AddSingleton<IDnsTxtResolver, DnsClientTxtResolver>();
 
+        services.AddSingleton<ErrorLogWriter>();
+        services.AddSingleton<IErrorSink>(sp => sp.GetRequiredService<ErrorLogWriter>());
+        services.AddHostedService(sp => sp.GetRequiredService<ErrorLogWriter>());
+        services.AddScoped<ErrorLogService>();
+
         services.AddHealthChecks().AddCheck<TenancyDatabaseHealthCheck>("sql", tags: [ApiFoundationExtensions.ReadyTag]);
         return services;
     }

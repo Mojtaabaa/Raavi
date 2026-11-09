@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { provide, ref, watch } from 'vue'
+import { onBeforeUnmount, provide, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
@@ -8,6 +8,8 @@ import { ApiError } from '@/core/api/http'
 import { wikiApi, type Space, type TreeNode } from '@/core/api/wiki'
 import PageTree from '../components/PageTree.vue'
 import { SPACE_CONTEXT } from '../spaceContext'
+import { useCrumbsStore } from '@/stores/crumbs'
+import { spaceTrail } from '@/core/navigation/trail'
 
 /** Space chrome: sidebar with the page tree and space actions; child routes render the overview, pages and settings. */
 const { t } = useI18n()
@@ -38,6 +40,21 @@ async function reloadSpace() {
 provide(SPACE_CONTEXT, { space, etag, treeVersion, activePath, reloadSpace, reloadTree: () => treeVersion.value++ })
 
 watch(() => route.params.key, reloadSpace, { immediate: true })
+
+// Trail for the views of the space that do not set their own (overview and the section pages).
+const crumbs = useCrumbsStore()
+const SECTIONS: Record<string, string> = { 'space-workflows': 'workflows.nav', 'space-whiteboards': 'whiteboards.nav', 'space-slides': 'slides.nav', 'space-databases': 'databases.nav', 'space-calendar': 'calendar.nav', 'space-tasks': 'tasks.nav', 'space-settings': 'wiki.space.settings' }
+watch(
+  () => [space.value?.key, space.value?.name, route.name] as const,
+  () => {
+    const s = space.value
+    const name = String(route.name ?? '')
+    if (!s || !(name === 'space' || name in SECTIONS)) return
+    crumbs.set(spaceTrail(s, t, ...(name in SECTIONS ? [{ label: t(SECTIONS[name]!) }] : [])))
+  },
+  { immediate: true },
+)
+onBeforeUnmount(() => crumbs.clear())
 
 function open(node: TreeNode) {
   void router.push({ name: 'page', params: { key: String(route.params.key), id: node.id, slug: node.slug || undefined } })

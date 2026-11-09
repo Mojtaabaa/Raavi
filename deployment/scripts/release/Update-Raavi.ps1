@@ -113,6 +113,9 @@ foreach ($d in $folders) {
     }
 }
 
+# The installed version is shown on the status page (read from release.json next to the program folders).
+if ($PSCmdlet.ShouldProcess((Join-Path $install 'release.json'), 'record installed version')) { Copy-Item -Force -LiteralPath $manifestPath -Destination (Join-Path $install 'release.json') }
+
 # Sandbox: created when missing, never replaced.
 $sandbox = Join-Path $install 'sandbox'
 foreach ($sub in @('config', 'data', 'secrets')) {

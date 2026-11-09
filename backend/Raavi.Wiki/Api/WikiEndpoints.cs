@@ -120,6 +120,14 @@ public static class WikiEndpoints
         g.MapGet("/activity", async (int? limit, DiscoveryService svc, CancellationToken ct) =>
             (await svc.ActivityAsync(null, limit ?? 30, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
 
+        g.MapGet("/activity/stats", async (int? days, DiscoveryService svc, CancellationToken ct) =>
+            Results.Ok(await svc.ActivityStatsAsync(days ?? 30, ct).ConfigureAwait(false)));
+
+        // Workspace administrators: the complete, searchable activity log.
+        g.MapGet("/tenant/activity-log", async (string? q, string? kind, string? space, DateTimeOffset? from, DateTimeOffset? to, Guid? actor, int? skip, int? take, DiscoveryService svc, CancellationToken ct) =>
+            Results.Ok(await svc.ActivityLogAsync(q, kind, space, from, to, actor, skip ?? 0, take ?? 50, ct).ConfigureAwait(false)))
+            .RequireAuthorization(RaaviPolicies.TenantAdministrator);
+
         // ── Editor & attachments (Phase 4) ─────────────────────────────────────────────────────
         g.MapGet("/editor/schema", () => Results.Ok(EditorService.Schema()));
 

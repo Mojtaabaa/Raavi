@@ -16,7 +16,7 @@ public sealed class EndpointAuthorizationTests(SqlServerFixture fx, ITestOutputH
     // Anonymous on purpose. Add to this list only after reviewing why the endpoint cannot require a session.
     private static readonly string[] AnonymousAllowList =
     [
-        "* /health/live", "* /health/ready",
+        "* /health/live", "* /health/ready", "GET /health/status",
         // SPA bootstrap and login-page discovery (rate limited, expose only public tenant information)
         "GET /api/v1/host/context", "GET /api/v1/host/logo", "GET /api/v1/discovery/tenants/{code}",
         // JSON 404 for unknown API paths
@@ -27,6 +27,7 @@ public sealed class EndpointAuthorizationTests(SqlServerFixture fx, ITestOutputH
         "GET /api/v1/auth/antiforgery",
         "GET /api/v1/auth/callback/{providerId}",
         "GET /api/v1/auth/providers",
+        "POST /api/v1/errors/client",
         "GET /api/v1/auth/system/options",
         "GET /api/v1/auth/relay/{providerId}",
         "GET /api/v1/auth/relay/complete",

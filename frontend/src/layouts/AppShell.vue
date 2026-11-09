@@ -16,6 +16,7 @@ import CommandPalette from '@/modules/wiki/components/CommandPalette.vue'
 import NotificationBell from '@/modules/notifications/NotificationBell.vue'
 import BrandLogo from '@/app/BrandLogo.vue'
 import HelpLink from '@/app/HelpLink.vue'
+import Breadcrumbs from '@/app/Breadcrumbs.vue'
 import ThemePicker from '@/app/ThemePicker.vue'
 import Popover from 'primevue/popover'
 import UserAvatar from '@/app/UserAvatar.vue'
@@ -69,7 +70,14 @@ type NavItem = { to: { name: string }; label: string; icon: string }
 const nav = computed<NavItem[]>(() => {
   const me = auth.me
   if (!me) return []
-  if (isSystemHost.value) return me.isSystemAdministrator ? [{ to: { name: 'system-tenants' }, label: t('nav.tenants'), icon: 'pi pi-building' }] : []
+  if (isSystemHost.value) {
+    return me.isSystemAdministrator
+      ? [
+          { to: { name: 'system-tenants' }, label: t('nav.tenants'), icon: 'pi pi-building' },
+          { to: { name: 'system-errors' }, label: t('errorLog.title'), icon: 'pi pi-exclamation-triangle' },
+        ]
+      : []
+  }
   return [
     { to: { name: 'home' }, label: t('nav.home'), icon: 'pi pi-home' },
     { to: { name: 'spaces' }, label: t('nav.spaces'), icon: 'pi pi-th-large' },
@@ -91,6 +99,7 @@ const adminNav = computed<NavItem[]>(() => {
     { to: { name: 'admin-ai' }, label: t('nav.ai'), icon: 'pi pi-sparkles' },
     { to: { name: 'admin-connectors' }, label: t('nav.connectors'), icon: 'pi pi-github' },
     { to: { name: 'admin-webhooks' }, label: t('nav.webhooks'), icon: 'pi pi-link' },
+    { to: { name: 'admin-activity' }, label: t('activityLog.title'), icon: 'pi pi-history' },
     { to: { name: 'admin-export' }, label: t('nav.export'), icon: 'pi pi-download' },
     { to: { name: 'admin-migrations' }, label: t('nav.migrations'), icon: 'pi pi-cloud-download' },
   ]
@@ -190,6 +199,7 @@ async function signOut() {
   </header>
   <CommandPalette v-if="canSearch" v-model:visible="paletteOpen" />
   <main id="main" class="shell-main" tabindex="-1">
+    <Breadcrumbs v-if="auth.me" />
     <slot />
   </main>
 </template>

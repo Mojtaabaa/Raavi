@@ -14,6 +14,7 @@ import { applyDocumentLocale } from '@/core/i18n/locales'
 import { RaaviPreset } from '@/core/theme/preset'
 import { useLocaleStore } from '@/stores/locale'
 import { useThemeStore } from '@/stores/theme'
+import { installErrorReporter, reportClientError } from '@/core/runtime/errorReporter'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -32,4 +33,9 @@ app.use(PrimeVue, {
 app.use(ToastService)
 app.use(ConfirmationService)
 
+installErrorReporter()
+app.config.errorHandler = (err, _instance, info) => {
+  console.error(err)
+  reportClientError(err, info)
+}
 app.mount('#app')
