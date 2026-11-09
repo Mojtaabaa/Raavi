@@ -50,6 +50,9 @@ if (-not $SkipFrontend) {
     Copy-Item -Recurse -LiteralPath (Join-Path $repo 'frontend/dist') -Destination (Join-Path $target 'web')
     # IIS: SPA fallback + proxy of api/hubs/health to the API site (docs/deployment/INSTALL_WINDOWS_IIS.md)
     Copy-Item -LiteralPath (Join-Path $repo 'deployment/iis/web.config') -Destination (Join-Path $target 'web/web.config')
+    # user guide (Persian) served as static files at /help/fa/
+    New-Item -ItemType Directory -Path (Join-Path $target 'web/help/fa') -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $repo 'docs/user-guide/fa/index.html') -Destination (Join-Path $target 'web/help/fa/index.html')
 }
 
 Write-Host '== copy collaboration, schema, defaults, docs'
