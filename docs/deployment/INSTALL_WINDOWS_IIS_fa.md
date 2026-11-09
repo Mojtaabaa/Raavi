@@ -137,16 +137,16 @@ Start-Service RaaviWorkers
 
 ## ۷. سایت عمومی (رابط کاربری + پروکسی)
 
-۱. تنظیمات یک‌بارهٔ سرور (روشن‌کردن پروکسی ARR، حفظ Host اصلی و اجازهٔ هدرهای forwarded):
+۱. تنظیمات یک‌بارهٔ سرور (روشن‌کردن پروکسی ARR و اجازهٔ هدرهای forwarded):
 
 ```powershell
 $a = "$env:windir\System32\inetsrv\appcmd.exe"
-& $a set config -section:system.webServer/proxy /enabled:"True" /preserveHostHeader:"True" /commit:apphost
+& $a set config -section:system.webServer/proxy /enabled:"True" /commit:apphost
 & $a set config -section:system.webServer/rewrite/allowedServerVariables /+"[name='HTTP_X_FORWARDED_HOST']" /commit:apphost
 & $a set config -section:system.webServer/rewrite/allowedServerVariables /+"[name='HTTP_X_FORWARDED_PROTO']" /commit:apphost
 ```
 
-این‌ها تنظیمات ARR در **سطح کل سرور** هستند. اگر سایت‌های دیگری روی همین سرور از ARR بدون حفظ Host استفاده می‌کنند (مثلاً سایت‌های دیگر شما)، آن‌ها را فقط برای این سایت بگذارید (`appcmd set config "RaaviWeb" -section:system.webServer/proxy ...` که آزموده نشده است).
+**گزینهٔ `preserveHostHeader` را روی سرور روشن نکنید.** این گزینه در سطح کل سرور اثر می‌گذارد: سایت‌های دیگری که روی همین سرور با reverse proxy به یک backend با نام داخلی وصل می‌شوند، نام عمومی را به backend می‌فرستند و 404 می‌گیرند (در اولین نصب همین اتفاق افتاد). راوی به آن نیاز ندارد: قاعدهٔ `web.config` میزبان و پروتکل اصلی را با `X-Forwarded-Host` و `X-Forwarded-Proto` می‌فرستد و API آن‌ها را از پروکسی روی loopback قبول می‌کند (`KnownProxies`).
 
 ۲. **Site** با نام `RaaviWeb`: مسیر فیزیکی `D:\Raavi\web`، bindingهای https برای `admin.example.com` و `*.example.com` با گواهی wildcard. pool با No Managed Code کافی است.
 
@@ -193,7 +193,7 @@ powershell -ExecutionPolicy Bypass -File C:\Deploy\raavi-<نسخهٔ-جدید>\s
 |---|---|
 | خطای 500.30 یا 502.5 از سایت API | Hosting Bundle نصب نیست، رشتهٔ اتصال غلط است، یا `sandbox\config` پیدا نشده؛ موقتاً `stdoutLogEnabled="true"` را در `D:\Raavi\api\web.config` بگذارید |
 | `/health/ready` وضعیت Unhealthy می‌دهد | دیتابیس در دسترس نیست یا لاگین `raavi_app` دسترسی ندارد (بخش ۴ مرحلهٔ ۳) |
-| ورود روی `admin.` کار می‌کند ولی میزبان فضای کاری «پیدا نشد» می‌دهد | `TenantBaseDomains` یا `SystemHost` با هم نمی‌خوانند، یا ARR نام میزبان را نگه نمی‌دارد |
+| ورود روی `admin.` کار می‌کند ولی میزبان فضای کاری «پیدا نشد» می‌دهد | `TenantBaseDomains` یا `SystemHost` با هم نمی‌خوانند، یا قاعدهٔ پروکسی `X-Forwarded-Host` را نمی‌فرستد (متغیر در `allowedServerVariables` مجاز نشده) |
 | صفحهٔ رابط کاربری باز می‌شود ولی همهٔ فراخوانی‌های API شکست می‌خورند | URL Rewrite یا ARR نصب نیست، یا پروکسی روشن نشده؛ `https://admin.example.com/health/live` را امتحان کنید |
 | کوکی نمی‌ماند یا ورود بی‌پایان است | `PublicScheme` برابر `https` نیست، یا سایت با نام میزبانی غیر از تنظیمات باز شده |
 | ایمیل اعلان نمی‌آید و رویدادها اجرا نمی‌شوند | سرویس `RaaviWorkers` اجرا نمی‌شود (`workers.err.log`) یا `Mode` ایمیل `Disabled` است |

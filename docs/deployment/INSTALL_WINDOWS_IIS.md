@@ -7,7 +7,7 @@
 ```
 browser ──https──► IIS site "RaaviWeb"  (D:\Raavi\web, bindings admin.<domain> and *.<domain>)
                     ├─ static files of the SPA (+ index.html fallback)
-                    └─ api/ hubs/ health/  ──proxy (ARR, host header preserved)──►  IIS site "RaaviApi"
+                    └─ api/ hubs/ health/  ──proxy (ARR, X-Forwarded-Host)──►  IIS site "RaaviApi"
                                                                                      (D:\Raavi\api, http://127.0.0.1:5180, in-process)
 Windows service "RaaviWorkers" (NSSM)  – outbox, notifications, scheduled jobs (no web, no port)
 SQL Server  ◄── API and workers (login raavi_app)      migrator (login raavi_migrator, run by hand)
@@ -128,15 +128,15 @@ Start-Service RaaviWorkers
 
 ## 7. The public site (SPA + proxy)
 
-1. One-time server settings (ARR proxy on, original host header preserved, forwarded headers allowed):
+1. One-time server settings (ARR proxy on, forwarded headers allowed):
 
 ```powershell
 $a = "$env:windir\System32\inetsrv\appcmd.exe"
-& $a set config -section:system.webServer/proxy /enabled:"True" /preserveHostHeader:"True" /commit:apphost
+& $a set config -section:system.webServer/proxy /enabled:"True" /commit:apphost
 & $a set config -section:system.webServer/rewrite/allowedServerVariables /+"[name='HTTP_X_FORWARDED_HOST']" /commit:apphost
 & $a set config -section:system.webServer/rewrite/allowedServerVariables /+"[name='HTTP_X_FORWARDED_PROTO']" /commit:apphost
 ```
-These are **server-wide** ARR settings. If other sites on the server rely on ARR without host preservation, set them for this site only instead (`appcmd set config "RaaviWeb" -section:system.webServer/proxy ...`, not tested).
+**Do not set `preserveHostHeader` on the server.** It is a server-wide ARR setting: other sites that proxy to a backend by an internal name (reverse-proxy sites on the same server) then send the public host name to their backend and answer 404 (this happened on the first installation). Raavi does not need it: the rule in `web.config` sends the original host and scheme as `X-Forwarded-Host` / `X-Forwarded-Proto`, and the API trusts them from the proxy on loopback (`KnownProxies`). If your server really lacks any other ARR site you may enable it, but it is not required.
 2. **Site** `RaaviWeb`: physical path `D:\Raavi\web`, https bindings `admin.example.com` and `*.example.com` with the wildcard certificate (a pool with No Managed Code is enough).
 3. `D:\Raavi\web\web.config` (shipped in the package, source `deployment/iis/web.config`) does the rest: proxies `api/`, `hubs/`, `health/` to `http://127.0.0.1:5180`, serves `index.html` for every other non-file URL, sets the Content-Security-Policy and caches only the hashed files in `assets/`. `/internal/*` is **not** proxied on purpose. If your API listens elsewhere, change the two URLs in that file (and re-apply that change after upgrades).
 4. Never put `sandbox\` inside the web folder; the application refuses to start if it is inside a web root.
@@ -173,7 +173,7 @@ It stops the pool and the service, verifies the package, keeps a rollback copy i
 |---|---|
 | 500.30 / 502.5 from the API site | wrong .NET runtime (Hosting Bundle missing), a bad connection string, or `sandbox\config` not found; temporarily set `stdoutLogEnabled="true"` in `D:\Raavi\api\web.config` |
 | `/health/ready` Unhealthy | database unreachable or the `raavi_app` login lacks rights (step 4.3) |
-| Login works on `admin.` but a workspace host shows "not found" | `TenantBaseDomains`/`SystemHost` mismatch, or ARR not preserving the host header |
+| Login works on `admin.` but a workspace host shows "not found" | `TenantBaseDomains`/`SystemHost` mismatch, or the proxy rule not sending `X-Forwarded-Host` (server variable not allowed in `allowedServerVariables`) |
 | Browser shows the SPA but every API call fails | URL Rewrite/ARR not installed or proxy not enabled; test `https://admin.example.com/health/live` |
 | Cookies not kept / endless login | `PublicScheme` not `https`, or the site is reached through a different host name than the one in settings |
 | No notification e-mail, no events | the `RaaviWorkers` service is not running (`workers.err.log`) or e-mail `Mode` is `Disabled` |
