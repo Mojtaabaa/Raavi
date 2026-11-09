@@ -214,6 +214,9 @@ namespace Raavi.Tenancy.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("LogoVersion")
+                        .HasColumnType("int");
+
                     b.Property<string>("PrimaryColor")
                         .HasMaxLength(7)
                         .IsUnicode(false)
@@ -306,6 +309,39 @@ namespace Raavi.Tenancy.Persistence.Migrations
                     b.ToTable("TenantDomains", "system");
                 });
 
+            modelBuilder.Entity("Raavi.Tenancy.Domain.TenantLogo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<byte[]>("Data")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("TenantId")
+                        .IsUnique();
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId"));
+
+                    b.ToTable("TenantLogos", "system");
+                });
+
             modelBuilder.Entity("Raavi.Tenancy.Domain.TenantSettings", b =>
                 {
                     b.Property<Guid>("Id")
@@ -375,6 +411,15 @@ namespace Raavi.Tenancy.Persistence.Migrations
                 });
 
             modelBuilder.Entity("Raavi.Tenancy.Domain.TenantDomain", b =>
+                {
+                    b.HasOne("Raavi.Tenancy.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Raavi.Tenancy.Domain.TenantLogo", b =>
                 {
                     b.HasOne("Raavi.Tenancy.Domain.Tenant", null)
                         .WithMany()

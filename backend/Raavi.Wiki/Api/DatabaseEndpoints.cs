@@ -37,8 +37,8 @@ public static class DatabaseEndpoints
 
         g.MapDelete("/databases/{id:guid}", async (Guid id, DatabaseService svc, CancellationToken ct) => (await svc.DeleteAsync(id, ct).ConfigureAwait(false)).ToHttp());
 
-        g.MapGet("/databases/{id:guid}/rows", async (Guid id, string? q, string? sort, string? dir, int? skip, int? take, DatabaseService svc, CancellationToken ct) =>
-            (await svc.RowsAsync(id, q, sort, string.Equals(dir, "desc", StringComparison.OrdinalIgnoreCase), skip ?? 0, take ?? 100, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+        g.MapGet("/databases/{id:guid}/rows", async (Guid id, string? q, string? sort, string? dir, int? skip, int? take, [Microsoft.AspNetCore.Mvc.FromQuery(Name = "f")] string[]? f, DatabaseService svc, CancellationToken ct) =>
+            (await svc.RowsAsync(id, q, sort, string.Equals(dir, "desc", StringComparison.OrdinalIgnoreCase), skip ?? 0, take ?? 100, ct, f?.Take(10).ToList()).ConfigureAwait(false)).ToHttp(Results.Ok));
 
         g.MapPost("/databases/{id:guid}/rows", async (Guid id, DatabaseRowRequest body, DatabaseService svc, HttpContext http, CancellationToken ct) =>
             (await svc.AddRowAsync(id, body, ct).ConfigureAwait(false)).ToHttp(r =>

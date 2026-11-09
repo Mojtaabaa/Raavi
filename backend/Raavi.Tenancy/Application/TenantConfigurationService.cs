@@ -105,7 +105,100 @@ public sealed class TenantConfigurationService(TenancyDbContext db, TenancyAudit
 
     private static TenantSettingsDto ToDto(TenantSettings s) => new(s.DefaultLocale, s.TimeZone, s.Calendar, s.StorageQuotaBytes);
 
-    private static TenantBrandingDto ToDto(TenantBranding? b) => new(b?.PrimaryColor, b?.SecondaryColor, b?.WelcomeMessageFa, b?.WelcomeMessageEn);
+    private static TenantBrandingDto ToDto(TenantBranding? b) => new(b?.PrimaryColor, b?.SecondaryColor, b?.WelcomeMessageFa, b?.WelcomeMessageEn, b?.LogoVersion ?? 0);
+
+    public const int MaxLogoBytes = 256 * 1024;
+
+    private static readonly Error LogoTooLarge = new("logo.too_large", "The logo is too large (256 KB at most).", ErrorKind.Validation);
+
+    /// <summary>Content type of a PNG, JPEG or WebP picture decided from its bytes (never from the declared type); null for anything else.</summary>
+    public static string? SniffImage(ReadOnlySpan<byte> d)
+    {
+        if (d.Length >= 8 && d[0] == 0x89 && d[1] == 'P' && d[2] == 'N' && d[3] == 'G')
+        {
+            return "image/png";
+        }
+
+        if (d.Length >= 4 && d[0] == 0xFF && d[1] == 0xD8 && d[2] == 0xFF)
+        {
+            return "image/jpeg";
+        }
+
+        if (d.Length >= 16 && d[0] == 'R' && d[1] == 'I' && d[2] == 'F' && d[3] == 'F' && d[8] == 'W' && d[9] == 'E' && d[10] == 'B' && d[11] == 'P')
+        {
+            return "image/webp";
+        }
+
+        return null;
+    }
+
+    public async Task<Result<int>> SetLogoAsync(Stream content, long declaredLength, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        if (declaredLength > MaxLogoBytes)
+        {
+            return Result<int>.Failure(LogoTooLarge);
+        }
+
+        using var buffer = new MemoryStream();
+        var chunk = new byte[16 * 1024];
+        int read;
+        while ((read = await content.ReadAsync(chunk, ct).ConfigureAwait(false)) > 0)
+        {
+            if (buffer.Length + read > MaxLogoBytes)
+            {
+                return Result<int>.Failure(LogoTooLarge);
+            }
+
+            buffer.Write(chunk, 0, read);
+        }
+
+        var bytes = buffer.ToArray();
+        var type = SniffImage(bytes);
+        if (type is null)
+        {
+            return Result<int>.Failure(new Error("logo.type_invalid", "Only PNG, JPEG or WebP pictures are accepted.", ErrorKind.Validation));
+        }
+
+        var branding = await db.TenantBranding.FirstOrDefaultAsync(ct).ConfigureAwait(false);
+        if (branding is null)
+        {
+            return Result<int>.Failure(NotProvisioned);
+        }
+
+        var logo = await db.TenantLogos.FirstOrDefaultAsync(ct).ConfigureAwait(false);
+        if (logo is null)
+        {
+            logo = TenantLogo.Create(type, bytes);
+            db.TenantLogos.Add(logo);
+        }
+        else
+        {
+            logo.Replace(type, bytes);
+        }
+
+        branding.SetLogoVersion(logo.Version);
+        audit.Tenant("branding.logo_changed", "tenant_branding", branding.Id.ToString());
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
+        return Result<int>.Success(logo.Version);
+    }
+
+    public async Task<Result<bool>> RemoveLogoAsync(CancellationToken ct)
+    {
+        var logo = await db.TenantLogos.FirstOrDefaultAsync(ct).ConfigureAwait(false);
+        if (logo is not null)
+        {
+            db.TenantLogos.Remove(logo);
+        }
+
+        var branding = await db.TenantBranding.FirstOrDefaultAsync(ct).ConfigureAwait(false);
+        branding?.SetLogoVersion(0);
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
+        return Result<bool>.Success(true);
+    }
+
+    public async Task<LogoFile?> GetLogoAsync(CancellationToken ct) =>
+        await db.TenantLogos.AsNoTracking().Select(l => new LogoFile(l.Data, l.ContentType, l.Version)).FirstOrDefaultAsync(ct).ConfigureAwait(false);
 
     private static readonly Error NotProvisioned = new("tenant.not_provisioned", "Tenant configuration is not provisioned.", ErrorKind.Conflict);
 }

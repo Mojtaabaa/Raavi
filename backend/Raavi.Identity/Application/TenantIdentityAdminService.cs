@@ -23,6 +23,7 @@ public sealed class TenantIdentityAdminService(
     MembershipService membership,
     SessionService sessions,
     SecurityEventWriter events,
+    PasswordService passwords,
     AuthenticationProviderRegistry registry,
     ITenantContext tenant,
     ICurrentUser currentUser,
@@ -54,6 +55,56 @@ public sealed class TenantIdentityAdminService(
             .ToListAsync(ct).ConfigureAwait(false);
         var adminSet = admins.ToHashSet();
         return rows.Select(x => new MemberDto(x.u.Id, x.u.DisplayName, x.u.Email, x.m.Status, adminSet.Contains(x.u.Id), x.m.JoinedAt, x.u.LastLoginAt)).ToList();
+    }
+
+    /// <summary>
+    /// A member whose account a workspace administrator may manage (password, picture): a member of THIS workspace whose account
+    /// belongs to no other workspace and is no system administrator. Accounts shared with other workspaces stay under their owner's control.
+    /// </summary>
+    public async Task<Result<User>> ManageableMemberAsync(Guid userId, CancellationToken ct)
+    {
+        var isMember = await db.Members.AsNoTracking().AnyAsync(m => m.UserId == userId, ct).ConfigureAwait(false);
+        if (!isMember)
+        {
+            return Result<User>.Failure(MemberNotFound);
+        }
+
+        var thisTenant = tenant.Tenant.TenantId;
+        var shared = await db.MembershipIndex.AsNoTracking().AnyAsync(m => m.UserId == userId && m.TenantId != thisTenant, ct).ConfigureAwait(false)
+            || await db.SystemRoles.AsNoTracking().AnyAsync(r => r.UserId == userId, ct).ConfigureAwait(false);
+        if (shared)
+        {
+            return Result<User>.Failure(new Error("member.account_shared", "This account also belongs to another workspace or to the system; its owner manages it.", ErrorKind.Forbidden));
+        }
+
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct).ConfigureAwait(false);
+        return user is null ? Result<User>.Failure(MemberNotFound) : Result<User>.Success(user);
+    }
+
+    /// <summary>Sets a new password for a member (forgotten password). Existing sessions of the member in this workspace end.</summary>
+    public async Task<Result> SetMemberPasswordAsync(Guid userId, string newPassword, CancellationToken ct)
+    {
+        var managed = await ManageableMemberAsync(userId, ct).ConfigureAwait(false);
+        if (!managed.IsSuccess)
+        {
+            return Result.Failure(managed.Error!);
+        }
+
+        var user = managed.Value;
+        try
+        {
+            passwords.EnsureAcceptable(newPassword, user.Email);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Failure(new Error(ex.Code, ex.Message, ErrorKind.Validation));
+        }
+
+        user.SetPasswordHash(passwords.Hash(user, newPassword));
+        events.Tenant("member.password_reset", userId);
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
+        await sessions.RevokeForUserAsync(userId, tenant.Tenant.TenantId, allTenants: false, "password_reset", ct).ConfigureAwait(false);
+        return Result.Success();
     }
 
     public async Task<Result> SetMemberStatusAsync(Guid userId, bool active, CancellationToken ct)

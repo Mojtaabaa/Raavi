@@ -15,6 +15,9 @@ import { useAuthStore } from '@/stores/auth'
 import CommandPalette from '@/modules/wiki/components/CommandPalette.vue'
 import NotificationBell from '@/modules/notifications/NotificationBell.vue'
 import BrandLogo from '@/app/BrandLogo.vue'
+import HelpLink from '@/app/HelpLink.vue'
+import ThemePicker from '@/app/ThemePicker.vue'
+import Popover from 'primevue/popover'
 import UserAvatar from '@/app/UserAvatar.vue'
 
 const { t } = useI18n()
@@ -24,6 +27,23 @@ const store = useLocaleStore()
 const host = useHostStore()
 const auth = useAuthStore()
 
+// The header wraps to two lines on medium screens; things that stick below it (editor toolbar, space sidebar) need its real height.
+const headerEl = ref<HTMLElement | null>(null)
+let headerObserver: ResizeObserver | null = null
+function publishHeaderHeight() {
+  const h = headerEl.value?.getBoundingClientRect().height
+  if (h) document.documentElement.style.setProperty('--raavi-header-offset', `${Math.round(h)}px`)
+}
+onMounted(() => {
+  publishHeaderHeight()
+  if (typeof ResizeObserver !== 'undefined' && headerEl.value) {
+    headerObserver = new ResizeObserver(publishHeaderHeight)
+    headerObserver.observe(headerEl.value)
+  }
+})
+onBeforeUnmount(() => headerObserver?.disconnect())
+
+const themePopover = ref<InstanceType<typeof Popover> | null>(null)
 const options = SUPPORTED_LOCALES.map((code) => ({ code, label: LOCALES[code].nativeName }))
 
 const current = computed<SupportedLocale>({
@@ -123,9 +143,9 @@ async function signOut() {
 
 <template>
   <a class="raavi-skip-link" href="#main">{{ t('shell.skipToContent') }}</a>
-  <header class="shell-header">
+  <header ref="headerEl" class="shell-header">
     <div class="brand">
-      <BrandLogo icon :size="32" class="brand-mark" aria-hidden="true" />
+      <BrandLogo icon :size="32" :src="host.logoUrl" class="brand-mark" aria-hidden="true" />
       <span class="brand-name" data-testid="brand-name">{{ brandName }}</span>
       <Tag v-if="isSystemHost" severity="secondary" :value="t('host.systemBadge')" data-testid="system-badge" />
     </div>
@@ -146,6 +166,9 @@ async function signOut() {
     </nav>
     <div class="end">
       <SelectButton v-model="current" :options="options" option-label="label" option-value="code" :allow-empty="false" :aria-label="t('shell.language')" data-testid="locale-switch" />
+      <HelpLink compact />
+      <Button text size="small" icon="pi pi-palette" :aria-label="t('theme.title')" :title="t('theme.title')" data-testid="theme-button" @click="themePopover?.toggle($event)" />
+      <Popover ref="themePopover"><div class="theme-pop"><ThemePicker /></div></Popover>
       <Button v-if="canSearch" text size="small" icon="pi pi-search" :label="t('wiki.quickFind.button')" :aria-keyshortcuts="'Control+K'" data-testid="quick-find" @click="paletteOpen = true" />
       <template v-if="auth.me">
         <Select
@@ -217,10 +240,15 @@ async function signOut() {
   text-decoration: none;
 }
 .nav-link:hover, .nav-link.active { background: var(--p-primary-50, rgba(0, 0, 0, 0.04)); color: var(--p-primary-color); }
-.end { display: flex; align-items: center; gap: var(--raavi-space-3); margin-inline-start: auto; }
+.end { display: flex; align-items: center; flex-wrap: wrap; gap: var(--raavi-space-2) var(--raavi-space-3); margin-inline-start: auto; min-inline-size: 0; }
 .user { color: var(--raavi-text-muted); font-size: 0.9rem; display: inline-flex; align-items: center; gap: var(--raavi-space-2); text-decoration: none; }
+.theme-pop { inline-size: min(22rem, 86vw); }
 .shell-main { padding: var(--raavi-space-6) var(--raavi-space-4); outline: none; }
 @media (max-width: 640px) {
   .user-name { display: none; }
+  /* Phones: icons only for the quick-find and sign-out buttons; the rest of the header wraps. */
+  .end :deep(.p-button-label) { display: none; }
+  .shell-header { gap: var(--raavi-space-2); padding-inline: var(--raavi-space-2); }
+  .shell-main { padding-inline: var(--raavi-space-2); }
 }
 </style>

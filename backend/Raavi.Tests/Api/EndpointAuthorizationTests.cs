@@ -18,7 +18,7 @@ public sealed class EndpointAuthorizationTests(SqlServerFixture fx, ITestOutputH
     [
         "* /health/live", "* /health/ready",
         // SPA bootstrap and login-page discovery (rate limited, expose only public tenant information)
-        "GET /api/v1/host/context", "GET /api/v1/discovery/tenants/{code}",
+        "GET /api/v1/host/context", "GET /api/v1/host/logo", "GET /api/v1/discovery/tenants/{code}",
         // JSON 404 for unknown API paths
         "* /api/{**path}",
         // OpenAPI document: mapped only when the environment is Development (Program.cs)
@@ -27,6 +27,7 @@ public sealed class EndpointAuthorizationTests(SqlServerFixture fx, ITestOutputH
         "GET /api/v1/auth/antiforgery",
         "GET /api/v1/auth/callback/{providerId}",
         "GET /api/v1/auth/providers",
+        "GET /api/v1/auth/system/options",
         "GET /api/v1/auth/relay/{providerId}",
         "GET /api/v1/auth/relay/complete",
         "POST /api/v1/auth/invitations/accept",

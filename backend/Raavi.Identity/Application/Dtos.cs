@@ -5,6 +5,8 @@ namespace Raavi.Identity.Application;
 
 // No DTO carries a TenantId: the tenant is always the resolved host (or the route on the system host).
 
+public sealed record SetPasswordRequest(string NewPassword);
+
 public sealed record LocalLoginRequest(string Email, string Password);
 
 public sealed record BeginLoginRequest(string? ReturnPath);
@@ -28,13 +30,15 @@ public sealed record GroupRequest(string Name, string? Description);
 
 public sealed record PreferencesRequest(string? Locale);
 
+public sealed record ThemeRequest(string? Theme);
+
 public sealed record ProviderPolicyRequest(string ProviderId, bool Enabled, bool IsDefault, int DisplayOrder, ProvisioningMode Provisioning, IReadOnlyList<string>? AllowedEmailDomains, IReadOnlyList<string>? AllowedExternalGroups);
 
 public sealed record ProviderSummaryDto(string Id, string Type, string Flow, LocalizedNameDto DisplayName, bool IsDefault);
 
 public sealed record LocalizedNameDto(string Fa, string En);
 
-public sealed record MeDto(Guid Id, string DisplayName, string? Email, string? PreferredLocale, string HostKind, bool IsTenantAdministrator, bool IsSystemAdministrator, string Provider);
+public sealed record MeDto(Guid Id, string DisplayName, string? Email, string? PreferredLocale, string HostKind, bool IsTenantAdministrator, bool IsSystemAdministrator, string Provider, string? Theme = null);
 
 public sealed record MemberDto(Guid UserId, string DisplayName, string? Email, MembershipStatus Status, bool IsTenantAdministrator, DateTimeOffset JoinedAt, DateTimeOffset? LastLoginAt);
 

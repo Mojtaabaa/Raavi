@@ -16,8 +16,10 @@ import { useAuthStore } from '@/stores/auth'
 import { useAvatarStore } from '@/stores/avatars'
 import { useHostStore } from '@/stores/host'
 import { avatarsApi } from '@/core/api/avatars'
-import { isAcceptedPicture, MAX_PICK_BYTES, squareAvatarBlob } from '@/core/runtime/imageResize'
+import { isAcceptedPicture, MAX_PICK_BYTES } from '@/core/runtime/imageResize'
 import UserAvatar from '@/app/UserAvatar.vue'
+import PictureCropDialog from '@/app/PictureCropDialog.vue'
+import ThemePicker from '@/app/ThemePicker.vue'
 import { useLocaleStore } from '@/stores/locale'
 
 const { t, te } = useI18n()
@@ -30,6 +32,7 @@ const avatars = useAvatarStore()
 const host = useHostStore()
 const picture = ref<HTMLInputElement | null>(null)
 const savingPicture = ref(false)
+const cropFile = ref<File | null>(null)
 const hasPicture = computed(() => !!auth.me && !!avatars.versions[auth.me.id])
 const canHavePicture = computed(() => host.context?.kind === 'tenant' && !!auth.me)
 
@@ -42,9 +45,15 @@ async function pickPicture(event: Event) {
     toast.add({ severity: 'error', summary: t('profile.picture.invalid'), life: 5000 })
     return
   }
+  cropFile.value = file
+}
+
+async function savePicture(blob: Blob) {
+  cropFile.value = null
+  if (!auth.me) return
   savingPicture.value = true
   try {
-    const { version } = await avatarsApi.upload(await squareAvatarBlob(file), 'avatar')
+    const { version } = await avatarsApi.upload(blob, 'avatar')
     avatars.set(auth.me.id, version)
     toast.add({ severity: 'success', summary: t('profile.picture.saved'), life: 3000 })
   } catch (e) {
@@ -152,6 +161,10 @@ onMounted(async () => {
       </template>
     </Card>
 
+    <h2>{{ t('theme.title') }}</h2>
+    <p class="muted small">{{ t('theme.help') }}</p>
+    <ThemePicker />
+
     <h2>{{ t('profile.linkedAccounts') }}</h2>
     <Message v-if="notice" :severity="notice.severity" :closable="false" data-testid="profile-notice">{{ notice.text }}</Message>
     <ul class="list" data-testid="linked-identities">
@@ -178,6 +191,7 @@ onMounted(async () => {
       <p v-if="!emailAvailable" class="muted small">{{ t('profile.notifications.emailUnavailable') }}</p>
       <p v-else class="muted small">{{ t('profile.notifications.emailHelp') }}</p>
     </template>
+    <PictureCropDialog :file="cropFile" @cancel="cropFile = null" @confirm="savePicture" />
   </section>
 </template>
 
@@ -188,7 +202,6 @@ h1 { margin: 0; font-size: 1.4rem; }
 h2 { margin: var(--raavi-space-2) 0 0; font-size: 1.1rem; }
 .picture { display: flex; gap: var(--raavi-space-4); align-items: center; margin-block-end: var(--raavi-space-4); }
 .picture-actions { display: flex; flex-wrap: wrap; gap: var(--raavi-space-2); align-items: center; }
-.visually-hidden { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .facts { display: grid; grid-template-columns: max-content 1fr; gap: var(--raavi-space-2) var(--raavi-space-4); margin: 0; }
 .facts dt { color: var(--raavi-text-muted); }
 .facts dd { margin: 0; }

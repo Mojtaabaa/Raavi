@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import BrandLogo from '@/app/BrandLogo.vue'
-import { ref } from 'vue'
+import HelpLink from '@/app/HelpLink.vue'
+import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import Card from 'primevue/card'
@@ -21,7 +22,11 @@ const auth = useAuthStore()
 const email = ref('')
 const password = ref('')
 const code = ref('')
+const mfa = ref(true) // Raavi:Authentication:SystemMfaRequired
 const busy = ref(false)
+onMounted(async () => {
+  mfa.value = (await identityApi.systemOptions().catch(() => ({ mfaRequired: true }))).mfaRequired
+})
 const error = ref<string | null>(null)
 
 async function submit() {
@@ -67,12 +72,13 @@ async function submit() {
           <InputText id="email" v-model="email" type="email" dir="ltr" autocomplete="username" />
           <label for="password">{{ t('common.password') }}</label>
           <Password input-id="password" v-model="password" :feedback="false" toggle-mask autocomplete="current-password" :input-props="{ dir: 'ltr' }" />
-          <label for="otp">{{ t('auth.code') }}</label>
-          <InputText id="otp" v-model="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" dir="ltr" class="otp" data-testid="otp" />
+          <label v-if="mfa" for="otp">{{ t('auth.code') }}</label>
+          <InputText v-if="mfa" id="otp" v-model="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" dir="ltr" class="otp" data-testid="otp" />
           <Button type="submit" :label="t('auth.signIn')" :loading="busy" />
         </form>
       </template>
     </Card>
+    <HelpLink />
   </section>
 </template>
 

@@ -1,7 +1,7 @@
 import { api, apiRequest } from './http'
 import { prefixed } from '@/core/runtime/base'
 
-export type BoardShape = 'Rect' | 'Ellipse' | 'Text' | 'Sticky' | 'Arrow' | 'Pen'
+export type BoardShape = 'Rect' | 'Ellipse' | 'Text' | 'Sticky' | 'Arrow' | 'Pen' | 'Diamond' | 'Triangle' | 'Line'
 
 /**
  * One element of a board. (x, y) is the top-left corner and rotation turns the element around it; arrows and pen strokes keep their

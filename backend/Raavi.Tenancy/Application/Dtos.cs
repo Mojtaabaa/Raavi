@@ -16,7 +16,7 @@ public sealed record UpdateSettingsRequest(string DefaultLocale, string TimeZone
 
 public sealed record UpdateBrandingRequest(string? PrimaryColor, string? SecondaryColor, string? WelcomeMessageFa, string? WelcomeMessageEn);
 
-public sealed record TenantDto(Guid Id, string Code, string Slug, string DisplayNameFa, string DisplayNameEn, TenantStatus Status, string? StatusReason, DateTimeOffset CreatedAt, DateTimeOffset? ActivatedAt, DateTimeOffset? SuspendedAt, DateTimeOffset? DeactivatedAt)
+public sealed record TenantDto(Guid Id, string Code, string Slug, string DisplayNameFa, string DisplayNameEn, TenantStatus Status, string? StatusReason, DateTimeOffset CreatedAt, DateTimeOffset? ActivatedAt, DateTimeOffset? SuspendedAt, DateTimeOffset? DeactivatedAt, string? Url = null)
 {
     public static TenantDto From(Tenant t) => new(t.Id, t.Code, t.Slug, t.DisplayNameFa, t.DisplayNameEn, t.Status, t.StatusReason, t.CreatedAt, t.ActivatedAt, t.SuspendedAt, t.DeactivatedAt);
 }
@@ -25,7 +25,7 @@ public sealed record TenantDomainDto(Guid Id, string Host, bool IsPrimary, Tenan
 
 public sealed record TenantSettingsDto(string DefaultLocale, string TimeZone, string Calendar, long? StorageQuotaBytes);
 
-public sealed record TenantBrandingDto(string? PrimaryColor, string? SecondaryColor, string? WelcomeMessageFa, string? WelcomeMessageEn);
+public sealed record TenantBrandingDto(string? PrimaryColor, string? SecondaryColor, string? WelcomeMessageFa, string? WelcomeMessageEn, int LogoVersion = 0);
 
 public sealed record PagedResult<T>(IReadOnlyList<T> Items, int Total, int Skip, int Take);
 
@@ -33,6 +33,8 @@ public sealed record PagedResult<T>(IReadOnlyList<T> Items, int Total, int Skip,
 public sealed record TenantPublicContextDto(string Slug, LocalizedText DisplayName, string DefaultLocale, string TimeZone, string Calendar, TenantBrandingDto Branding);
 
 public sealed record LocalizedText(string Fa, string En);
+
+public sealed record LogoFile(byte[] Data, string ContentType, int Version);
 
 public sealed record HostContextDto(string Kind, TenantPublicContextDto? Tenant);
 

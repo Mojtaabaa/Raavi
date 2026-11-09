@@ -4,6 +4,7 @@ All paths are under `/api/v1`. Tenancy column: **system** = system host only (40
 
 | Method | Path | Host | Auth | Purpose |
 |---|---|---|---|---|
+| GET | `/host/logo` | tenant | anonymous | The workspace's square logo (PNG/JPEG/WebP), `branding.logoVersion` from `/host/context` is its cache key (`?v=`); 404 when none. `public, max-age=3600`, ETag, `nosniff`. |
 | GET | `/host/context` | any | anonymous | SPA bootstrap: `{kind: "tenant", tenant: {slug, displayName{fa,en}, defaultLocale, timeZone, calendar, branding}}` or `{kind: "system"}`. No internal ids. Unknown/inactive host → 404 `tenant.unavailable`. |
 | GET | `/discovery/tenants/{code}` | system | anonymous, rate-limited (20/min/IP) | Login discovery by tenant code → `{url}` of the canonical host (primary verified domain, else `slug.{firstBaseDomain}`). Inactive/unknown → 404. |
 | POST | `/system/tenants` | system | system admin | Create + provision + activate. Body: `code, slug, displayNameFa, displayNameEn, defaultLocale?, timeZone?, calendar?` → 201 `TenantDto`. Errors: `tenant.code_invalid`, `tenant.slug_invalid`, `tenant.slug_reserved`, `settings.*` (400); `tenant.code_taken`, `tenant.slug_taken` (409). |
@@ -19,6 +20,8 @@ All paths are under `/api/v1`. Tenancy column: **system** = system host only (40
 | POST | `/system/tenants/{id}/domains/{domainId}/primary` | system | system admin | Only verified domains. |
 | DELETE | `/system/tenants/{id}/domains/{domainId}` | system | system admin | Stops resolution immediately; host quarantined for other tenants (30 days). |
 | GET/PUT | `/system/tenants/{id}/settings` | system | system admin | `defaultLocale (fa/en), timeZone (IANA), calendar (persian/gregorian), storageQuotaBytes?` — executed inside an explicit tenant scope. |
+| PUT / DELETE | `/system/tenants/{id}/logo` | system | system admin | Multipart `file`: PNG, JPEG or WebP by content, ≤ 256 KB (`logo.type_invalid`, `logo.too_large`); returns the new version. |
+| GET | `/system/tenants` | system | system admin | Each item also carries `url`, the canonical address of the workspace. |
 | PUT | `/system/tenants/{id}/branding` | system | system admin | `primaryColor, secondaryColor (#rrggbb), welcomeMessageFa/En (plain text ≤ 500)`. |
 
 ## System administrator authentication (Phase 1 bootstrap)

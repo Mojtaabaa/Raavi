@@ -68,9 +68,7 @@ const hue = computed(() => {
   line-height: 1;
   user-select: none;
 }
-@media (prefers-color-scheme: dark) {
-  .avatar { background: hsl(var(--hue) 35% 28%); color: hsl(var(--hue) 60% 90%); }
-}
+:global(html.raavi-dark) .avatar { background: hsl(var(--hue) 35% 28%); color: hsl(var(--hue) 60% 90%); }
 .initials::before { content: attr(data-initials); }
 img { inline-size: 100%; block-size: 100%; object-fit: cover; display: block; }
 </style>

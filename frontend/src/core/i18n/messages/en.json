@@ -120,7 +120,12 @@
       "revoked": "Revoked",
       "expired": "Expired"
     },
-    "approve": "Approve"
+    "approve": "Approve",
+    "setPassword": "Set password",
+    "passwordFor": "New password for {name}. Tell it to the person in person or by phone — they are signed out of this workspace at once.",
+    "passwordHelp": "At least 12 characters, not simple, and not containing the e-mail name.",
+    "passwordSaved": "The password was changed.",
+    "changePicture": "Change picture"
   },
   "groups": {
     "title": "Groups",
@@ -151,7 +156,12 @@
       "PendingDeletion": "Pending deletion",
       "Deleted": "Deleted"
     },
-    "created": "Created"
+    "created": "Created",
+    "address": "Address",
+    "logo": "Logo",
+    "logoRemove": "Remove logo",
+    "logoSaved": "Logo of {name} saved.",
+    "logoRemoved": "Logo of {name} removed."
   },
   "errors": {
     "generic": "Something went wrong. Please try again.",
@@ -191,7 +201,8 @@
     "member": {
       "last_administrator": "A workspace must keep at least one active administrator.",
       "cannot_remove_self": "You cannot remove yourself.",
-      "cannot_suspend_self": "You cannot suspend yourself."
+      "cannot_suspend_self": "You cannot suspend yourself.",
+      "account_shared": "This account also belongs to another workspace or to the system. Its owner manages it."
     },
     "group": {
       "name_taken": "A group with this name already exists."
@@ -439,6 +450,11 @@
       "upstream_unreachable": "The tracker could not be reached.",
       "upstream_invalid": "The tracker answered in a way Raavi does not understand.",
       "rate_limited": "Too many lookups; try again later."
+    },
+    "logo": {
+      "type_invalid": "Only PNG, JPEG or WebP pictures are accepted.",
+      "too_large": "The logo is too large (256 KB at most).",
+      "failed": "The logo could not be changed."
     }
   },
   "profile": {
@@ -528,7 +544,8 @@
       "openHome": "Open the home page",
       "recent": "Recently updated",
       "archivedNotice": "This space is archived and read-only.",
-      "adminOnly": "You administer this space but cannot read its content. Grant yourself View to read it."
+      "adminOnly": "You administer this space but cannot read its content. Grant yourself View to read it.",
+      "menu": "Space menu"
     },
     "tree": {
       "title": "Pages",
@@ -1218,7 +1235,34 @@
       "Checkbox": "Checkbox",
       "Select": "Select",
       "Url": "Link"
-    }
+    },
+    "viewOptions": "View options",
+    "view": "View",
+    "viewTable": "Table",
+    "viewBoard": "Board",
+    "boardBy": "Group by",
+    "noValue": "No value",
+    "untitledRow": "(untitled)",
+    "moveTo": "Move to",
+    "filter": "Filter",
+    "filterColumn": "Column to filter",
+    "filterValue": "Value to filter by",
+    "addFilter": "Add filter",
+    "removeFilter": "Remove this filter",
+    "clearFilters": "Clear all filters",
+    "empty": "(empty)",
+    "shownColumns": "Columns shown",
+    "rowCount": "{count} rows",
+    "summaryTitle": "{count} values · average {avg} · min {min} · max {max}",
+    "duplicateRow": "Duplicate this row",
+    "moveUp": "Move column up",
+    "moveDown": "Move column down",
+    "importCsv": "Import CSV",
+    "importDone": "{count} rows imported.",
+    "importNothing": "No rows could be read. The first line must be the column names, as they are written in this database.",
+    "importCapped": "Only the first {max} rows were imported.",
+    "importIgnored": "Columns not found and skipped: {names}.",
+    "importProblems": "{count} values did not fit their column and were left empty."
   },
   "slides": {
     "nav": "Slides",
@@ -1276,7 +1320,10 @@
       "sticky": "Sticky note",
       "text": "Text",
       "arrow": "Arrow",
-      "pen": "Pen"
+      "pen": "Pen",
+      "diamond": "Diamond",
+      "triangle": "Triangle",
+      "line": "Line"
     },
     "undo": "Undo",
     "redo": "Redo",
@@ -1310,13 +1357,23 @@
       "Text": "Text",
       "Sticky": "Sticky note",
       "Arrow": "Arrow",
-      "Pen": "Pen stroke"
+      "Pen": "Pen stroke",
+      "Diamond": "Diamond",
+      "Triangle": "Triangle",
+      "Line": "Line"
     },
     "liveJoining": "Connecting for live editing…",
     "liveOn": "Live",
     "liveOffline": "Offline — your changes will sync when the connection returns",
     "liveRevoked": "You can no longer edit this whiteboard live.",
-    "liveFallback": "Live editing is not available right now; you can still edit and save the board as usual."
+    "liveFallback": "Live editing is not available right now; you can still edit and save the board as usual.",
+    "grid": "Show grid",
+    "snap": "Snap to grid",
+    "geometry": "Position and size",
+    "width": "Width",
+    "height": "Height",
+    "rotation": "Rotation",
+    "shortcuts": "Keys: V select · H pan · R rectangle · E ellipse · D diamond · G triangle · S sticky note · T text · A arrow · L line · P pen · arrow keys move (Shift = 20)"
   },
   "workflows": {
     "nav": "Workflows",
@@ -1547,5 +1604,72 @@
     "preparing": "Preparing…",
     "failed": "The export could not be created. Try again later.",
     "inProgress": "An export of this workspace is already running. Try again in a few minutes."
+  },
+  "help": {
+    "open": "User guide"
+  },
+  "theme": {
+    "title": "Colour theme",
+    "help": "Pick the colours you like. The choice is saved in your profile and follows you to other devices.",
+    "names": {
+      "system": "Like my device",
+      "light": "Light",
+      "dark": "Dark",
+      "chocolate": "Chocolate",
+      "ocean": "Ocean",
+      "forest": "Forest",
+      "rose": "Rose",
+      "midnight": "Midnight",
+      "contrast": "High contrast"
+    }
+  },
+  "crop": {
+    "title": "Crop the picture",
+    "hint": "Drag the picture to move it; use the slider, the mouse wheel or the + and − keys to zoom.",
+    "zoom": "Zoom",
+    "use": "Use this picture",
+    "failed": "This file could not be read as a picture. Choose a PNG, JPEG or WebP picture."
+  },
+  "errorHelp": {
+    "whatToDo": "What you can do:",
+    "content": {
+      "body_invalid": {
+        "1": "Press Ctrl+Z inside the editor to undo your last change. The usual cause is a half-finished block (an empty table, diagram or formula).",
+        "2": "Look through the page for a block that shows an error or a red frame and delete or correct it.",
+        "3": "If you pasted text from Word, a web page or another program: select it, cut it, and paste it again as plain text (Ctrl+Shift+V), then format it in the editor.",
+        "4": "Still rejected? Copy your text somewhere safe, reload the page, and add your change back in small pieces to find the piece that is refused."
+      },
+      "schema_unsupported": {
+        "1": "The server was upgraded since you opened this page. Reload the page (Ctrl+F5) and open it again.",
+        "2": "If it still fails, ask your administrator whether all parts of the system were upgraded together."
+      }
+    },
+    "password": {
+      "length": {
+        "1": "Use at least 12 characters. A short sentence of unrelated words is easy to remember and strong.",
+        "2": "Do not use spaces only or the same character repeated."
+      },
+      "too_simple": {
+        "1": "Avoid common words, keyboard runs (qwerty, 123456) and names. Mix words, digits and a symbol.",
+        "2": "A sentence of 3–4 unrelated words, such as \"blue-river-coffee-42\", is both strong and easy to remember."
+      },
+      "contains_email": {
+        "1": "Do not include the first part of the e-mail address (before the {'@'}) in the password. Choose something unrelated."
+      }
+    },
+    "member": {
+      "account_shared": {
+        "1": "This person also belongs to another workspace (or the system), so only they can change their own password and picture.",
+        "2": "To give them access again, send an invitation or ask them to use the sign-in help of their own account."
+      }
+    },
+    "logo": {
+      "type_invalid": {
+        "1": "Choose a PNG, JPEG or WebP picture. SVG and GIF files are not accepted."
+      },
+      "too_large": {
+        "1": "Pick a smaller picture, or crop it tighter; the cropped logo must be under 256 KB."
+      }
+    }
   }
 }

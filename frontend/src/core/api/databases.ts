@@ -42,9 +42,19 @@ export interface DbRow {
   revision: number
 }
 
+export interface NumberSummary {
+  count: number
+  sum: number
+  min: number
+  max: number
+  average: number
+}
+
 export interface DbRowPage {
   total: number
   rows: DbRow[]
+  /** Totals of each Number column over all rows that match the filters. */
+  summary?: Record<string, NumberSummary> | null
 }
 
 export interface DatabaseInput {
@@ -59,6 +69,8 @@ export interface RowQuery {
   dir?: 'asc' | 'desc'
   skip?: number
   take?: number
+  /** Column filters as "columnId:value" (Select: option id, "" = empty; Checkbox: true/false; others: contains). */
+  filters?: string[]
 }
 
 const enc = encodeURIComponent
@@ -74,6 +86,7 @@ export const databasesApi = {
     if (query.q) p.set('q', query.q)
     if (query.sort) p.set('sort', query.sort)
     if (query.sort && query.dir) p.set('dir', query.dir)
+    for (const f of query.filters ?? []) p.append('f', f)
     p.set('skip', String(query.skip ?? 0))
     p.set('take', String(query.take ?? 50))
     return api<DbRowPage>('GET', `/databases/${enc(id)}/rows?${p.toString()}`)

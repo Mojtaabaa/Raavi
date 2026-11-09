@@ -22,7 +22,10 @@ public sealed record DatabaseDto(
 
 public sealed record DatabaseRowDto(Guid Id, Guid DatabaseId, IReadOnlyDictionary<string, JsonElement> Values, string? CreatedByName, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, int Revision);
 
-public sealed record DatabaseRowPage(int Total, IReadOnlyList<DatabaseRowDto> Rows);
+/// <summary>Totals of one Number column over all rows that match the filters (not just the rows of the page).</summary>
+public sealed record NumberSummary(int Count, double Sum, double Min, double Max, double Average);
+
+public sealed record DatabaseRowPage(int Total, IReadOnlyList<DatabaseRowDto> Rows, IReadOnlyDictionary<string, NumberSummary>? Summary = null);
 
 public sealed record DbColumnRequest(string? Id, string? Name, string? Type, DbOptionRequest[]? Options);
 
@@ -157,7 +160,7 @@ public sealed class DatabaseService(WikiDbContext db, SpaceService spaces, WikiA
     // ── Rows ───────────────────────────────────────────────────────────────────────────────────
 
     /// <summary>Rows filtered by free text (any cell), sorted by one column, paged. Stored order is creation order.</summary>
-    public async Task<Result<DatabaseRowPage>> RowsAsync(Guid id, string? q, string? sort, bool descending, int skip, int take, CancellationToken ct)
+    public async Task<Result<DatabaseRowPage>> RowsAsync(Guid id, string? q, string? sort, bool descending, int skip, int take, CancellationToken ct, IReadOnlyList<string>? filters = null)
     {
         var loaded = await LoadAsync(id, track: false, ct).ConfigureAwait(false);
         if (!loaded.IsSuccess)
@@ -180,6 +183,36 @@ public sealed class DatabaseService(WikiDbContext db, SpaceService spaces, WikiA
             parsed = parsed.Where(p => p.Values.Any(kv => Display(columns, kv.Key, kv.Value).Contains(needle, StringComparison.OrdinalIgnoreCase))).ToList();
         }
 
+        // Column filters ("columnId:value"): Select = that option ("" = no value), Checkbox = true/false, everything else = contains (ignoring case).
+        foreach (var raw in filters ?? [])
+        {
+            var cut = raw.IndexOf(':', StringComparison.Ordinal);
+            if (cut <= 0)
+            {
+                continue;
+            }
+
+            var colId = raw[..cut];
+            var wanted = raw[(cut + 1)..];
+            var col = columns.FirstOrDefault(c => c.Id == colId);
+            if (col is null)
+            {
+                return Result<DatabaseRowPage>.Failure(SortInvalid);
+            }
+
+            parsed = parsed.Where(p => FilterMatches(col, p.Values, wanted)).ToList();
+        }
+
+        Dictionary<string, NumberSummary>? summary = null;
+        foreach (var numberColumn in columns.Where(c => c.Type == DbColumnType.Number))
+        {
+            var numbers = parsed.Where(p => p.Values.TryGetValue(numberColumn.Id, out var v) && v.ValueKind == JsonValueKind.Number).Select(p => p.Values[numberColumn.Id].GetDouble()).ToList();
+            if (numbers.Count > 0)
+            {
+                (summary ??= [])[numberColumn.Id] = new NumberSummary(numbers.Count, numbers.Sum(), numbers.Min(), numbers.Max(), numbers.Average());
+            }
+        }
+
         if (sortColumn is not null)
         {
             var key = sortColumn;
@@ -191,7 +224,7 @@ public sealed class DatabaseService(WikiDbContext db, SpaceService spaces, WikiA
 
         var page = parsed.Skip(Math.Max(0, skip)).Take(Math.Clamp(take <= 0 ? 100 : take, 1, MaxPageSize)).ToList();
         var names = await directory.GetUserNamesAsync(page.Select(p => p.Row.CreatedBy).Distinct().ToList(), ct).ConfigureAwait(false);
-        return Result<DatabaseRowPage>.Success(new DatabaseRowPage(parsed.Count, page.Select(p => ToRowDto(p.Row, p.Values, names)).ToList()));
+        return Result<DatabaseRowPage>.Success(new DatabaseRowPage(parsed.Count, page.Select(p => ToRowDto(p.Row, p.Values, names)).ToList(), summary));
     }
 
     public async Task<Result<DatabaseRowDto>> AddRowAsync(Guid databaseId, DatabaseRowRequest request, CancellationToken ct)
@@ -307,6 +340,23 @@ public sealed class DatabaseService(WikiDbContext db, SpaceService spaces, WikiA
         }
 
         return Result<IReadOnlyList<DbColumnInput>>.Success(list);
+    }
+
+    private static bool FilterMatches(DbColumn col, IReadOnlyDictionary<string, JsonElement> values, string wanted)
+    {
+        var has = values.TryGetValue(col.Id, out var v);
+        switch (col.Type)
+        {
+            case DbColumnType.Select:
+                return wanted.Length == 0 ? !has : has && v.ValueKind == JsonValueKind.String && v.GetString() == wanted;
+            case DbColumnType.Checkbox:
+                var on = has && v.ValueKind == JsonValueKind.True;
+                return string.Equals(wanted, on ? "true" : "false", StringComparison.OrdinalIgnoreCase);
+            default:
+                return wanted.Length == 0
+                    ? !has
+                    : has && Display([col], col.Id, v).Contains(wanted, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     private static string Display(IReadOnlyList<DbColumn> columns, string columnId, JsonElement v)

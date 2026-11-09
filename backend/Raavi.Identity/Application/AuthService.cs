@@ -210,5 +210,5 @@ public sealed class AuthService(
     }
 
     public static MeDto Me(User user, string hostKind, bool tenantAdmin, bool systemAdmin, string provider) =>
-        new(user.Id, user.DisplayName, user.Email, user.PreferredLocale, hostKind, tenantAdmin, systemAdmin, provider);
+        new(user.Id, user.DisplayName, user.Email, user.PreferredLocale, hostKind, tenantAdmin, systemAdmin, provider, user.Theme);
 }

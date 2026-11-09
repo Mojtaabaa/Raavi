@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { ApiError, resetAntiforgery } from '@/core/api/http'
 import { identityApi, type Me } from '@/core/api/identity'
 import { useAvatarStore } from '@/stores/avatars'
+import { useThemeStore } from '@/stores/theme'
 
 /** Signed-in user of the current host. The session itself is an HttpOnly cookie the SPA never reads. */
 export const useAuthStore = defineStore('auth', () => {
@@ -13,6 +14,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function load(): Promise<Me | null> {
     try {
       me.value = await identityApi.me()
+      useThemeStore().adopt(me.value.theme)
     } catch (e) {
       if (!(e instanceof ApiError) || (e.status !== 401 && e.status !== 403)) throw e
       me.value = null
@@ -25,6 +27,7 @@ export const useAuthStore = defineStore('auth', () => {
   /** Identity changed: antiforgery tokens are bound to it, so drop the cached one. */
   function signedIn(user: Me): Me {
     resetAntiforgery()
+    useThemeStore().adopt(user.theme)
     me.value = user
     loaded.value = true
     return user

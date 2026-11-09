@@ -13,6 +13,7 @@ import { createRaaviI18n } from '@/core/i18n'
 import { applyDocumentLocale } from '@/core/i18n/locales'
 import { RaaviPreset } from '@/core/theme/preset'
 import { useLocaleStore } from '@/stores/locale'
+import { useThemeStore } from '@/stores/theme'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -21,10 +22,11 @@ app.use(pinia)
 const locale = useLocaleStore(pinia).locale
 applyDocumentLocale(locale)
 
+useThemeStore(pinia).start()
 app.use(createRaaviI18n(locale))
 app.use(createRaaviRouter())
 app.use(PrimeVue, {
-  theme: { preset: RaaviPreset, options: { darkModeSelector: 'system', cssLayer: false } },
+  theme: { preset: RaaviPreset, options: { darkModeSelector: '.raavi-dark', cssLayer: false } },
   ripple: false,
 })
 app.use(ToastService)

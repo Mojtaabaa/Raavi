@@ -14,6 +14,8 @@ import { errorMessage } from '@/core/api/errors'
 import { formatDate } from '@/core/i18n/locales'
 import { useLocaleStore } from '@/stores/locale'
 import OneTimeLinkDialog from '@/modules/identity/components/OneTimeLinkDialog.vue'
+import PictureCropDialog from '@/app/PictureCropDialog.vue'
+import { isAcceptedPicture, MAX_PICK_BYTES } from '@/core/runtime/imageResize'
 
 const { t, te } = useI18n()
 const toast = useToast()
@@ -28,6 +30,49 @@ const reason = ref('')
 const inviteTarget = ref<Tenant | null>(null)
 const inviteEmail = ref('')
 const link = ref<string | null>(null)
+
+// Square logo of a workspace: pick a picture, crop it (PictureCropDialog), upload.
+const logoTarget = ref<Tenant | null>(null)
+const cropFile = ref<File | null>(null)
+const logoInput = ref<HTMLInputElement | null>(null)
+
+function openLogo(tenant: Tenant) {
+  logoTarget.value = tenant
+  logoInput.value?.click()
+}
+
+function logoPicked(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  if (!isAcceptedPicture(file) || file.size > MAX_PICK_BYTES) {
+    toast.add({ severity: 'error', summary: t('profile.picture.invalid'), life: 5000 })
+    return
+  }
+  cropFile.value = file
+}
+
+async function saveLogo(blob: Blob) {
+  const tenant = logoTarget.value
+  cropFile.value = null
+  if (!tenant) return
+  try {
+    await identityApi.setTenantLogo(tenant.id, blob)
+    toast.add({ severity: 'success', summary: t('tenants.logoSaved', { name: name(tenant) }), life: 4000 })
+  } catch (e) {
+    fail(e)
+  }
+}
+
+async function removeLogo(tenant: Tenant) {
+  try {
+    await identityApi.removeTenantLogo(tenant.id)
+    toast.add({ severity: 'success', summary: t('tenants.logoRemoved', { name: name(tenant) }), life: 4000 })
+  } catch (e) {
+    fail(e)
+  }
+}
 const locales = [
   { value: 'fa', label: 'فارسی' },
   { value: 'en', label: 'English' },
@@ -108,6 +153,12 @@ onMounted(load)
       <Column field="code" :header="t('tenants.code')"><template #body="{ data }"><code dir="ltr">{{ data.code }}</code></template></Column>
       <Column :header="t('common.displayName')"><template #body="{ data }">{{ name(data) }}</template></Column>
       <Column field="slug" :header="t('tenants.slug')"><template #body="{ data }"><span dir="ltr">{{ data.slug }}</span></template></Column>
+      <Column :header="t('tenants.address')">
+        <template #body="{ data }">
+          <a v-if="data.url" :href="data.url" class="address" dir="ltr" target="_blank" rel="noopener" :data-testid="`tenant-url-${data.code}`">{{ data.url }}</a>
+          <span v-else class="muted">—</span>
+        </template>
+      </Column>
       <Column :header="t('tenants.created')"><template #body="{ data }">{{ formatDate(data.createdAt, localeStore.locale) }}</template></Column>
       <Column :header="t('common.status')">
         <template #body="{ data }"><Tag :severity="severity(data.status)" :value="t(`tenants.statuses.${data.status}`)" /></template>
@@ -116,6 +167,8 @@ onMounted(load)
         <template #body="{ data }">
           <div class="actions">
             <Button text size="small" :label="t('tenants.inviteAdmin')" @click="inviteTarget = data" />
+            <Button text size="small" icon="pi pi-image" :label="t('tenants.logo')" :data-testid="`tenant-logo-${data.code}`" @click="openLogo(data)" />
+            <Button text size="small" severity="secondary" icon="pi pi-trash" :aria-label="t('tenants.logoRemove')" :title="t('tenants.logoRemove')" @click="removeLogo(data)" />
             <Button v-if="data.status === 'Active'" text size="small" severity="warn" :label="t('tenants.suspend')" @click="suspendTarget = data" />
             <Button v-else-if="data.status === 'Suspended' || data.status === 'Deactivated'" text size="small" :label="t('tenants.activate')" @click="activate(data)" />
           </div>
@@ -155,6 +208,9 @@ onMounted(load)
       </form>
     </Dialog>
 
+    <input ref="logoInput" type="file" accept="image/png,image/jpeg,image/webp" class="visually-hidden" tabindex="-1" aria-hidden="true" data-testid="logo-input" @change="logoPicked" />
+    <PictureCropDialog :file="cropFile" transparent :size="256" :title="t('tenants.logo')" @cancel="cropFile = null" @confirm="saveLogo" />
+
     <OneTimeLinkDialog :link="link" @close="link = null" />
   </section>
 </template>
@@ -166,5 +222,7 @@ h1 { margin: 0; font-size: 1.4rem; }
 .actions { display: flex; gap: var(--raavi-space-1); flex-wrap: wrap; }
 .form { display: grid; gap: var(--raavi-space-2); }
 .muted { color: var(--raavi-text-muted); }
+.address { color: var(--p-primary-color); text-decoration: none; word-break: break-all; }
+.address:hover { text-decoration: underline; }
 .small { font-size: 0.8rem; }
 </style>

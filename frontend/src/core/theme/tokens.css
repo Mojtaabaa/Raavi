@@ -29,20 +29,34 @@
 
   --raavi-sidebar-width: 272px;
   --raavi-header-height: 56px;
+  /* Real height of the (possibly wrapped) header, kept up to date by AppShell; sticky elements below the header use it. */
+  --raavi-header-offset: var(--raavi-header-height);
   --raavi-content-max: 860px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --raavi-bg: #0f141b;
-    --raavi-surface: #161c25;
-    --raavi-border: #263042;
-    --raavi-text: #e6e9ef;
-    --raavi-text-muted: #9aa3b5;
-    --raavi-success: #4cc282;
-    --raavi-danger: #ef6b5d;
-  }
+/* Dark: the class is set by the theme store (core/theme/themes.ts), which also follows the device for the "system" theme. */
+html.raavi-dark {
+  --raavi-bg: #0f141b;
+  --raavi-surface: #161c25;
+  --raavi-border: #263042;
+  --raavi-text: #e6e9ef;
+  --raavi-text-muted: #9aa3b5;
+  --raavi-success: #4cc282;
+  --raavi-danger: #ef6b5d;
 }
+
+/* Icons follow the theme accent (--raavi-icon, set by themed palettes); the built-in themes leave them as they are.
+   Icons on filled buttons, tags and messages keep the colour of their surroundings. */
+.pi { color: var(--raavi-icon, inherit); }
+.p-button:not(.p-button-text):not(.p-button-outlined):not(.p-button-link) .pi,
+.p-tag .pi,
+.p-message .pi,
+.p-toast .pi { color: inherit; }
+
+/* Text inputs with an icon at the end (password reveal, search fields): keep the text clear of the icon on both sides (the input may be forced LTR inside an RTL page). */
+.p-password .p-password-input { padding-inline: 2.5rem; }
+.p-iconfield .p-inputtext { padding-inline: 2.5rem; }
+.p-inputicon { color: var(--raavi-icon, var(--raavi-text-muted)); }
 
 html { background: var(--raavi-bg); color: var(--raavi-text); }
 html[lang^='fa'] body { font-family: var(--raavi-font-fa); }
@@ -66,3 +80,13 @@ a.p-button:hover {
 
 /* user line: picture + name */
 .who { display: inline-flex; align-items: center; gap: 0.4rem; }
+
+.visually-hidden { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Responsive: wide tables scroll inside their own box instead of widening the page. */
+.p-datatable-table-container { overflow-x: auto; }
+.p-datatable { max-inline-size: 100%; }
+img, video, canvas { max-inline-size: 100%; }
+/* Grid pages: one column that may shrink below its content (otherwise a long word or a wide child widens the whole page on a phone). */
+.page { grid-template-columns: minmax(0, 1fr); min-inline-size: 0; }
+.page > * { min-inline-size: 0; }

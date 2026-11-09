@@ -14,6 +14,9 @@ public enum BoardShape
     Sticky = 4,
     Arrow = 5,
     Pen = 6,
+    Diamond = 7,
+    Triangle = 8,
+    Line = 9,
 }
 
 /// <summary>
@@ -154,10 +157,10 @@ public sealed partial class Whiteboard : Entity, ITenantOwned
 
         var x = Coordinate(e.X ?? 0, signed: true);
         var y = Coordinate(e.Y ?? 0, signed: true);
-        var sized = e.Type is BoardShape.Rect or BoardShape.Ellipse or BoardShape.Sticky or BoardShape.Text;
+        var sized = e.Type is BoardShape.Rect or BoardShape.Ellipse or BoardShape.Sticky or BoardShape.Text or BoardShape.Diamond or BoardShape.Triangle;
         var w = sized ? Coordinate(e.W ?? 0, signed: false) : 0;
         var h = sized ? Coordinate(e.H ?? 0, signed: false) : 0;
-        if (e.Type is BoardShape.Rect or BoardShape.Ellipse or BoardShape.Sticky && (w <= 0 || h <= 0))
+        if (e.Type is BoardShape.Rect or BoardShape.Ellipse or BoardShape.Sticky or BoardShape.Diamond or BoardShape.Triangle && (w <= 0 || h <= 0))
         {
             throw Invalid("Shapes and sticky notes need a width and a height above zero.");
         }
@@ -196,15 +199,15 @@ public sealed partial class Whiteboard : Entity, ITenantOwned
     private static double[] Points(BoardElementInput e)
     {
         var points = e.Points ?? [];
-        if (e.Type is not (BoardShape.Arrow or BoardShape.Pen))
+        if (e.Type is not (BoardShape.Arrow or BoardShape.Pen or BoardShape.Line))
         {
             return [];
         }
 
-        var valid = e.Type == BoardShape.Arrow ? points.Length == 4 : points.Length is >= 4 and <= MaxPointValues && points.Length % 2 == 0;
+        var valid = e.Type is BoardShape.Arrow or BoardShape.Line ? points.Length == 4 : points.Length is >= 4 and <= MaxPointValues && points.Length % 2 == 0;
         if (!valid || points.Any(p => !double.IsFinite(p) || Math.Abs(p) > MaxCoordinate))
         {
-            throw Invalid(e.Type == BoardShape.Arrow ? "An arrow needs exactly two points." : $"A pen stroke needs 2–{MaxPointValues / 2} points.");
+            throw Invalid(e.Type is BoardShape.Arrow or BoardShape.Line ? "An arrow or line needs exactly two points." : $"A pen stroke needs 2–{MaxPointValues / 2} points.");
         }
 
         return points.Select(p => Math.Round(p, 2)).ToArray();

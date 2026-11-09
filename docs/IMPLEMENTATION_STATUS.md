@@ -14,6 +14,15 @@ Dev API + workers + Vite started; signed in as the dev workspace admin in the bu
 
 **Not covered:** creating/using slides, databases, workflows, approvals, tasks, calendar events; live co-editing between two browsers; AI, webhooks and connectors with real hosts (dev config allows none); PNG/SVG/PPTX/PDF downloads; mobile widths, dark mode, keyboard-only use, screen readers; English UI. Test data left in the dev DB: whiteboard "Browser check board" in space ENGINEERIN.
 
+### 14 — Experience polish (ADR-047)
+
+```
+dotnet test Raavi.Tests → 495 passed (8 new: two-step setting, administrator password/picture, shared accounts, theme, workspace logo, database filters/totals, board shapes ×2); vitest 29 files / 194 tests (11 new); vue-tsc clean
+browser (dev stack, Persian UI): themes chocolate/ocean applied and the choice read back from /auth/me; member password dialog shows the guided error for a short password; system sign-in without a code (setting off); address column + logo upload (shown top right, then removed); mobile emulation 360 px: no horizontal page overflow on 18 routes after the fix; board with diamond/triangle/line/sticky + grid + inspector; database board view, card move, filter chip, Σ row; page tree connector rules present (computed styles)
+```
+
+Fixed: password/icon fields (text no longer under the reveal icon, both text directions); user guide linked from sign-in pages and the header; "Address" column (clickable) in the workspace list; administrators set a member's password and picture (only for accounts that belong to no other workspace); square workspace logo with a crop dialog (system administrators; shown in header, sign-in and invitation pages); `SystemMfaRequired` setting; horizontal space menu; page tree with connector lines; sticky editor toolbar (it was hidden under the title bar and the wrapped header); error guidance (steps + guide link); nine colour themes (tokens, PrimeVue palettes, icon colour) saved in `Users.Theme`; responsive fixes (header wrap on phones, grid pages `minmax(0, 1fr)`, tables scroll in their own box); whiteboard: diamond/triangle/line, grid + snap, numeric geometry, key shortcuts, nudging; databases: column filters, number totals, column visibility, board view, duplicate row, CSV import, column reordering; guide updated. Migrations `UserTheme` (identity) and `TenantLogo` (tenancy, RLS) applied to RaaviDev. **Not verified:** a real IIS installation; the logo/theme/admin-password paths with real users; Safari/Firefox; a screen reader on the crop dialog; the page tree lines in a deep (5+ levels) tree and in LTR.
+
 ### 13h — Brand assets and profile pictures (ADR-046)
 
 ```

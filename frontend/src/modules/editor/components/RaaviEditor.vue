@@ -50,6 +50,22 @@ const pendingKind = ref<'image' | 'file'>('image')
 const uploading = ref(false)
 const tick = ref(0) // re-evaluates toolbar state on selection changes
 
+// The toolbar stays in view while a long document scrolls (sticky). Its real height (it wraps on narrow screens) is the offset of the table tools below it.
+const toolbarEl = ref<HTMLElement | null>(null)
+const toolbarHeight = ref(0)
+let toolbarObserver: ResizeObserver | null = null
+watch(toolbarEl, (el) => {
+  toolbarObserver?.disconnect()
+  toolbarObserver = null
+  if (!el) return
+  toolbarHeight.value = Math.round(el.getBoundingClientRect().height)
+  if (typeof ResizeObserver !== 'undefined') {
+    toolbarObserver = new ResizeObserver(() => (toolbarHeight.value = Math.round(el.getBoundingClientRect().height)))
+    toolbarObserver.observe(el)
+  }
+})
+onBeforeUnmount(() => toolbarObserver?.disconnect())
+
 const live: LiveSession | null = props.collaboration ? startLiveSession(props.collaboration) : null
 watch(
   () => live?.status.value,
@@ -233,12 +249,12 @@ defineExpose({ editor })
 </script>
 
 <template>
-  <div :class="['raavi-editor', { editing: editable, compact }]">
+  <div :class="['raavi-editor', { editing: editable, compact }]" :style="{ '--raavi-toolbar-h': `${toolbarHeight}px` }">
     <Message v-if="incompatible.length" severity="error" :closable="false" data-testid="editor-incompatible">{{ t('editor.incompatible') }}</Message>
     <Message v-if="live?.status.value === 'revoked'" severity="error" :closable="false" data-testid="live-revoked">{{ t('editor.live.revokedNotice') }}</Message>
     <Message v-else-if="live?.status.value === 'offline'" severity="warn" :closable="false">{{ t('editor.live.offlineNotice') }}</Message>
 
-    <div v-if="editable && !compact && editor && !incompatible.length" class="toolbar" role="toolbar" :aria-label="t('editor.toolbar.label')">
+    <div v-if="editable && !compact && editor && !incompatible.length" ref="toolbarEl" class="toolbar" role="toolbar" :aria-label="t('editor.toolbar.label')">
       <div class="group">
         <Button text size="small" icon="pi pi-undo" class="flip" :aria-label="t('editor.toolbar.undo')" :disabled="!can('undo')" @click="run((e) => e.chain().focus().undo().run())" />
         <Button text size="small" icon="pi pi-refresh" :aria-label="t('editor.toolbar.redo')" :disabled="!can('redo')" @click="run((e) => e.chain().focus().redo().run())" />
@@ -308,7 +324,8 @@ defineExpose({ editor })
 
 <style scoped>
 .raavi-editor.editing { border: 1px solid var(--raavi-border); border-radius: var(--raavi-radius-sm); background: var(--raavi-surface, #fff); }
-.toolbar, .table-tools { position: sticky; inset-block-start: var(--raavi-header-height); z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: var(--raavi-space-1) var(--raavi-space-2); padding: var(--raavi-space-1) var(--raavi-space-2); background: var(--raavi-surface, #fff); border-block-end: 1px solid var(--raavi-border); }
+.table-tools { inset-block-start: calc(var(--raavi-editor-top, var(--raavi-header-offset, var(--raavi-header-height))) + var(--raavi-toolbar-h, 0px)) !important; z-index: 4 !important; }
+.toolbar, .table-tools { position: sticky; inset-block-start: var(--raavi-editor-top, var(--raavi-header-offset, var(--raavi-header-height))); z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: var(--raavi-space-1) var(--raavi-space-2); padding: var(--raavi-space-1) var(--raavi-space-2); background: var(--raavi-surface, #fff); border-block-end: 1px solid var(--raavi-border); }
 .table-tools { inset-block-start: calc(var(--raavi-header-height) + 2.6rem); background: var(--p-primary-50, #f5f3ff); }
 .group { display: flex; gap: 0; border-inline-end: 1px solid var(--raavi-border); padding-inline-end: var(--raavi-space-1); }
 .toolbar :deep(.on) { background: var(--p-primary-100, rgba(0, 0, 0, 0.08)); }

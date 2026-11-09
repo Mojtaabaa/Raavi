@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import BrandLogo from '@/app/BrandLogo.vue'
+import HelpLink from '@/app/HelpLink.vue'
+import { useHostStore } from '@/stores/host'
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
@@ -59,11 +61,12 @@ async function submit() {
     busy.value = false
   }
 }
+const host = useHostStore()
 </script>
 
 <template>
   <section class="auth-page">
-    <BrandLogo class="auth-logo" :size="64" />
+    <BrandLogo class="auth-logo" :icon="!!host.logoUrl" :src="host.logoUrl" :size="64" />
     <Card class="auth-card">
       <template #title><h1 class="auth-title">{{ t('invitation.title') }}</h1></template>
       <template #content>
@@ -88,6 +91,7 @@ async function submit() {
         </form>
       </template>
     </Card>
+    <HelpLink />
   </section>
 </template>
 

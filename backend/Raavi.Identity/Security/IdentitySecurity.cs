@@ -18,6 +18,9 @@ public sealed class RaaviAuthenticationOptions
 
     public int InvitationLifetimeHours { get; set; } = 72;
 
+    /// <summary>Two-step verification (authenticator code) at system administrator sign-in. Default on; an operator may turn it off (password only) — a security decision documented in ADR-047.</summary>
+    public bool SystemMfaRequired { get; set; } = true;
+
     public BootstrapSettings Bootstrap { get; set; } = new();
 
     public sealed class SessionSettings

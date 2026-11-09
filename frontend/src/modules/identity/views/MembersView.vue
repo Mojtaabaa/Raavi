@@ -1,5 +1,11 @@
 <script setup lang="ts">
 import UserAvatar from '@/app/UserAvatar.vue'
+import PictureCropDialog from '@/app/PictureCropDialog.vue'
+import Password from 'primevue/password'
+import ErrorHelp from '@/app/ErrorHelp.vue'
+import { isAcceptedPicture, MAX_PICK_BYTES } from '@/core/runtime/imageResize'
+import { useAvatarStore } from '@/stores/avatars'
+import { ApiError } from '@/core/api/http'
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useConfirm } from 'primevue/useconfirm'
@@ -32,6 +38,79 @@ const inviteOpen = ref(false)
 const inviteEmail = ref('')
 const inviteAdmin = ref(false)
 const link = ref<string | null>(null)
+const avatars = useAvatarStore()
+
+// Administrator tools for a member: new password (forgotten password) and profile picture.
+const passwordTarget = ref<Member | null>(null)
+const newPassword = ref('')
+const passwordError = ref<unknown>(null)
+const savingPassword = ref(false)
+const pictureTarget = ref<Member | null>(null)
+const cropFile = ref<File | null>(null)
+const pictureInput = ref<HTMLInputElement | null>(null)
+
+function openPassword(m: Member) {
+  passwordTarget.value = m
+  newPassword.value = ''
+  passwordError.value = null
+}
+
+async function savePassword() {
+  const m = passwordTarget.value
+  if (!m || savingPassword.value) return
+  savingPassword.value = true
+  passwordError.value = null
+  try {
+    await identityApi.setMemberPassword(m.userId, newPassword.value)
+    passwordTarget.value = null
+    newPassword.value = ''
+    toast.add({ severity: 'success', summary: t('members.passwordSaved'), life: 4000 })
+  } catch (e) {
+    passwordError.value = e
+  } finally {
+    savingPassword.value = false
+  }
+}
+
+function openPicture(m: Member) {
+  pictureTarget.value = m
+  pictureInput.value?.click()
+}
+
+function picked(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  if (!isAcceptedPicture(file) || file.size > MAX_PICK_BYTES) {
+    toast.add({ severity: 'error', summary: t('profile.picture.invalid'), life: 5000 })
+    return
+  }
+  cropFile.value = file
+}
+
+async function savePicture(blob: Blob) {
+  const m = pictureTarget.value
+  cropFile.value = null
+  if (!m) return
+  try {
+    const { version } = await identityApi.setMemberPicture(m.userId, blob)
+    avatars.set(m.userId, version)
+    toast.add({ severity: 'success', summary: t('profile.picture.saved'), life: 3000 })
+  } catch (e) {
+    toast.add({ severity: 'error', summary: e instanceof ApiError ? errorMessage(e, t, te) : t('profile.picture.unreadable'), life: 5000 })
+  }
+}
+
+async function removePicture(m: Member) {
+  try {
+    await identityApi.removeMemberPicture(m.userId)
+    avatars.set(m.userId, null)
+    toast.add({ severity: 'success', summary: t('profile.picture.removed'), life: 3000 })
+  } catch (e) {
+    fail(e)
+  }
+}
 
 async function load() {
   loading.value = true
@@ -122,6 +201,11 @@ onMounted(load)
             <Button v-else text size="small" :label="data.status === 'PendingApproval' ? t('members.approve') : t('members.activate')" @click="run(() => identityApi.activateMember(data.userId))" />
             <Button text size="small" severity="danger" :label="t('members.remove')" @click="remove(data)" />
           </div>
+          <div class="actions" :class="{ 'second-row': !isSelf(data) }">
+            <Button text size="small" icon="pi pi-key" :label="t('members.setPassword')" :data-testid="`member-password-${data.userId}`" @click="openPassword(data)" />
+            <Button text size="small" icon="pi pi-camera" :label="t('members.changePicture')" :data-testid="`member-picture-${data.userId}`" @click="openPicture(data)" />
+            <Button v-if="avatars.versions[data.userId]" text size="small" icon="pi pi-trash" :label="t('profile.picture.remove')" @click="removePicture(data)" />
+          </div>
         </template>
       </Column>
     </DataTable>
@@ -151,6 +235,20 @@ onMounted(load)
       </form>
     </Dialog>
 
+    <input ref="pictureInput" type="file" accept="image/png,image/jpeg,image/webp" class="visually-hidden" tabindex="-1" aria-hidden="true" data-testid="member-picture-input" @change="picked" />
+    <PictureCropDialog :file="cropFile" :title="t('members.changePicture')" @cancel="cropFile = null" @confirm="savePicture" />
+
+    <Dialog :visible="!!passwordTarget" modal :header="t('members.setPassword')" :style="{ inlineSize: 'min(28rem, 95vw)' }" @update:visible="(v: boolean) => !v && (passwordTarget = null)">
+      <form class="form" @submit.prevent="savePassword">
+        <p class="muted">{{ t('members.passwordFor', { name: passwordTarget?.displayName ?? '' }) }}</p>
+        <label for="member-pw">{{ t('setup.newPassword') }}</label>
+        <Password input-id="member-pw" v-model="newPassword" :feedback="false" toggle-mask autocomplete="new-password" :input-props="{ dir: 'ltr' }" data-testid="member-password" />
+        <small class="muted">{{ t('members.passwordHelp') }}</small>
+        <ErrorHelp :error="passwordError" data-testid="member-password-error" />
+        <Button type="submit" :label="t('members.setPassword')" :loading="savingPassword" data-testid="member-password-save" />
+      </form>
+    </Dialog>
+
     <OneTimeLinkDialog :link="link" @close="link = null" />
   </section>
 </template>
@@ -162,5 +260,8 @@ h1 { margin: 0; font-size: 1.4rem; }
 h2 { margin: var(--raavi-space-4) 0 0; font-size: 1.1rem; }
 .actions { display: flex; gap: var(--raavi-space-1); flex-wrap: wrap; }
 .form { display: grid; gap: var(--raavi-space-2); }
+.form :deep(.p-password), .form :deep(.p-password-input) { inline-size: 100%; }
+.second-row { margin-block-start: var(--raavi-space-1); }
+.muted { color: var(--raavi-text-muted); margin: 0; }
 .check { display: flex; align-items: center; gap: var(--raavi-space-2); }
 </style>

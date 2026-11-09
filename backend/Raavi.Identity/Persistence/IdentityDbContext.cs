@@ -117,6 +117,7 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
             b.Property(x => x.SecurityStamp).HasMaxLength(64).IsUnicode(false);
             b.Property(x => x.ProtectedTotpSecret).HasMaxLength(1024).IsUnicode(false);
             b.Property(x => x.PreferredLocale).HasMaxLength(8).IsUnicode(false);
+            b.Property(x => x.Theme).HasMaxLength(16).IsUnicode(false);
             b.Property(x => x.RowVersion).IsRowVersion();
             b.Ignore(x => x.MfaEnabled);
             b.Property(x => x.MustChangePassword).HasDefaultValue(false);

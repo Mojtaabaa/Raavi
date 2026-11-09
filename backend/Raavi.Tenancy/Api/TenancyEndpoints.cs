@@ -29,6 +29,12 @@ public static class TenancyEndpoints
             .WithName("GetHostContext")
             .AllowAnonymous();
 
+        // ── A workspace host: its square logo (public like the branding; version in the address -> immutable cache). ──
+        api.MapGet("/host/logo", async (HttpContext http, TenantConfigurationService config, CancellationToken ct) =>
+            http.GetHostKind() == RaaviHostKind.Tenant ? LogoResult(http, await config.GetLogoAsync(ct).ConfigureAwait(false)) : Results.NotFound())
+            .WithName("GetHostLogo")
+            .AllowAnonymous();
+
         // ── System host, anonymous, rate-limited: login discovery by tenant code. ───────────────────
         api.MapGet("/discovery/tenants/{code}", async (string code, ITenantDirectory directory, ITenantUrlResolver urls, CancellationToken ct) =>
             {
@@ -51,8 +57,18 @@ public static class TenancyEndpoints
         system.MapPost("/", async (CreateTenantRequest body, TenantAdministrationService svc, CancellationToken ct) =>
             (await svc.CreateAsync(body, ct).ConfigureAwait(false)).ToHttp(t => Results.Created($"/api/v1/system/tenants/{t.Id}", t)));
 
-        system.MapGet("/", async (TenantStatus? status, int? skip, int? take, TenantAdministrationService svc, CancellationToken ct) =>
-            Results.Ok(await svc.ListAsync(status, skip ?? 0, take ?? 50, ct).ConfigureAwait(false)));
+        system.MapGet("/", async (TenantStatus? status, int? skip, int? take, TenantAdministrationService svc, ITenantUrlResolver urls, CancellationToken ct) =>
+        {
+            var page = await svc.ListAsync(status, skip ?? 0, take ?? 50, ct).ConfigureAwait(false);
+            var items = new List<TenantDto>(page.Items.Count);
+            foreach (var t in page.Items)
+            {
+                var url = await urls.GetCanonicalUrlAsync(t.Id, ct).ConfigureAwait(false);
+                items.Add(t with { Url = url?.ToString() });
+            }
+
+            return Results.Ok(new PagedResult<TenantDto>(items, page.Total, page.Skip, page.Take));
+        });
 
         system.MapGet("/{tenantId:guid}", async (Guid tenantId, TenantAdministrationService svc, CancellationToken ct) =>
             (await svc.GetAsync(tenantId, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
@@ -90,8 +106,32 @@ public static class TenancyEndpoints
         system.MapPut("/{tenantId:guid}/settings", (Guid tenantId, UpdateSettingsRequest body, IServiceProvider sp, CancellationToken ct) =>
             Run(sp, tenantId, s => s.UpdateSettingsAsync(body, ct), ct));
 
+        system.MapPut("/{tenantId:guid}/logo", async (Guid tenantId, IFormFile file, IServiceProvider sp, CancellationToken ct) =>
+            {
+                await using var stream = file.OpenReadStream();
+                return await Run(sp, tenantId, s => s.SetLogoAsync(stream, file.Length, ct), ct).ConfigureAwait(false);
+            })
+            .DisableAntiforgery();
+
+        system.MapDelete("/{tenantId:guid}/logo", (Guid tenantId, IServiceProvider sp, CancellationToken ct) =>
+            Run(sp, tenantId, s => s.RemoveLogoAsync(ct), ct));
+
         system.MapPut("/{tenantId:guid}/branding", (Guid tenantId, UpdateBrandingRequest body, IServiceProvider sp, CancellationToken ct) =>
             Run(sp, tenantId, s => s.UpdateBrandingAsync(body, ct), ct));
+    }
+
+    private static IResult LogoResult(HttpContext http, LogoFile? logo)
+    {
+        if (logo is null)
+        {
+            return Results.NotFound();
+        }
+
+        var etag = "\"l" + logo.Version + "\"";
+        http.Response.Headers.ETag = etag;
+        http.Response.Headers.CacheControl = "public, max-age=3600";
+        http.Response.Headers["X-Content-Type-Options"] = "nosniff";
+        return http.Request.Headers.IfNoneMatch == etag ? Results.StatusCode(StatusCodes.Status304NotModified) : Results.File(logo.Data, logo.ContentType);
     }
 
     private static async Task<IResult> Run<T>(IServiceProvider sp, Guid tenantId, Func<TenantConfigurationService, Task<Raavi.Application.Common.Result<T>>> action, CancellationToken ct) =>

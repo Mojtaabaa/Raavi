@@ -42,6 +42,20 @@ public sealed class WhiteboardDomainTests
     }
 
     [Fact]
+    public void Diamonds_triangles_and_lines_follow_the_rules_of_the_other_shapes()
+    {
+        var board = Make(
+            new BoardElementInput("d1", BoardShape.Diamond, 0, 0, 100, 80, null, null, null, null, "ignored", null, null, [1, 2]),
+            new BoardElementInput("l1", BoardShape.Line, 0, 0, 9, 9, null, null, null, null, null, null, null, [0, 0, 50, 50]));
+        Assert.Equal((100d, 80d, 0), (board.Elements[0].W, board.Elements[0].H, board.Elements[0].Points.Length)); // a diamond has a size, no points
+        Assert.Equal((0d, 0d, 4), (board.Elements[1].W, board.Elements[1].H, board.Elements[1].Points.Length)); // a line has two points, no size
+        Assert.Equal("board.element_invalid", Code(() => Make(new BoardElementInput("d", BoardShape.Diamond, 0, 0, 0, 10, null, null, null, null, null, null, null, null))));
+        Assert.Equal("board.element_invalid", Code(() => Make(new BoardElementInput("t", BoardShape.Triangle, 0, 0, 10, 0, null, null, null, null, null, null, null, null))));
+        Assert.Equal("board.element_invalid", Code(() => Make(new BoardElementInput("l", BoardShape.Line, 0, 0, null, null, null, null, null, null, null, null, null, [0, 0, 1, 1, 2, 2]))));
+        Assert.Equal("board.element_invalid", Code(() => Make(new BoardElementInput("l", BoardShape.Line, 0, 0, null, null, null, null, null, null, null, null, null, null))));
+    }
+
+    [Fact]
     public void Bad_elements_are_rejected_with_stable_codes()
     {
         Assert.Equal("board.title_invalid", Code(() => Whiteboard.Create(Guid.NewGuid(), " ", [], Guid.NewGuid(), Now)));
@@ -163,6 +177,27 @@ public sealed class WhiteboardTests(SqlServerFixture fx)
         var empty = (await CreateAsync(admin, key, new { title = "Empty" })).GetProperty("id").GetGuid();
         using var e = await admin.GetAsync($"api/v1/whiteboards/{empty}/export");
         Assert.NotNull(XDocument.Parse(await e.Content.ReadAsStringAsync()).Root);
+    }
+
+    [Fact]
+    public async Task Diamonds_triangles_and_lines_are_saved_and_exported()
+    {
+        var (_, admin, _) = await _kit.Identity.TenantWithAdminAsync();
+        var key = (await CreateSpaceAsync(admin)).GetProperty("key").GetString()!;
+        var elements = new object[]
+        {
+            new { id = "d1", type = "Diamond", x = 10, y = 10, w = 100, h = 80, fill = "#fde68a" },
+            new { id = "t1", type = "Triangle", x = 200, y = 10, w = 90, h = 70 },
+            new { id = "l1", type = "Line", x = 5, y = 5, points = new[] { 0, 0, 120, 40 } },
+        };
+        var id = (await CreateAsync(admin, key, new { title = "Shapes", elements })).GetProperty("id").GetGuid();
+        using var response = await admin.GetAsync($"api/v1/whiteboards/{id}/export");
+        var doc = XDocument.Parse(await response.Content.ReadAsStringAsync());
+        XNamespace ns = "http://www.w3.org/2000/svg";
+        Assert.Equal(2, doc.Descendants(ns + "polygon").Count()); // diamond + triangle (a line has no arrow head)
+        Assert.Single(doc.Descendants(ns + "line"));
+        var saved = await admin.GetJsonAsync($"api/v1/whiteboards/{id}");
+        Assert.Equal(["Diamond", "Triangle", "Line"], saved.GetProperty("elements").EnumerateArray().Select(e => e.GetProperty("type").GetString()));
     }
 
     [Fact]

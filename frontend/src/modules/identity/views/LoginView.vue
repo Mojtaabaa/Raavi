@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import BrandLogo from '@/app/BrandLogo.vue'
+import HelpLink from '@/app/HelpLink.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
@@ -99,7 +100,7 @@ async function redirectTo(p: ProviderSummary) {
 
 <template>
   <section class="auth-page">
-    <BrandLogo class="auth-logo" :size="64" />
+    <BrandLogo class="auth-logo" :icon="!!host.logoUrl" :src="host.logoUrl" :size="64" />
     <Card class="auth-card">
       <template #title>
         <h1 class="auth-title">{{ t('auth.signInTitle', { name: tenantName }) }}</h1>
@@ -142,6 +143,7 @@ async function redirectTo(p: ProviderSummary) {
         </form>
       </template>
     </Card>
+    <HelpLink />
   </section>
 </template>
 

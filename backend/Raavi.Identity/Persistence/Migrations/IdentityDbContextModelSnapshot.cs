@@ -614,6 +614,11 @@ namespace Raavi.Identity.Persistence.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<string>("Theme")
+                        .HasMaxLength(16)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(16)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("NormalizedEmail")

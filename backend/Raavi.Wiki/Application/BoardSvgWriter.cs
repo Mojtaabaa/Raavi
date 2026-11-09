@@ -47,6 +47,15 @@ internal static class BoardSvgWriter
             case BoardShape.Ellipse:
                 sb.Append(CultureInfo.InvariantCulture, $"<ellipse cx=\"{N(e.W / 2)}\" cy=\"{N(e.H / 2)}\" rx=\"{N(e.W / 2)}\" ry=\"{N(e.H / 2)}\" fill=\"{e.Fill ?? "none"}\" {stroke}/>");
                 break;
+            case BoardShape.Diamond:
+                sb.Append(CultureInfo.InvariantCulture, $"<polygon points=\"{N(e.W / 2)},0 {N(e.W)},{N(e.H / 2)} {N(e.W / 2)},{N(e.H)} 0,{N(e.H / 2)}\" fill=\"{e.Fill ?? "none"}\" stroke-linejoin=\"round\" {stroke}/>");
+                break;
+            case BoardShape.Triangle:
+                sb.Append(CultureInfo.InvariantCulture, $"<polygon points=\"{N(e.W / 2)},0 {N(e.W)},{N(e.H)} 0,{N(e.H)}\" fill=\"{e.Fill ?? "none"}\" stroke-linejoin=\"round\" {stroke}/>");
+                break;
+            case BoardShape.Line:
+                sb.Append(CultureInfo.InvariantCulture, $"<line x1=\"{N(e.Points[0])}\" y1=\"{N(e.Points[1])}\" x2=\"{N(e.Points[2])}\" y2=\"{N(e.Points[3])}\" stroke-linecap=\"round\" {stroke}/>");
+                break;
             case BoardShape.Sticky:
                 sb.Append(CultureInfo.InvariantCulture, $"<rect width=\"{N(e.W)}\" height=\"{N(e.H)}\" fill=\"{e.Fill ?? StickyDefault}\" stroke=\"none\"/>");
                 TextBlock(sb, e, 10, 10, Math.Max(0, e.W - 20));
@@ -138,7 +147,7 @@ internal static class BoardSvgWriter
         double minX = double.MaxValue, minY = double.MaxValue, maxX = double.MinValue, maxY = double.MinValue;
         foreach (var e in elements)
         {
-            var corners = e.Type is BoardShape.Arrow or BoardShape.Pen
+            var corners = e.Type is BoardShape.Arrow or BoardShape.Pen or BoardShape.Line
                 ? Enumerable.Range(0, e.Points.Length / 2).Select(i => (e.Points[2 * i], e.Points[(2 * i) + 1])).ToList()
                 : [(0d, 0d), (e.W, 0d), (e.W, e.H), (0d, e.H)];
             if (e.Type == BoardShape.Text && e.W <= 0)

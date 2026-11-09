@@ -32,9 +32,12 @@ const tools: { id: Tool; icon: string }[] = [
   { id: 'hand', icon: 'pi pi-arrows-alt' },
   { id: 'rect', icon: 'pi pi-stop' },
   { id: 'ellipse', icon: 'pi pi-circle' },
+  { id: 'diamond', icon: 'pi pi-stop diamond' },
+  { id: 'triangle', icon: 'pi pi-caret-up' },
   { id: 'sticky', icon: 'pi pi-bookmark' },
   { id: 'text', icon: 'pi pi-align-left' },
   { id: 'arrow', icon: 'pi pi-arrow-right' },
+  { id: 'line', icon: 'pi pi-minus' },
   { id: 'pen', icon: 'pi pi-pencil' },
 ]
 
@@ -46,6 +49,25 @@ const selectedId = ref<string | null>(null)
 const tool = ref<Tool>('select')
 const stroke = ref<string>(PALETTE[0])
 const fill = ref<string | null>(null)
+// Helpers for tidy boards: dotted grid, and positions that snap to it. Kept per browser.
+const gridOn = ref(localGet('raavi.board.grid') === '1')
+const snapOn = ref(localGet('raavi.board.snap') === '1')
+function localGet(key: string): string | null {
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+function toggle(which: 'grid' | 'snap') {
+  const flag = which === 'grid' ? gridOn : snapOn
+  flag.value = !flag.value
+  try {
+    localStorage.setItem(`raavi.board.${which}`, flag.value ? '1' : '0')
+  } catch {
+    /* not saved: only for this page */
+  }
+}
 const saved = ref('')
 const saving = ref(false)
 const history = new History()
@@ -302,6 +324,9 @@ function removeBoard() {
   })
 }
 
+/** One-key tool switching while the board has the focus (not while typing in a field). */
+const TOOL_KEYS: Record<string, Tool> = { v: 'select', h: 'hand', r: 'rect', e: 'ellipse', d: 'diamond', g: 'triangle', s: 'sticky', t: 'text', a: 'arrow', l: 'line', p: 'pen' }
+
 function onKey(event: KeyboardEvent) {
   const target = event.target as HTMLElement | null
   if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return
@@ -313,7 +338,14 @@ function onKey(event: KeyboardEvent) {
   else if (event.key === 'Escape') {
     tool.value = 'select'
     selectedId.value = null
-  } else return
+  } else if (event.key.startsWith('Arrow') && selected.value && editable.value) {
+    // nudge the selected element: 1 unit, or 20 (one grid step) with Shift
+    const step = event.shiftKey ? 20 : 1
+    const dx = event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0
+    const dy = event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0
+    onChange(selected.value.id, { x: selected.value.x + dx, y: selected.value.y + dy })
+  } else if (!mod && !event.altKey && editable.value && TOOL_KEYS[event.key.toLowerCase()]) tool.value = TOOL_KEYS[event.key.toLowerCase()]!
+  else return
   event.preventDefault()
 }
 
@@ -347,6 +379,9 @@ onBeforeRouteLeave(() => !dirty.value || window.confirm(t('whiteboards.unsaved')
       <Button icon="pi pi-undo" text rounded size="small" :disabled="!canUndo" :aria-label="t('whiteboards.undo')" data-testid="undo" @click="undo" />
       <Button icon="pi pi-refresh" text rounded size="small" :disabled="!canRedo" :aria-label="t('whiteboards.redo')" class="redo" data-testid="redo" @click="redo" />
       <span class="sep" />
+      <Button icon="pi pi-table" size="small" :severity="gridOn ? 'primary' : 'secondary'" :outlined="!gridOn" :aria-pressed="gridOn" :aria-label="t('whiteboards.grid')" :title="t('whiteboards.grid')" data-testid="toggle-grid" @click="toggle('grid')" />
+      <Button icon="pi pi-th-large" size="small" :severity="snapOn ? 'primary' : 'secondary'" :outlined="!snapOn" :aria-pressed="snapOn" :aria-label="t('whiteboards.snap')" :title="t('whiteboards.snap')" data-testid="toggle-snap" @click="toggle('snap')" />
+      <span class="sep" />
       <span class="swatches" role="group" :aria-label="t('whiteboards.stroke')">
         <button v-for="c in PALETTE" :key="c" type="button" class="swatch" :class="{ on: (selected?.stroke ?? stroke) === c }" :style="{ background: c }" :aria-label="`${t('whiteboards.stroke')} ${c}`" :aria-pressed="(selected?.stroke ?? stroke) === c" @click="pickStroke(c)" />
       </span>
@@ -356,9 +391,10 @@ onBeforeRouteLeave(() => !dirty.value || window.confirm(t('whiteboards.unsaved')
       </span>
     </div>
 
+    <p v-if="editable" class="muted shortcuts" data-testid="board-shortcuts">{{ t('whiteboards.shortcuts') }}</p>
     <div class="workspace">
       <div class="surface" tabindex="0" :aria-label="t('whiteboards.canvasHint')">
-        <BoardCanvas ref="canvas" :elements="elements" :tool="tool" :selected-id="selectedId" :read-only="!editable" :stroke="stroke" :fill="fill" :label="t('whiteboards.canvasLabel', { title: board.title, count: elements.length })" @select="setSelected" @create="onCreate" @change="onChange" />
+        <BoardCanvas ref="canvas" :elements="elements" :tool="tool" :selected-id="selectedId" :read-only="!editable" :stroke="stroke" :fill="fill" :grid="gridOn" :snap="snapOn" :label="t('whiteboards.canvasLabel', { title: board.title, count: elements.length })" @select="setSelected" @create="onCreate" @change="onChange" />
         <div class="zoom">
           <Button icon="pi pi-search-minus" text rounded size="small" :aria-label="t('whiteboards.zoomOut')" @click="canvas?.zoomBy(1 / 1.2)" />
           <Button icon="pi pi-expand" text rounded size="small" :aria-label="t('whiteboards.fit')" data-testid="fit" @click="canvas?.resetView()" />
@@ -381,6 +417,13 @@ onBeforeRouteLeave(() => !dirty.value || window.confirm(t('whiteboards.unsaved')
               <option v-for="w in STROKE_WIDTHS" :key="w" :value="w">{{ w }}px</option>
             </select>
           </template>
+          <div v-if="selected.type !== 'Arrow' && selected.type !== 'Pen' && selected.type !== 'Line'" class="geometry" role="group" :aria-label="t('whiteboards.geometry')">
+            <label>X <input type="number" :value="Math.round(selected.x)" data-testid="geo-x" @change="onChange(selected.id, { x: Number(($event.target as HTMLInputElement).value) || 0 })" /></label>
+            <label>Y <input type="number" :value="Math.round(selected.y)" data-testid="geo-y" @change="onChange(selected.id, { y: Number(($event.target as HTMLInputElement).value) || 0 })" /></label>
+            <label>{{ t('whiteboards.width') }} <input type="number" min="10" :value="Math.round(selected.w)" data-testid="geo-w" :disabled="selected.type === 'Text'" @change="onChange(selected.id, { w: Math.max(10, Number(($event.target as HTMLInputElement).value) || 10) })" /></label>
+            <label>{{ t('whiteboards.height') }} <input type="number" min="10" :value="Math.round(selected.h)" data-testid="geo-h" :disabled="selected.type === 'Text'" @change="onChange(selected.id, { h: Math.max(10, Number(($event.target as HTMLInputElement).value) || 10) })" /></label>
+            <label>{{ t('whiteboards.rotation') }} <input type="number" min="-360" max="360" :value="Math.round(selected.rotation)" data-testid="geo-rotation" @change="onChange(selected.id, { rotation: Number(($event.target as HTMLInputElement).value) || 0 })" /></label>
+          </div>
           <div class="actions">
             <Button size="small" severity="secondary" outlined icon="pi pi-clone" :label="t('whiteboards.duplicate')" data-testid="duplicate" @click="duplicateSelected" />
             <Button size="small" severity="secondary" outlined icon="pi pi-angle-double-up" :label="t('whiteboards.toFront')" data-testid="to-front" @click="order('front')" />
@@ -415,6 +458,9 @@ onBeforeRouteLeave(() => !dirty.value || window.confirm(t('whiteboards.unsaved')
 h1 { margin: 0; font-size: 1.5rem; }
 h2 { margin: 0; font-size: 1rem; }
 .board-title { font-size: 1.25rem; font-weight: 600; }
+.geometry { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--raavi-space-1) var(--raavi-space-2); }
+.geometry label { display: grid; gap: 2px; font-size: 0.8rem; color: var(--raavi-text-muted); }
+.geometry input { inline-size: 100%; }
 .tools, .toolbar { display: flex; gap: var(--raavi-space-1, 0.25rem); flex-wrap: wrap; align-items: center; }
 .toolbar { padding: var(--raavi-space-1, 0.25rem); border: 1px solid var(--raavi-border); border-radius: var(--raavi-radius-sm); }
 .sep { inline-size: 1px; block-size: 1.5rem; background: var(--raavi-border); margin-inline: 0.25rem; }

@@ -24,6 +24,8 @@ const newPassword = ref('')
 const confirmPassword = ref('')
 const invalid = ref(false)
 const secret = ref<string | null>(null)
+const mfa = ref(true) // two-step verification required (Raavi:Authentication:SystemMfaRequired)
+const started = ref(false)
 const qr = ref<string | null>(null)
 const displayName = ref('')
 const password = ref('')
@@ -41,6 +43,8 @@ onMounted(async () => {
     const info = await identityApi.inspectSetup(token.value)
     email.value = info.email
     mustChange.value = info.passwordChangeRequired === true
+    mfa.value = (await identityApi.systemOptions().catch(() => ({ mfaRequired: true }))).mfaRequired
+    started.value = !mfa.value // without an authenticator there is nothing to start: go straight to the form
   } catch {
     invalid.value = true
   }
@@ -51,6 +55,7 @@ async function begin() {
   try {
     const r = await identityApi.beginSetup(token.value)
     secret.value = r.secret
+    started.value = true
     // QR code rendered locally (no external service): the secret never leaves the browser/server.
     qr.value = await QRCode.toDataURL(r.otpAuthUri, { margin: 1, width: 192 })
   } catch (e) {
@@ -87,11 +92,13 @@ async function complete() {
         <Message v-if="invalid" severity="warn" :closable="false">{{ t('errors.setup.invalid') }}</Message>
         <template v-else-if="email">
           <p dir="ltr" class="email">{{ email }}</p>
-          <Button v-if="!secret" :label="t('setup.start')" @click="begin" />
+          <Button v-if="!started" :label="t('setup.start')" @click="begin" />
           <form v-else class="auth-form" novalidate @submit.prevent="complete">
-            <p>{{ t('setup.scan') }}</p>
-            <img v-if="qr" :src="qr" alt="" width="192" height="192" class="qr" />
-            <p class="small">{{ t('setup.manual') }} <code dir="ltr">{{ secret }}</code></p>
+            <template v-if="mfa">
+              <p>{{ t('setup.scan') }}</p>
+              <img v-if="qr" :src="qr" alt="" width="192" height="192" class="qr" />
+              <p class="small">{{ t('setup.manual') }} <code dir="ltr">{{ secret }}</code></p>
+            </template>
             <label for="name">{{ t('common.displayName') }}</label>
             <InputText id="name" v-model="displayName" autocomplete="name" />
             <template v-if="mustChange">
@@ -108,8 +115,8 @@ async function complete() {
               <Password input-id="pw" v-model="password" :feedback="false" toggle-mask autocomplete="new-password" :placeholder="t('invitation.passwordHint')" :input-props="{ dir: 'ltr' }" />
               <p class="small muted">{{ t('setup.existingNote') }}</p>
             </template>
-            <label for="otp">{{ t('auth.code') }}</label>
-            <InputText id="otp" v-model="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" dir="ltr" class="otp" data-testid="otp" />
+            <label v-if="mfa" for="otp">{{ t('auth.code') }}</label>
+            <InputText v-if="mfa" id="otp" v-model="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" dir="ltr" class="otp" data-testid="otp" />
             <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
             <Button type="submit" :label="t('setup.complete')" :loading="busy" />
           </form>

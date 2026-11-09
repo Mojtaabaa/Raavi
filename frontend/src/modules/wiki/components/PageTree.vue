@@ -122,5 +122,28 @@ function onSelect(node: PrimeTreeNode) {
 .page-tree { min-inline-size: 0; }
 .tree { padding: 0; background: transparent; border: 0; }
 .tree :deep(.p-tree-node-label) { overflow-wrap: anywhere; }
+
+/* Connector lines: each child hangs on a vertical guide from its parent with an elbow to its own row. */
+.tree :deep(.p-tree-node-children) { margin-inline-start: 1rem; padding: 0; }
+.tree :deep(.p-tree-node-children > .p-tree-node) { position: relative; padding-inline-start: 1rem; }
+.tree :deep(.p-tree-node-children > .p-tree-node)::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-start: 0;
+  inline-size: 0.85rem;
+  block-size: 1.15rem;
+  border-inline-start: 1px solid color-mix(in srgb, var(--raavi-text-muted) 55%, transparent);
+  border-block-end: 1px solid color-mix(in srgb, var(--raavi-text-muted) 55%, transparent);
+  border-end-start-radius: 6px;
+}
+.tree :deep(.p-tree-node-children > .p-tree-node:not(:last-child))::after {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-start: 1.15rem;
+  inset-block-end: 0;
+  border-inline-start: 1px solid color-mix(in srgb, var(--raavi-text-muted) 55%, transparent);
+}
 .muted { color: var(--raavi-text-muted); font-size: 0.9rem; }
 </style>

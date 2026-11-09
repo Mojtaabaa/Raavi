@@ -73,6 +73,14 @@ public static class IdentityEndpoints
             return Results.NoContent();
         }).RequireAuthorization(RaaviPolicies.AuthenticatedUser);
 
+        api.MapPut("/auth/me/theme", async (ThemeRequest body, ICurrentUser current, IdentityDbContext db, CancellationToken ct) =>
+        {
+            var user = await db.Users.FirstAsync(u => u.Id == current.UserId, ct).ConfigureAwait(false);
+            user.SetTheme(body.Theme);
+            await db.SaveChangesAsync(ct).ConfigureAwait(false);
+            return Results.NoContent();
+        }).RequireAuthorization(RaaviPolicies.AuthenticatedUser);
+
         // ── Profile pictures (ADR-046) ───────────────────────────────────────────────────────────
         // Own picture: any signed-in user on any host. Antiforgery is enforced by the Raavi middleware (X-XSRF-TOKEN) for every unsafe request.
         api.MapPut("/auth/me/avatar", async (IFormFile file, AvatarService svc, CancellationToken ct) =>
@@ -157,6 +165,8 @@ public static class IdentityEndpoints
         // ── System host ────────────────────────────────────────────────────────────────────────
         var systemAuth = auth.MapGroup("/system").RequireHostKind(RaaviHostKind.System);
 
+        systemAuth.MapGet("/options", (Microsoft.Extensions.Options.IOptions<RaaviAuthenticationOptions> o) => Results.Ok(new { mfaRequired = o.Value.SystemMfaRequired })).AllowAnonymous();
+
         systemAuth.MapPost("/login", async (HttpContext http, SystemLoginRequest body, SystemIdentityService svc, CancellationToken ct) =>
             (await svc.LoginAsync(http, body, ct).ConfigureAwait(false)).ToHttp(Results.Ok))
             .RequireRateLimiting(LoginRateLimitPolicy);
@@ -181,6 +191,24 @@ public static class IdentityEndpoints
         var admin = api.MapGroup("/tenant").RequireHostKind(RaaviHostKind.Tenant).RequireAuthorization(RaaviPolicies.TenantAdministrator);
 
         admin.MapGet("/members", async (TenantIdentityAdminService svc, CancellationToken ct) => Results.Ok(await svc.ListMembersAsync(ct).ConfigureAwait(false)));
+        admin.MapPut("/members/{userId:guid}/password", async (Guid userId, SetPasswordRequest body, TenantIdentityAdminService svc, CancellationToken ct) =>
+            (await svc.SetMemberPasswordAsync(userId, body.NewPassword, ct).ConfigureAwait(false)).ToHttp());
+        admin.MapPut("/members/{userId:guid}/avatar", async (Guid userId, IFormFile file, TenantIdentityAdminService svc, AvatarService avatars, CancellationToken ct) =>
+        {
+            var managed = await svc.ManageableMemberAsync(userId, ct).ConfigureAwait(false);
+            if (!managed.IsSuccess)
+            {
+                return Raavi.Application.Common.Result<int>.Failure(managed.Error!).ToHttp(v => Results.Ok(new { version = v }));
+            }
+
+            await using var stream = file.OpenReadStream();
+            return (await avatars.SetForAsync(userId, stream, file.Length, ct).ConfigureAwait(false)).ToHttp(version => Results.Ok(new { version }));
+        }).DisableAntiforgery();
+        admin.MapDelete("/members/{userId:guid}/avatar", async (Guid userId, TenantIdentityAdminService svc, AvatarService avatars, CancellationToken ct) =>
+        {
+            var managed = await svc.ManageableMemberAsync(userId, ct).ConfigureAwait(false);
+            return managed.IsSuccess ? (await avatars.RemoveForAsync(userId, ct).ConfigureAwait(false)).ToHttp() : Raavi.Application.Common.Result.Failure(managed.Error!).ToHttp();
+        });
         admin.MapPost("/members/{userId:guid}/suspend", async (Guid userId, TenantIdentityAdminService svc, CancellationToken ct) => (await svc.SetMemberStatusAsync(userId, false, ct).ConfigureAwait(false)).ToHttp());
         admin.MapPost("/members/{userId:guid}/activate", async (Guid userId, TenantIdentityAdminService svc, CancellationToken ct) => (await svc.SetMemberStatusAsync(userId, true, ct).ConfigureAwait(false)).ToHttp());
         admin.MapDelete("/members/{userId:guid}", async (Guid userId, TenantIdentityAdminService svc, CancellationToken ct) => (await svc.RemoveMemberAsync(userId, ct).ConfigureAwait(false)).ToHttp());

@@ -2,7 +2,13 @@ import type { BoardElement, BoardShape } from '@/core/api/whiteboards'
 
 /** Pure whiteboard logic (no canvas): element factories, edits, history and geometry. The canvas component only draws and reports gestures. */
 
-export type Tool = 'select' | 'hand' | 'rect' | 'ellipse' | 'sticky' | 'text' | 'arrow' | 'pen'
+export type Tool = 'select' | 'hand' | 'rect' | 'ellipse' | 'diamond' | 'triangle' | 'sticky' | 'text' | 'arrow' | 'line' | 'pen'
+
+/** Grid step in board units: the size of the grid dots, and the step positions snap to when "snap to grid" is on. */
+export const GRID = 20
+
+/** Position snapped to the grid (identity when snapping is off). */
+export const snapTo = (value: number, on: boolean): number => (on ? Math.round(value / GRID) * GRID : value)
 
 export const PALETTE = ['#1f2937', '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#ffffff'] as const
 export const FILLS = ['#fde68a', '#fecaca', '#bbf7d0', '#bfdbfe', '#ddd6fe', '#fbcfe8', '#e5e7eb'] as const
@@ -32,7 +38,7 @@ const base = (type: BoardShape, x: number, y: number): BoardElement => ({
 })
 
 /** Default size of a shape created by a plain click instead of a drag. */
-const CLICK_SIZE: Partial<Record<BoardShape, [number, number]>> = { Rect: [140, 90], Ellipse: [140, 90], Sticky: [170, 130] }
+const CLICK_SIZE: Partial<Record<BoardShape, [number, number]>> = { Rect: [140, 90], Ellipse: [140, 90], Diamond: [140, 110], Triangle: [130, 110], Sticky: [170, 130] }
 
 /** Builds the element for a gesture from (x0, y0) to (x1, y1); a tiny drag counts as a click. */
 export function elementFromGesture(tool: Tool, x0: number, y0: number, x1: number, y1: number, pen: number[] = [], options: { stroke?: string; fill?: string | null } = {}): BoardElement | null {
@@ -41,8 +47,10 @@ export function elementFromGesture(tool: Tool, x0: number, y0: number, x1: numbe
   switch (tool) {
     case 'rect':
     case 'ellipse':
+    case 'diamond':
+    case 'triangle':
     case 'sticky': {
-      const type: BoardShape = tool === 'rect' ? 'Rect' : tool === 'ellipse' ? 'Ellipse' : 'Sticky'
+      const type: BoardShape = tool === 'rect' ? 'Rect' : tool === 'ellipse' ? 'Ellipse' : tool === 'diamond' ? 'Diamond' : tool === 'triangle' ? 'Triangle' : 'Sticky'
       const el = base(type, Math.min(x0, x1), Math.min(y0, y1))
       const [w, h] = dragged ? [Math.abs(x1 - x0), Math.abs(y1 - y0)] : CLICK_SIZE[type]!
       Object.assign(el, { w: Math.max(w, 10), h: Math.max(h, 10), stroke, fill: options.fill ?? (type === 'Sticky' ? FILLS[0] : null) })
@@ -54,9 +62,10 @@ export function elementFromGesture(tool: Tool, x0: number, y0: number, x1: numbe
       Object.assign(el, { text: '', stroke, fontSize: 24 })
       return el
     }
-    case 'arrow': {
+    case 'arrow':
+    case 'line': {
       if (!dragged) return null
-      const el = base('Arrow', x0, y0)
+      const el = base(tool === 'line' ? 'Line' : 'Arrow', x0, y0)
       Object.assign(el, { points: [0, 0, x1 - x0, y1 - y0], stroke })
       return el
     }
@@ -135,7 +144,7 @@ export function bounds(elements: BoardElement[]): { x: number; y: number; w: num
   let maxY = -Infinity
   for (const e of elements) {
     const corners: [number, number][] =
-      e.type === 'Arrow' || e.type === 'Pen'
+      e.type === 'Arrow' || e.type === 'Pen' || e.type === 'Line'
         ? Array.from({ length: Math.floor(e.points.length / 2) }, (_, i) => [e.points[2 * i]!, e.points[2 * i + 1]!] as [number, number])
         : [[0, 0], [e.w, 0], [e.w, e.h], [0, e.h]]
     const rad = (e.rotation * Math.PI) / 180

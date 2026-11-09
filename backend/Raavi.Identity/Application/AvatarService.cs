@@ -121,7 +121,10 @@ public sealed class AvatarService(IdentityDbContext db, ICurrentUser current, IC
     public static readonly Error NotFound = new("avatar.not_found", "No picture.", ErrorKind.NotFound);
 
     /// <summary>Stores the signed-in user's picture; returns its new version.</summary>
-    public async Task<Result<int>> SetAsync(Stream content, long declaredLength, CancellationToken ct)
+    public Task<Result<int>> SetAsync(Stream content, long declaredLength, CancellationToken ct) => SetForAsync(current.UserId, content, declaredLength, ct);
+
+    /// <summary>Stores the picture of <paramref name="userId"/> (own picture, or a workspace administrator's change — the caller has checked that right).</summary>
+    public async Task<Result<int>> SetForAsync(Guid userId, Stream content, long declaredLength, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(content);
         var max = options.Value.MaxBytes;
@@ -157,7 +160,6 @@ public sealed class AvatarService(IdentityDbContext db, ICurrentUser current, IC
             return Result<int>.Failure(BadSize);
         }
 
-        var userId = current.UserId;
         var existing = await db.Avatars.FirstOrDefaultAsync(a => a.UserId == userId, ct).ConfigureAwait(false);
         if (existing is null)
         {
@@ -173,9 +175,10 @@ public sealed class AvatarService(IdentityDbContext db, ICurrentUser current, IC
         return Result<int>.Success(existing.Version);
     }
 
-    public async Task<Result> RemoveAsync(CancellationToken ct)
+    public Task<Result> RemoveAsync(CancellationToken ct) => RemoveForAsync(current.UserId, ct);
+
+    public async Task<Result> RemoveForAsync(Guid userId, CancellationToken ct)
     {
-        var userId = current.UserId;
         var existing = await db.Avatars.FirstOrDefaultAsync(a => a.UserId == userId, ct).ConfigureAwait(false);
         if (existing is not null)
         {

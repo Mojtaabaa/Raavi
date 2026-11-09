@@ -37,6 +37,7 @@ Format: Context · Decision · Alternatives considered · Consequences. Status v
 | [031](ADR-031-workflows.md) | Workflows: rules engine on the outbox (Phase 10a) | Accepted |
 | [032](ADR-032-approvals.md) | Page approvals (Phase 10b) | Accepted |
 | [033](ADR-033-scheduling-and-flow-view.md) | Reminders, stale-page trigger, flow view (Phase 10c) | Accepted |
+| [047](ADR-047-experience-polish-themes-admin-tools-logo.md) | Experience polish: themes, administrator tools, workspace logo, two-step setting, guidance (Phase 14) | Accepted |
 | [046](ADR-046-brand-assets-and-profile-pictures.md) | Brand assets and profile pictures (Phase 13h) | Accepted |
 | [045](ADR-045-path-addressing-and-default-workspace.md) | Path addressing of workspaces and a default workspace (Phase 13g) | Accepted |
 | [044](ADR-044-bootstrap-system-administrator.md) | Bootstrap system administrator with forced first sign-in (Phase 13f) | Accepted |

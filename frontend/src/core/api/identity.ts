@@ -1,4 +1,4 @@
-import { api } from './http'
+import { api, apiUpload } from './http'
 
 export interface Me {
   id: string
@@ -9,6 +9,7 @@ export interface Me {
   isTenantAdministrator: boolean
   isSystemAdministrator: boolean
   provider: string
+  theme?: string | null
 }
 
 export interface ProviderSummary {
@@ -97,6 +98,8 @@ export interface Tenant {
   status: 'Provisioning' | 'Active' | 'Suspended' | 'Deactivated' | 'PendingDeletion' | 'Deleted'
   statusReason: string | null
   createdAt: string
+  /** Address of the workspace (system list only). */
+  url?: string | null
 }
 
 export const identityApi = {
@@ -115,6 +118,21 @@ export const identityApi = {
   providerPolicies: () => api<ProviderPolicy[]>('GET', '/tenant/authentication-providers'),
   saveProviderPolicies: (p: ProviderPolicy[]) => api<void>('PUT', '/tenant/authentication-providers', p),
   testProvider: (providerId: string) => api<ProviderHealth>('POST', `/tenant/authentication-providers/${encodeURIComponent(providerId)}/test`),
+  setTheme: (theme: string | null) => api<void>('PUT', '/auth/me/theme', { theme }),
+  systemOptions: () => api<{ mfaRequired: boolean }>('GET', '/auth/system/options'),
+  setMemberPassword: (id: string, newPassword: string) => api<void>('PUT', `/tenant/members/${id}/password`, { newPassword }),
+  setMemberPicture: (id: string, file: Blob) => {
+    const form = new FormData()
+    form.append('file', file, 'avatar')
+    return apiUpload<{ version: number }>(`/tenant/members/${id}/avatar`, form, 'PUT')
+  },
+  removeMemberPicture: (id: string) => api<void>('DELETE', `/tenant/members/${id}/avatar`),
+  setTenantLogo: (id: string, file: Blob) => {
+    const form = new FormData()
+    form.append('file', file, 'logo')
+    return apiUpload<number>(`/system/tenants/${id}/logo`, form, 'PUT')
+  },
+  removeTenantLogo: (id: string) => api<void>('DELETE', `/system/tenants/${id}/logo`),
   setLocale: (locale: string) => api<void>('PUT', '/auth/me/preferences', { locale }),
   inspectInvitation: (token: string) => api<{ email: string; expiresAt: string; tenantAdministrator: boolean }>('POST', '/auth/invitations/inspect', { token }),
   acceptInvitation: (token: string, mode: 'new' | 'existing', password: string, displayName?: string) =>

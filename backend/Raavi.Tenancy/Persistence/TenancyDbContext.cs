@@ -22,6 +22,8 @@ public sealed class TenancyDbContext(DbContextOptions<TenancyDbContext> options,
 
     public DbSet<TenantBranding> TenantBranding => Set<TenantBranding>();
 
+    public DbSet<TenantLogo> TenantLogos => Set<TenantLogo>();
+
     public DbSet<SystemAuditLog> SystemAuditLogs => Set<SystemAuditLog>();
 
     public DbSet<TenantAuditLog> TenantAuditLogs => Set<TenantAuditLog>();
@@ -74,6 +76,17 @@ public sealed class TenancyDbContext(DbContextOptions<TenancyDbContext> options,
             b.Property(x => x.TimeZone).HasMaxLength(64).IsUnicode(false);
             b.Property(x => x.Calendar).HasMaxLength(16).IsUnicode(false);
             b.Property(x => x.RowVersion).IsRowVersion();
+            b.HasOne<Tenant>().WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<TenantLogo>(b =>
+        {
+            b.ToTable("TenantLogos");
+            b.HasKey(x => x.Id).IsClustered(false);
+            b.Property(x => x.Id).ValueGeneratedNever();
+            b.HasIndex(x => x.TenantId).IsUnique().IsClustered();
+            b.Property(x => x.ContentType).HasMaxLength(32).IsUnicode(false);
+            b.Property(x => x.Data).HasColumnType("varbinary(max)");
             b.HasOne<Tenant>().WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 

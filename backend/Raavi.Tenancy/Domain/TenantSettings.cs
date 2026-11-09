@@ -80,6 +80,11 @@ public sealed partial class TenantBranding : Entity, ITenantOwned
 
     public string? WelcomeMessageEn { get; private set; }
 
+    /// <summary>Version of the logo picture (0 = no logo); part of the logo's address so it caches for good.</summary>
+    public int LogoVersion { get; private set; }
+
+    public void SetLogoVersion(int version) => LogoVersion = Math.Max(0, version);
+
     public byte[] RowVersion { get; private set; } = [];
 
     public static TenantBranding CreateEmpty() => new();

@@ -13,7 +13,8 @@ import Dialog from 'primevue/dialog'
 import Checkbox from 'primevue/checkbox'
 import { ApiError } from '@/core/api/http'
 import { wikiApi, type Draft, type Page, type RaaviDoc, type Template } from '@/core/api/wiki'
-import { errorMessage } from '@/core/api/errors'
+import { errorMessage, errorSteps } from '@/core/api/errors'
+import ErrorHelp from '@/app/ErrorHelp.vue'
 import { formatDate } from '@/core/i18n/locales'
 import { useLocaleStore } from '@/stores/locale'
 import RaaviEditor from '@/modules/editor/components/RaaviEditor.vue'
@@ -106,7 +107,27 @@ const typeOptions = computed(() => [
 ])
 const templateOptions = computed(() => [{ id: null, name: t('wiki.templates.blank') }, ...templates.value])
 const fmt = (iso: string | null | undefined) => (iso ? formatDate(iso, locale.locale, { dateStyle: 'medium', timeStyle: 'short' }) : '')
-const fail = (e: unknown) => toast.add({ severity: 'error', summary: errorMessage(e, t, te), life: 6000 })
+/** The last failure that has guidance (steps): shown inline under the title bar, so the person can read what to do, instead of only a toast that disappears. */
+// The title bar sticks below the app header; the editor toolbar sticks below the bar (otherwise the bar covers it while scrolling a long page).
+const barEl = ref<HTMLElement | null>(null)
+const barHeight = ref(0)
+let barObserver: ResizeObserver | null = null
+watch(barEl, (el) => {
+  barObserver?.disconnect()
+  barObserver = null
+  if (!el) return
+  barHeight.value = Math.round(el.getBoundingClientRect().height)
+  if (typeof ResizeObserver !== 'undefined') {
+    barObserver = new ResizeObserver(() => (barHeight.value = Math.round(el.getBoundingClientRect().height)))
+    barObserver.observe(el)
+  }
+})
+onBeforeUnmount(() => barObserver?.disconnect())
+const guidedError = ref<unknown>(null)
+const fail = (e: unknown) => {
+  guidedError.value = errorSteps(e, t, te).length ? e : null
+  toast.add({ severity: 'error', summary: errorMessage(e, t, te), life: 6000 })
+}
 
 onMounted(async () => {
   try {
@@ -158,12 +179,14 @@ async function saveDraft(): Promise<boolean> {
     if (live.value) {
       draft.value = await wikiApi.saveDraftTitle(id.value, title.value)
       saveState.value = 'saved'
+      guidedError.value = null
       return true
     }
     const r = await wikiApi.saveDraft(id.value, draftEtag.value, { title: title.value, body: body.value })
     draft.value = r.value
     draftEtag.value = r.etag
     saveState.value = 'saved'
+    guidedError.value = null
     return true
   } catch (e) {
     if (e instanceof ApiError && e.status === 412) saveState.value = 'conflict'
@@ -351,8 +374,8 @@ function close() {
   </form>
 
   <!-- ── Draft editor ── -->
-  <div v-else-if="loaded && draft" class="editor-page">
-    <header class="bar">
+  <div v-else-if="loaded && draft" class="editor-page" :style="{ '--raavi-editor-top': `calc(var(--raavi-header-offset) + ${barHeight}px)` }">
+    <header ref="barEl" class="bar">
       <InputText id="page-title" v-model="title" required maxlength="255" dir="auto" class="title grow" :aria-label="t('wiki.page.titleLabel')" />
       <span class="save-state" :class="saveState" role="status" data-testid="save-state">{{ saveLabel }}</span>
       <Button text :label="t('wiki.draft.preview')" icon="pi pi-eye" @click="previewOpen = true" />
@@ -367,6 +390,7 @@ function close() {
       />
     </header>
 
+    <ErrorHelp v-if="guidedError" :error="guidedError" data-testid="edit-error-help" />
     <Message v-if="saveState === 'conflict'" severity="warn" :closable="false" data-testid="edit-conflict">
       {{ t('wiki.edit.conflict') }}
       <Button text size="small" :label="t('wiki.draft.reload')" @click="reloadDraft" />
@@ -422,7 +446,7 @@ function close() {
 .editor-page.narrow { max-inline-size: 40rem; }
 h1 { margin: 0 0 var(--raavi-space-2); font-size: 1.4rem; }
 .title { font-size: 1.3rem; }
-.bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--raavi-space-2); position: sticky; inset-block-start: var(--raavi-header-height); z-index: 6; background: var(--raavi-bg, #f8fafc); padding-block: var(--raavi-space-2); }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--raavi-space-2); position: sticky; inset-block-start: var(--raavi-header-offset, var(--raavi-header-height)); z-index: 6; background: var(--raavi-bg, #f8fafc); padding-block: var(--raavi-space-2); }
 .grow { flex: 1 1 16rem; }
 .save-state { font-size: 0.85rem; color: var(--raavi-text-muted); white-space: nowrap; }
 .save-state.conflict, .save-state.error { color: #b91c1c; }

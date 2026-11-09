@@ -14,10 +14,20 @@ import { useAvatarStore } from '@/stores/avatars'
 import { useHostStore } from '@/stores/host'
 import { fakeFetch, json, problem } from './support/fakeApi'
 
-vi.mock('@/core/runtime/imageResize', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/core/runtime/imageResize')>()),
-  squareAvatarBlob: vi.fn(async () => new Blob(['small-picture'], { type: 'image/webp' })),
-}))
+// The crop dialog needs a canvas (not in jsdom): a stand-in that "crops" at once and hands back a small picture.
+vi.mock('@/app/PictureCropDialog.vue', async () => {
+  const { defineComponent, h, watch } = await import('vue')
+  return {
+    default: defineComponent({
+      props: { file: { type: Object, default: null } },
+      emits: ['confirm', 'cancel'],
+      setup(props, { emit }) {
+        watch(() => props.file, (f) => f && emit('confirm', new Blob(['small-picture'], { type: 'image/webp' })), { immediate: true })
+        return () => h('span', { 'data-testid': 'crop-stub' })
+      },
+    }),
+  }
+})
 
 const A = '11111111-1111-4111-8111-111111111111'
 const B = '22222222-2222-4222-8222-222222222222'

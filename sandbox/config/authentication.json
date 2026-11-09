@@ -1,6 +1,7 @@
 {
   "Raavi": {
     "Authentication": {
+      "SystemMfaRequired": true,
       "Session": {
         "CookieName": "__Host-raavi",
         "IdleTimeoutMinutes": 60,

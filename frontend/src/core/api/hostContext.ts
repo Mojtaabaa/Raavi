@@ -6,6 +6,8 @@ export interface TenantBranding {
   secondaryColor: string | null
   welcomeMessageFa: string | null
   welcomeMessageEn: string | null
+  /** Version of the workspace's square logo (0/absent = none). */
+  logoVersion?: number
 }
 
 export interface TenantPublicContext {

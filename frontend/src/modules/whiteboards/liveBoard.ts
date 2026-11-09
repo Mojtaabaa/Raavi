@@ -10,7 +10,7 @@ import type { BoardElement, BoardShape } from '@/core/api/whiteboards'
  * changes from other people as a fresh element list (`onRemote`), and provides undo/redo of the user's *own* changes only — never someone else's.
  */
 const LOCAL = Symbol('local-edit')
-const TYPES: readonly BoardShape[] = ['Rect', 'Ellipse', 'Text', 'Sticky', 'Arrow', 'Pen']
+const TYPES: readonly BoardShape[] = ['Rect', 'Ellipse', 'Text', 'Sticky', 'Arrow', 'Pen', 'Diamond', 'Triangle', 'Line']
 
 const DEFAULTS = { x: 0, y: 0, w: 0, h: 0, rotation: 0, stroke: '#1f2937', fill: null, strokeWidth: 2, text: '', fontSize: 20, rtl: false } as const
 

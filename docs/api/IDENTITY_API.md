@@ -14,7 +14,9 @@ Paths under `/api/v1`. **Host**: tenant / system / any (wrong host → 404 befor
 | POST | `/auth/logout` | any | — | Revokes the server-side session, clears cookie |
 | GET | `/auth/me` | any | user | `{id, displayName, email, preferredLocale, hostKind, isTenantAdministrator, isSystemAdministrator, provider}` |
 | PUT | `/auth/me/preferences` | any | user | `{locale: "fa"|"en"|null}` |
-| POST | `/auth/system/login` | system | anonymous, rate-limited | `{email, password, code}` (TOTP mandatory). Failures → `401 auth.invalid_credentials` |
+| POST | `/auth/system/login` | system | anonymous, rate-limited | `{email, password, code}` (TOTP mandatory unless `Raavi:Authentication:SystemMfaRequired=false`, then `code` is ignored). Failures → `401 auth.invalid_credentials` |
+| GET | `/auth/system/options` | system | anonymous | `{mfaRequired}` — lets the sign-in/setup pages hide the code field |
+| PUT | `/auth/me/theme` | any | signed in | `{theme}` — one of `light dark chocolate ocean forest rose midnight contrast`, anything else (or null) = follow the device; also returned as `theme` by `/auth/me` |
 | POST | `/auth/system/setup/inspect` | system | anonymous | `{token}` |
 | POST | `/auth/system/setup/begin` | system | anonymous | `{token}` → `{secret (base32), otpAuthUri}` (QR rendered locally by the SPA) |
 | POST | `/auth/system/setup/complete` | system | anonymous | `{token, displayName, password, code}` → MFA session |
@@ -42,6 +44,8 @@ Error codes returned after a provider round-trip: `auth.not_provisioned`, `auth.
 | GET | `/tenant/members` | Members of the current tenant only |
 | POST | `/tenant/members/{userId}/suspend` / `activate` | Suspension revokes the member's sessions in this tenant immediately |
 | DELETE | `/tenant/members/{userId}` | Removes membership, roles and group memberships; revokes sessions |
+| PUT | `/tenant/members/{userId}/password` | `{newPassword}` (policy applies); ends the member's sessions here; only for accounts that belong to this workspace alone, else `403 member.account_shared` |
+| PUT / DELETE | `/tenant/members/{userId}/avatar` | Same rule; multipart `file` (PNG/JPEG/WebP as for `/auth/me/avatar`) |
 | PUT | `/tenant/members/{userId}/roles` | `{tenantAdministrator: bool}`; the last active administrator cannot be removed, demoted or suspended (`409 member.last_administrator`) |
 | GET/POST | `/tenant/invitations` | POST `{email, tenantAdministrator}` → `{id, email, expiresAt, acceptUrl}`; link shown once; token in URL **fragment** |
 | DELETE | `/tenant/invitations/{id}` | Revoke |

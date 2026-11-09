@@ -69,6 +69,10 @@ public sealed class SystemIdentityService(
             await db.SaveChangesAsync(ct).ConfigureAwait(false);
             return Result<MeDto>.Failure(FirstLoginRequired);
         }
+        else if (!options.Value.SystemMfaRequired)
+        {
+            // Two-step verification turned off in the settings: the password alone signs in (the code field is ignored).
+        }
         else if (!user.MfaEnabled)
         {
             failure = "mfa_not_enrolled";
@@ -197,6 +201,11 @@ public sealed class SystemIdentityService(
             return Result<SystemSetupBeginDto>.Failure(InvalidSetup);
         }
 
+        if (!options.Value.SystemMfaRequired)
+        {
+            return Result<SystemSetupBeginDto>.Success(new SystemSetupBeginDto(string.Empty, string.Empty));
+        }
+
         var secret = TotpService.NewSecret();
         invitation.SetPendingTotp(totp.Protect(secret));
         await db.SaveChangesAsync(ct).ConfigureAwait(false);
@@ -211,16 +220,21 @@ public sealed class SystemIdentityService(
     {
         ArgumentNullException.ThrowIfNull(request);
         var invitation = await FindSetup(request.Token, ct).ConfigureAwait(false);
-        if (invitation?.PendingProtectedTotpSecret is null)
+        var mfaRequired = options.Value.SystemMfaRequired;
+        if (invitation is null || (mfaRequired && invitation.PendingProtectedTotpSecret is null))
         {
             return Result<MeDto>.Failure(InvalidSetup);
         }
 
         var now = clock.UtcNow;
-        var step = TotpService.Verify(totp.Unprotect(invitation.PendingProtectedTotpSecret), request.Code, now);
-        if (step is null)
+        long? step = null;
+        if (mfaRequired)
         {
-            return Result<MeDto>.Failure(new Error("setup.bad_code", "The verification code is incorrect."));
+            step = TotpService.Verify(totp.Unprotect(invitation.PendingProtectedTotpSecret!), request.Code, now);
+            if (step is null)
+            {
+                return Result<MeDto>.Failure(new Error("setup.bad_code", "The verification code is incorrect."));
+            }
         }
 
         var user = await db.Users.FirstOrDefaultAsync(u => u.NormalizedEmail == invitation.NormalizedEmail, ct).ConfigureAwait(false);
@@ -258,7 +272,11 @@ public sealed class SystemIdentityService(
         }
 
         user.MarkEmailVerified();
-        user.EnableTotp(invitation.PendingProtectedTotpSecret, step.Value);
+        if (step is not null)
+        {
+            user.EnableTotp(invitation.PendingProtectedTotpSecret!, step.Value);
+        }
+
         if (!await db.SystemRoles.AnyAsync(r => r.UserId == user.Id && r.Role == SystemRole.SystemAdministrator, ct).ConfigureAwait(false))
         {
             db.SystemRoles.Add(SystemRoleAssignment.Grant(user.Id, SystemRole.SystemAdministrator, invitation.InvitedBy, now));
