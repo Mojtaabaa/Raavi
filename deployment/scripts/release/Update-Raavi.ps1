@@ -3,7 +3,7 @@
   Installs or upgrades Raavi from a release package while keeping the installation's sandbox/. (Phase 12d, ADR-041)
 .DESCRIPTION
   1. verifies release.json and every file hash of the package;
-  2. refuses to run while a service still runs from the installation (a locked file in api/, workers/ or migrator/): STOP the API, workers and collaboration server first;
+  2. refuses to run while a service still runs from the installation (a locked file in api/, workers/ or migrator/): stop the API pool, workers and collaboration server first, or let the script do it with -AppPool RaaviApi -Service RaaviWorkers (they are started again after a successful upgrade);
   3. copies the current application folders to <Install>/previous/<timestamp>/ (rollback copy; sandbox/ is never copied or changed);
   4. replaces api, workers, migrator, web, collaboration, schema, sandbox-defaults, docs, scripts;
   5. creates sandbox/{config,data,secrets} when missing (first install: config is copied from sandbox-defaults) and runs
@@ -17,7 +17,11 @@ param(
     [Parameter(Mandatory)][string]$PackageDirectory,
     [Parameter(Mandatory)][string]$InstallDirectory,
     [switch]$RunMigrator,
-    [switch]$SkipNpm
+    [switch]$SkipNpm,
+    # IIS application pools (e.g. RaaviApi) and Windows services (e.g. RaaviWorkers) to stop before the upgrade and start again after a SUCCESSFUL one.
+    # After a failed upgrade they stay stopped on purpose: do not start a half-upgraded installation.
+    [string[]]$AppPool = @(),
+    [string[]]$Service = @()
 )
 
 Set-StrictMode -Version Latest
@@ -41,6 +45,34 @@ if (-not (Test-Path -LiteralPath $InstallDirectory)) { New-Item -ItemType Direct
 $install = (Resolve-Path -LiteralPath $InstallDirectory).Path
 if ($install.TrimEnd('\') -eq $pkg.TrimEnd('\')) { throw 'Install directory and package directory are the same.' }
 $folders = @($manifest.appFolders)
+
+# Stop what the caller named (IIS pools, Windows services) and remember what was running, to start exactly those afterwards.
+$restartPools = @()
+$restartServices = @()
+if ($AppPool.Count -gt 0) {
+    Import-Module WebAdministration -ErrorAction Stop
+    foreach ($pool in $AppPool) {
+        if (-not (Test-Path "IIS:\AppPools\$pool")) { throw "IIS application pool '$pool' does not exist." }
+        if ((Get-WebAppPoolState -Name $pool).Value -ne 'Stopped') {
+            if ($PSCmdlet.ShouldProcess($pool, 'stop application pool')) {
+                Stop-WebAppPool -Name $pool
+                for ($i = 0; $i -lt 60 -and (Get-WebAppPoolState -Name $pool).Value -ne 'Stopped'; $i++) { Start-Sleep -Milliseconds 500 }
+                if ((Get-WebAppPoolState -Name $pool).Value -ne 'Stopped') { throw "Application pool '$pool' did not stop in 30 s." }
+                $restartPools += $pool
+            }
+        }
+    }
+}
+foreach ($svc in $Service) {
+    $s = Get-Service -Name $svc -ErrorAction Stop
+    if ($s.Status -ne 'Stopped') {
+        if ($PSCmdlet.ShouldProcess($svc, 'stop service')) {
+            Stop-Service -Name $svc -ErrorAction Stop
+            $s.WaitForStatus('Stopped', [TimeSpan]::FromSeconds(60))
+            $restartServices += $svc
+        }
+    }
+}
 
 # Services must be stopped: a locked file in the current api/ folder means something still runs from it.
 foreach ($dll in @('api', 'workers', 'migrator') | ForEach-Object { Join-Path $install "$_" } | Where-Object { Test-Path -LiteralPath $_ } | ForEach-Object { Get-ChildItem -LiteralPath $_ -Filter '*.dll' -File }) {
@@ -119,4 +151,7 @@ if ($RunMigrator -and $PSCmdlet.ShouldProcess('database', 'apply migrations')) {
     if ($LASTEXITCODE -ne 0) { throw "Migrator failed (exit $LASTEXITCODE). Roll back application files from $previous; restore the database from backup if migrations partially ran." }
 }
 
-Write-Host "Done: Raavi $($manifest.version) is in $install. Start the services.$(if (Test-Path -LiteralPath $previous) { " Rollback copy: $previous" })"
+foreach ($pool in $restartPools) { Start-WebAppPool -Name $pool; Write-Host "started application pool $pool" }
+foreach ($svc in $restartServices) { Start-Service -Name $svc; Write-Host "started service $svc" }
+$stillStopped = ($AppPool + $Service).Count -eq 0
+Write-Host "Done: Raavi $($manifest.version) is in $install.$(if ($stillStopped) { ' Start the services.' })$(if (Test-Path -LiteralPath $previous) { " Rollback copy: $previous" })"

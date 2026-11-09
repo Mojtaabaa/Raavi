@@ -14,6 +14,10 @@ Dev API + workers + Vite started; signed in as the dev workspace admin in the bu
 
 **Not covered:** creating/using slides, databases, workflows, approvals, tasks, calendar events; live co-editing between two browsers; AI, webhooks and connectors with real hosts (dev config allows none); PNG/SVG/PPTX/PDF downloads; mobile widths, dark mode, keyboard-only use, screen readers; English UI. Test data left in the dev DB: whiteboard "Browser check board" in space ENGINEERIN.
 
+### 13e — IIS hosting of the API, Persian install guide (ADR-041 addendum)
+
+`deployment/iis/web.config` (shipped in `web/`), `Update-Raavi.ps1 -AppPool/-Service`, `INSTALL_WINDOWS_IIS.md` rewritten (API = IIS site, workers = NSSM) and `INSTALL_WINDOWS_IIS_fa.md` (Persian). `Test-ReleaseScripts.ps1 -WithFrontend` → 26 checks passed. **Not verified:** a real IIS/ARR/URL Rewrite/NSSM installation, the per-site ARR variant, WebSocket (`/hubs`) through ARR.
+
 ### 13d — Browser walk-through, second round (2026-11-08)
 
 Same dev stack and browser as 13c; only the two console errors of the signed-out start-up (`/auth/me` 401) appeared during the whole session. **Verified end to end in the real UI:** slide deck (create, add slide, presentation mode); database (create, add rows, edit a cell, value persisted after reload); workflow (create → publish a new page → the run log shows "label 'newpage' added" and the page carries the label); page (create draft, task list, publish with the publish dialog); workspace task (create); calendar event (create, shown on the Persian-calendar grid with accessible day buttons); whiteboard and editor from 13c. No application defect found in this round.

@@ -48,6 +48,8 @@ if (-not $SkipFrontend) {
         try { npm ci --silent; if ($LASTEXITCODE -eq 0) { npm run build --silent } } finally { Pop-Location }
     }
     Copy-Item -Recurse -LiteralPath (Join-Path $repo 'frontend/dist') -Destination (Join-Path $target 'web')
+    # IIS: SPA fallback + proxy of api/hubs/health to the API site (docs/deployment/INSTALL_WINDOWS_IIS.md)
+    Copy-Item -LiteralPath (Join-Path $repo 'deployment/iis/web.config') -Destination (Join-Path $target 'web/web.config')
 }
 
 Write-Host '== copy collaboration, schema, defaults, docs'

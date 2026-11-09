@@ -30,6 +30,7 @@ try {
     Check 'api/ migrator/ workers/ published' ((Test-Path (Join-Path $pkg 'api/Raavi.Api.dll')) -and (Test-Path (Join-Path $pkg 'migrator/Raavi.Migrator.dll')) -and (Test-Path (Join-Path $pkg 'workers/Raavi.Workers.dll')))
     Check 'sandbox-defaults and collaboration shipped' ((Test-Path (Join-Path $pkg 'sandbox-defaults/config/appsettings.json')) -and (Test-Path (Join-Path $pkg 'collaboration/src/main.ts')))
     Check 'no sandbox / secrets / key ring in package' (-not (Get-ChildItem $pkg -Recurse -Force -Directory | Where-Object { $_.Name -in @('sandbox', 'secrets') }))
+    if ($WithFrontend) { Check 'IIS web.config (SPA fallback + API proxy) shipped inside web/' (Test-Path (Join-Path $pkg 'web/web.config')) }
     Check 'package refuses to overwrite itself' (Throws { & (Join-Path $PSScriptRoot 'New-ReleasePackage.ps1') @args1 })
 
     Write-Host '== first install'
@@ -79,6 +80,9 @@ try {
     New-Item -ItemType Directory (Join-Path $withSandbox 'sandbox') | Out-Null
     Check 'package containing sandbox rejected' (Throws { & (Join-Path $PSScriptRoot 'Update-Raavi.ps1') -PackageDirectory $withSandbox -InstallDirectory $install -SkipNpm })
     Check 'install same as package rejected' (Throws { & (Join-Path $PSScriptRoot 'Update-Raavi.ps1') -PackageDirectory $pkg -InstallDirectory $pkg -SkipNpm })
+    Check 'unknown Windows service name rejected before anything changes' (Throws { & (Join-Path $PSScriptRoot 'Update-Raavi.ps1') -PackageDirectory $pkg -InstallDirectory $install -SkipNpm -Service 'RaaviNoSuchService' })
+    Check 'unknown IIS application pool rejected before anything changes' (Throws { & (Join-Path $PSScriptRoot 'Update-Raavi.ps1') -PackageDirectory $pkg -InstallDirectory $install -SkipNpm -AppPool 'RaaviNoSuchPool' })
+    Check 'rollback folders unchanged by those refusals' (@(Get-ChildItem (Join-Path $install 'previous') -Directory).Count -eq 1)
     Check 'sandbox still intact after refusals' ((Get-FileHash (Join-Path $keys 'key-1.xml')).Hash -eq $keyHash)
 }
 finally {
