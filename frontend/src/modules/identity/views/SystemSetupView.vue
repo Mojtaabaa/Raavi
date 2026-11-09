@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BrandLogo from '@/app/BrandLogo.vue'
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
@@ -79,6 +80,7 @@ async function complete() {
 
 <template>
   <section class="auth-page">
+    <BrandLogo class="auth-logo" :size="64" />
     <Card class="auth-card">
       <template #title><h1 class="auth-title">{{ t('setup.title') }}</h1></template>
       <template #content>
@@ -119,7 +121,7 @@ async function complete() {
 </template>
 
 <style scoped>
-.auth-page { display: grid; place-items: center; padding-block: var(--raavi-space-8); }
+.auth-page { display: grid; place-items: center; gap: var(--raavi-space-4); padding-block: var(--raavi-space-8); }
 .auth-card { inline-size: min(100%, 30rem); }
 .auth-title { margin: 0; font-size: 1.35rem; }
 .auth-form { display: grid; gap: var(--raavi-space-2); }

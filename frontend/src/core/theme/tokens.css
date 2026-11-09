@@ -63,3 +63,6 @@ a.p-button,
 a.p-button:hover {
   text-decoration: none;
 }
+
+/* user line: picture + name */
+.who { display: inline-flex; align-items: center; gap: 0.4rem; }

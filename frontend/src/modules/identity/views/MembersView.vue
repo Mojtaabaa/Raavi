@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UserAvatar from '@/app/UserAvatar.vue'
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useConfirm } from 'primevue/useconfirm'
@@ -95,7 +96,9 @@ onMounted(load)
 
     <DataTable :value="members" :loading="loading" data-key="userId" size="small" striped-rows data-testid="members-table">
       <template #empty>{{ t('common.empty') }}</template>
-      <Column field="displayName" :header="t('common.displayName')" />
+      <Column field="displayName" :header="t('common.displayName')">
+        <template #body="{ data }"><span class="who"><UserAvatar :user-id="data.userId" :name="data.displayName" :size="28" /> {{ data.displayName }}</span></template>
+      </Column>
       <Column field="email" :header="t('common.email')">
         <template #body="{ data }"><span dir="ltr">{{ data.email }}</span></template>
       </Column>

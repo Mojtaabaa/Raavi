@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UserAvatar from '@/app/UserAvatar.vue'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
@@ -78,7 +79,8 @@ async function open(n: AppNotification) {
         <ul>
           <li v-for="n in store.items" :key="n.id">
             <button type="button" :class="['item', { unread: !n.readAt }]" data-testid="notification" @click="open(n)">
-              <i :class="icon[n.kind] ?? 'pi pi-info-circle'" aria-hidden="true" />
+              <UserAvatar v-if="n.actorId" :user-id="n.actorId" :name="n.actorName" :size="28" />
+              <i v-else :class="icon[n.kind] ?? 'pi pi-info-circle'" aria-hidden="true" />
               <span class="text">
                 <span dir="auto">{{ text(n) }}</span>
                 <span v-if="n.excerpt" class="excerpt" dir="auto">{{ n.excerpt }}</span>

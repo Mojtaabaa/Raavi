@@ -17,7 +17,7 @@ export function fakeFetch(routes: Record<string, Handler>) {
     const url = String(input)
     const method = (init.method ?? 'GET').toUpperCase()
     const headers = (init.headers ?? {}) as Record<string, string>
-    calls.push({ method, url, headers, body: init.body ? JSON.parse(String(init.body)) : undefined })
+    calls.push({ method, url, headers, body: init.body instanceof FormData ? init.body : init.body ? JSON.parse(String(init.body)) : undefined })
     const path = url.split('?')[0]!
     const handler = routes[`${method} ${path}`] ?? routes[`${method} ${url}`]
     if (!handler) return problem(404, 'test.no_route')

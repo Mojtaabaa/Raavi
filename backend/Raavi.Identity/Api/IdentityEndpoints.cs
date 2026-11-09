@@ -73,6 +73,41 @@ public static class IdentityEndpoints
             return Results.NoContent();
         }).RequireAuthorization(RaaviPolicies.AuthenticatedUser);
 
+        // ── Profile pictures (ADR-046) ───────────────────────────────────────────────────────────
+        // Own picture: any signed-in user on any host. Antiforgery is enforced by the Raavi middleware (X-XSRF-TOKEN) for every unsafe request.
+        api.MapPut("/auth/me/avatar", async (IFormFile file, AvatarService svc, CancellationToken ct) =>
+        {
+            await using var stream = file.OpenReadStream();
+            return (await svc.SetAsync(stream, file.Length, ct).ConfigureAwait(false)).ToHttp(version => Results.Ok(new { version }));
+        }).DisableAntiforgery().RequireAuthorization(RaaviPolicies.AuthenticatedUser);
+
+        api.MapDelete("/auth/me/avatar", async (AvatarService svc, CancellationToken ct) => (await svc.RemoveAsync(ct).ConfigureAwait(false)).ToHttp())
+            .RequireAuthorization(RaaviPolicies.AuthenticatedUser);
+
+        // Pictures of other members: only inside a workspace, only for its active members; ids without a picture are absent from the answer.
+        api.MapGet("/users/avatars", async (string? ids, AvatarService svc, CancellationToken ct) =>
+        {
+            var parsed = (ids ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Take(AvatarService.MaxBatch * 2).Select(i => Guid.TryParse(i, out var g) ? g : Guid.Empty).Where(g => g != Guid.Empty).ToList();
+            var versions = await svc.VersionsAsync(parsed, ct).ConfigureAwait(false);
+            return Results.Ok(versions.ToDictionary(kv => kv.Key.ToString("D"), kv => kv.Value));
+        }).RequireHostKind(RaaviHostKind.Tenant).RequireAuthorization(RaaviPolicies.AuthenticatedUser);
+
+        api.MapGet("/users/{id:guid}/avatar", async (Guid id, AvatarService svc, HttpContext http, CancellationToken ct) =>
+        {
+            var result = await svc.GetAsync(id, ct).ConfigureAwait(false);
+            if (!result.IsSuccess)
+            {
+                return result.Error!.ToProblem();
+            }
+
+            var avatar = result.Value;
+            var etag = $"\"a{avatar.Version}\"";
+            http.Response.Headers.ETag = etag;
+            // The URL carries the version (?v=), so the picture itself never changes under a URL: browsers may keep it for a long time, but only privately.
+            http.Response.Headers.CacheControl = "private, max-age=31536000, immutable";
+            return http.Request.Headers.IfNoneMatch == etag ? Results.StatusCode(StatusCodes.Status304NotModified) : Results.File(avatar.Data, avatar.ContentType);
+        }).RequireHostKind(RaaviHostKind.Tenant).RequireAuthorization(RaaviPolicies.AuthenticatedUser);
+
         // Users and groups of the current tenant, for permission pickers (any member; results are tenant-scoped).
         api.MapGet("/directory", async (string? q, IPrincipalDirectory directory, CancellationToken ct) =>
             Results.Ok(await directory.SearchAsync(q ?? string.Empty, 20, ct).ConfigureAwait(false)))

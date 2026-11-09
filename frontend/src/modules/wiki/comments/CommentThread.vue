@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UserAvatar from '@/app/UserAvatar.vue'
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
@@ -95,6 +96,7 @@ function openPicker(e: Event, comment: Comment) {
     <ol class="comments">
       <li v-for="c in thread.comments" :id="`comment-${c.id}`" :key="c.id" class="comment">
         <div class="meta">
+          <UserAvatar :user-id="c.authorId" :name="c.authorName" :size="24" />
           <strong>{{ c.authorName ?? t('wiki.unknownUser') }}</strong>
           <time :datetime="c.createdAt">{{ when(c.createdAt) }}</time>
           <span v-if="c.editedAt" class="muted">({{ t('comments.edited') }})</span>

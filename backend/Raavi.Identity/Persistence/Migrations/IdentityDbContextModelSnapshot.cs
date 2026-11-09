@@ -623,6 +623,32 @@ namespace Raavi.Identity.Persistence.Migrations
                     b.ToTable("Users", "identity");
                 });
 
+            modelBuilder.Entity("Raavi.Identity.Domain.UserAvatar", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<byte[]>("Data")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("int");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("UserAvatars", "identity");
+                });
+
             modelBuilder.Entity("Raavi.Identity.Domain.UserTenantMembership", b =>
                 {
                     b.Property<Guid>("Id")
@@ -703,6 +729,15 @@ namespace Raavi.Identity.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Raavi.Identity.Domain.UserAvatar", b =>
+                {
+                    b.HasOne("Raavi.Identity.Domain.User", null)
+                        .WithOne()
+                        .HasForeignKey("Raavi.Identity.Domain.UserAvatar", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

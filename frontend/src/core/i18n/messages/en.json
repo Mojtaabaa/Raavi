@@ -177,6 +177,11 @@
       "account_exists": "An account already exists for this address. Choose “I already have a Raavi account”.",
       "invalid": "This invitation link is invalid or has expired."
     },
+    "avatar": {
+      "too_large": "The picture is too large.",
+      "type_invalid": "Only PNG, JPEG or WebP pictures are accepted.",
+      "size_invalid": "The picture is too small or too large (16 to 1024 pixels)."
+    },
     "password": {
       "length": "Password must be at least 12 characters.",
       "too_simple": "Password is too simple.",
@@ -438,6 +443,15 @@
   },
   "profile": {
     "title": "My account",
+    "picture": {
+      "change": "Change picture",
+      "remove": "Remove picture",
+      "hint": "PNG, JPEG or WebP. The picture is cropped to a square and shown next to your name to the members of your workspaces.",
+      "saved": "Your picture was updated.",
+      "removed": "Your picture was removed.",
+      "invalid": "Choose a PNG, JPEG or WebP picture (up to 15 MB).",
+      "unreadable": "This file could not be read as a picture."
+    },
     "linkedAccounts": "Linked accounts",
     "linked": "External account linked.",
     "linkedOn": "Linked on {date}",

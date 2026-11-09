@@ -13,6 +13,11 @@ import { errorMessage } from '@/core/api/errors'
 import { ApiError } from '@/core/api/http'
 import { formatDate } from '@/core/i18n/locales'
 import { useAuthStore } from '@/stores/auth'
+import { useAvatarStore } from '@/stores/avatars'
+import { useHostStore } from '@/stores/host'
+import { avatarsApi } from '@/core/api/avatars'
+import { isAcceptedPicture, MAX_PICK_BYTES, squareAvatarBlob } from '@/core/runtime/imageResize'
+import UserAvatar from '@/app/UserAvatar.vue'
 import { useLocaleStore } from '@/stores/locale'
 
 const { t, te } = useI18n()
@@ -20,6 +25,45 @@ const route = useRoute()
 const toast = useToast()
 const auth = useAuthStore()
 const localeStore = useLocaleStore()
+
+const avatars = useAvatarStore()
+const host = useHostStore()
+const picture = ref<HTMLInputElement | null>(null)
+const savingPicture = ref(false)
+const hasPicture = computed(() => !!auth.me && !!avatars.versions[auth.me.id])
+const canHavePicture = computed(() => host.context?.kind === 'tenant' && !!auth.me)
+
+async function pickPicture(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file || !auth.me) return
+  if (!isAcceptedPicture(file) || file.size > MAX_PICK_BYTES) {
+    toast.add({ severity: 'error', summary: t('profile.picture.invalid'), life: 5000 })
+    return
+  }
+  savingPicture.value = true
+  try {
+    const { version } = await avatarsApi.upload(await squareAvatarBlob(file), 'avatar')
+    avatars.set(auth.me.id, version)
+    toast.add({ severity: 'success', summary: t('profile.picture.saved'), life: 3000 })
+  } catch (e) {
+    toast.add({ severity: 'error', summary: e instanceof ApiError ? errorMessage(e, t, te) : t('profile.picture.unreadable'), life: 5000 })
+  } finally {
+    savingPicture.value = false
+  }
+}
+
+async function removePicture() {
+  if (!auth.me) return
+  try {
+    await avatarsApi.remove()
+    avatars.set(auth.me.id, null)
+    toast.add({ severity: 'success', summary: t('profile.picture.removed'), life: 3000 })
+  } catch (e) {
+    toast.add({ severity: 'error', summary: errorMessage(e, t, te), life: 5000 })
+  }
+}
 
 const identities = ref<LinkedIdentity[]>([])
 const providers = ref<ProviderSummary[]>([])
@@ -90,6 +134,15 @@ onMounted(async () => {
     <h1>{{ t('profile.title') }}</h1>
     <Card>
       <template #content>
+        <div v-if="canHavePicture" class="picture" data-testid="picture">
+          <UserAvatar :user-id="auth.me?.id" :name="auth.me?.displayName" :size="96" />
+          <div class="picture-actions">
+            <input ref="picture" type="file" accept="image/png,image/jpeg,image/webp" class="visually-hidden" data-testid="picture-input" :aria-label="t('profile.picture.change')" @change="pickPicture" />
+            <Button size="small" outlined icon="pi pi-camera" :label="t('profile.picture.change')" :loading="savingPicture" data-testid="picture-change" @click="picture?.click()" />
+            <Button v-if="hasPicture" size="small" text severity="danger" icon="pi pi-trash" :label="t('profile.picture.remove')" data-testid="picture-remove" @click="removePicture" />
+            <small class="muted">{{ t('profile.picture.hint') }}</small>
+          </div>
+        </div>
         <dl class="facts">
           <dt>{{ t('common.displayName') }}</dt>
           <dd>{{ auth.me?.displayName }}</dd>
@@ -133,6 +186,9 @@ onMounted(async () => {
 .page { max-inline-size: 48rem; margin-inline: auto; display: grid; gap: var(--raavi-space-4); }
 h1 { margin: 0; font-size: 1.4rem; }
 h2 { margin: var(--raavi-space-2) 0 0; font-size: 1.1rem; }
+.picture { display: flex; gap: var(--raavi-space-4); align-items: center; margin-block-end: var(--raavi-space-4); }
+.picture-actions { display: flex; flex-wrap: wrap; gap: var(--raavi-space-2); align-items: center; }
+.visually-hidden { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .facts { display: grid; grid-template-columns: max-content 1fr; gap: var(--raavi-space-2) var(--raavi-space-4); margin: 0; }
 .facts dt { color: var(--raavi-text-muted); }
 .facts dd { margin: 0; }

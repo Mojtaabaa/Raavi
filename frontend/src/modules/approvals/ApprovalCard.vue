@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UserAvatar from '@/app/UserAvatar.vue'
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
@@ -43,6 +44,7 @@ const cancel = () => run(() => approvalsApi.cancel(props.approval.id))
     <header class="top">
       <span class="status" data-testid="approval-status">{{ t(`approvals.status.${approval.status}`) }}</span>
       <RouterLink v-if="showPage" :to="{ name: 'page', params: { key: approval.spaceKey, id: approval.contentId } }" class="page" dir="auto">{{ approval.contentTitle }}</RouterLink>
+      <UserAvatar :user-id="approval.requestedBy" :name="approval.requestedByName" :size="24" />
       <span class="muted">{{ t('approvals.requestedBy', { name: approval.requestedByName ?? t('wiki.unknownUser'), time: when(approval.requestedAt) }) }}</span>
     </header>
     <p v-if="approval.note" class="note" dir="auto">{{ approval.note }}</p>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UserAvatar from '@/app/UserAvatar.vue'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
@@ -257,6 +258,7 @@ function onMoved(p: Page, newEtag: string | null) {
       <Tag v-if="page.isRestricted" severity="warn" icon="pi pi-lock" :value="t('wiki.page.restricted')" />
       <Tag v-if="page.status === 'Archived'" severity="secondary" :value="t('wiki.page.archived')" />
       <Tag v-if="page.status === 'Draft'" severity="info" :value="t('wiki.draft.unpublished')" />
+      <UserAvatar :user-id="page.updatedBy" :name="page.updatedByName" :size="22" />
       <span>{{ t('wiki.page.updatedBy', { name: page.updatedByName ?? t('wiki.unknownUser'), date: updated }) }}</span>
       <span v-if="page.contentType === 'page' && page.version > 0">· <RouterLink :to="{ name: 'page-history', params: { key: page.spaceKey, id: page.id } }">{{ t('wiki.page.versionN', { n: page.version }) }}</RouterLink></span>
     </p>

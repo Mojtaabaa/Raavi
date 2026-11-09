@@ -53,6 +53,7 @@ if (-not $SkipFrontend) {
     # user guide (Persian) served as static files at /help/fa/
     New-Item -ItemType Directory -Path (Join-Path $target 'web/help/fa') -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $repo 'docs/user-guide/fa/index.html') -Destination (Join-Path $target 'web/help/fa/index.html')
+    Copy-Item -Recurse -LiteralPath (Join-Path $repo 'docs/user-guide/fa/assets') -Destination (Join-Path $target 'web/help/fa/assets')
 }
 
 Write-Host '== copy collaboration, schema, defaults, docs'

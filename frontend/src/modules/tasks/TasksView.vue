@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UserAvatar from '@/app/UserAvatar.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
@@ -148,7 +149,7 @@ function remove(task: Task) {
           <p class="meta">
             <Tag v-if="task.isOverdue" severity="danger" :value="t('tasks.overdue')" />
             <span v-if="task.dueDate">{{ t('tasks.due', { date: dueLabel(task.dueDate) }) }}</span>
-            <span v-if="task.assigneeName">· {{ task.assigneeName }}</span>
+            <span v-if="task.assigneeName" class="who">· <UserAvatar :user-id="task.assigneeId" :name="task.assigneeName" :size="20" /> {{ task.assigneeName }}</span>
             <RouterLink v-if="!spaceKey" :to="{ name: 'space-tasks', params: { key: task.spaceKey } }">· {{ task.spaceName }}</RouterLink>
             <RouterLink v-if="task.contentId" :to="contentRoute({ id: task.contentId, spaceKey: task.spaceKey })">· {{ t('tasks.page') }}</RouterLink>
           </p>

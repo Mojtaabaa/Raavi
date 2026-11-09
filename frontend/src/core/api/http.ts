@@ -101,9 +101,9 @@ export async function apiRequest<T>(method: HttpMethod, path: string, body?: unk
 }
 
 /** Multipart upload (attachments). Same antiforgery and error handling as {@link api}. */
-export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
+export async function apiUpload<T>(path: string, form: FormData, method: 'POST' | 'PUT' = 'POST'): Promise<T> {
   const r = await fetchImpl(apiUrl(path), {
-    method: 'POST',
+    method,
     headers: { Accept: 'application/json', 'X-XSRF-TOKEN': await antiforgeryToken() },
     credentials: 'same-origin',
     body: form,

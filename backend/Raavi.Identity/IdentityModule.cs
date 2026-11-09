@@ -60,6 +60,8 @@ public static class IdentityModule
         services.AddSingleton<Raavi.Identity.ExternalLogin.PendingLoginStore>();
         services.AddScoped<Raavi.Identity.ExternalLogin.ExternalSignInService>();
         services.AddScoped<Raavi.Identity.ExternalLogin.ExternalLoginFlow>();
+        services.AddOptions<AvatarOptions>().Bind(configuration.GetSection(AvatarOptions.Section));
+        services.AddScoped<AvatarService>();
         services.AddScoped<AccountService>();
         services.AddSingleton<AuthenticationProviderRegistry>();
         services.AddSingleton<IAuthenticationProviderRegistry>(sp => sp.GetRequiredService<AuthenticationProviderRegistry>());

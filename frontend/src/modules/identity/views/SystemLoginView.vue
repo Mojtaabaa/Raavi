@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BrandLogo from '@/app/BrandLogo.vue'
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
@@ -56,6 +57,7 @@ async function submit() {
 
 <template>
   <section class="auth-page">
+    <BrandLogo class="auth-logo" :size="64" />
     <Card class="auth-card">
       <template #title><h1 class="auth-title">{{ t('auth.systemTitle') }}</h1></template>
       <template #content>
@@ -75,7 +77,7 @@ async function submit() {
 </template>
 
 <style scoped>
-.auth-page { display: grid; place-items: center; padding-block: var(--raavi-space-8); }
+.auth-page { display: grid; place-items: center; gap: var(--raavi-space-4); padding-block: var(--raavi-space-8); }
 .auth-card { inline-size: min(100%, 26rem); }
 .auth-title { margin: 0; font-size: 1.35rem; }
 .auth-form { display: grid; gap: var(--raavi-space-2); }

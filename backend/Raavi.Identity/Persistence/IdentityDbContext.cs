@@ -19,6 +19,8 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
 
     public DbSet<User> Users => Set<User>();
 
+    public DbSet<UserAvatar> Avatars => Set<UserAvatar>();
+
     public DbSet<ExternalIdentity> ExternalIdentities => Set<ExternalIdentity>();
 
     public DbSet<AuthenticationSession> Sessions => Set<AuthenticationSession>();
@@ -120,6 +122,16 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
             b.Property(x => x.MustChangePassword).HasDefaultValue(false);
             // Local sign-in name: unique among users that have an address.
             b.HasIndex(x => x.NormalizedEmail).IsUnique().HasFilter("[NormalizedEmail] IS NOT NULL");
+        });
+
+        modelBuilder.Entity<UserAvatar>(b =>
+        {
+            b.ToTable("UserAvatars");
+            b.HasKey(x => x.UserId);
+            b.Ignore(x => x.Id);
+            b.Property(x => x.ContentType).HasMaxLength(32).IsUnicode(false);
+            b.Property(x => x.Data).HasColumnType("varbinary(max)");
+            b.HasOne<User>().WithOne().HasForeignKey<UserAvatar>(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<ExternalIdentity>(b =>

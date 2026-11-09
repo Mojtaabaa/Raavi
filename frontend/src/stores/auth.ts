@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { ApiError, resetAntiforgery } from '@/core/api/http'
 import { identityApi, type Me } from '@/core/api/identity'
+import { useAvatarStore } from '@/stores/avatars'
 
 /** Signed-in user of the current host. The session itself is an HttpOnly cookie the SPA never reads. */
 export const useAuthStore = defineStore('auth', () => {
@@ -54,6 +55,7 @@ export const useAuthStore = defineStore('auth', () => {
       await identityApi.logout()
     } finally {
       resetAntiforgery()
+      useAvatarStore().reset()
       me.value = null
       // Locally cached live drafts must not outlive the session (ADR-011 §7).
       await import('@/modules/editor/collaboration').then((m) => m.clearCollaborationCache()).catch(() => undefined)

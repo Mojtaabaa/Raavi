@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>راهنمای راوی</title>
 <meta name="description" content="راهنمای فارسی کاربران و مدیران ویکی سازمانی راوی">
+<meta name="theme-color" content="#5b5bf6">
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <style>
   :root {
     --bg: #ffffff; --fg: #1f2937; --muted: #6b7280; --line: #e5e7eb; --accent: #6d28d9; --soft: #f5f3ff;
@@ -20,6 +26,9 @@
     font-family: "Vazirmatn", Tahoma, "Segoe UI", Arial, sans-serif; }
   header.top { border-block-end: 1px solid var(--line); padding: 1.2rem 1rem; background: var(--soft); }
   header.top .wrap, main.wrap, footer .wrap { max-inline-size: 62rem; margin-inline: auto; }
+  header.top .wrap { display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap; }
+  header.top picture, header.top img { display: block; }
+  header.top img { block-size: 56px; inline-size: auto; }
   header.top h1 { margin: 0; font-size: 1.7rem; }
   header.top p { margin: .3rem 0 0; color: var(--muted); }
   .layout { display: grid; grid-template-columns: 16rem minmax(0, 1fr); gap: 2rem; max-inline-size: 72rem; margin: 0 auto; padding: 1rem; }
@@ -52,8 +61,14 @@
 <body>
 <header class="top">
   <div class="wrap">
-    <h1>راهنمای راوی</h1>
-    <p>ویکی سازمانی راوی: راهنمای کاربران و مدیران فضای کاری</p>
+    <picture>
+      <source srcset="assets/raavi-logo-white.svg" media="(prefers-color-scheme: dark)">
+      <img src="assets/raavi-logo.svg" alt="Raavi" height="56">
+    </picture>
+    <div>
+      <h1>راهنمای راوی</h1>
+      <p>ویکی سازمانی راوی: راهنمای کاربران و مدیران فضای کاری</p>
+    </div>
   </div>
 </header>
 
@@ -231,6 +246,7 @@
 <h2 id="u-notifications">اعلان‌ها و حساب من</h2>
 <ul>
 <li><strong>اعلان‌ها:</strong> زنگ بالای صفحه تعداد خوانده‌نشده را نشان می‌دهد: نام‌بردن از شما، پاسخ و نظر، انتشار صفحه‌هایی که دنبال می‌کنید، گردش‌کارها و تأییدیه‌ها. «علامت‌گذاری همه به‌عنوان خوانده‌شده» هم هست.</li>
+<li><strong>عکس پروفایل:</strong> در «حساب من» ← «تغییر عکس» یک عکس PNG، JPEG یا WebP انتخاب کنید. عکس به‌صورت مربع بریده و کوچک می‌شود و کنار نام شما در همهٔ جاهایی که کاربری نشان داده می‌شود (نوار بالا، نظرها، اعضا، وظایف، تأییدیه‌ها، اعلان‌ها و سربرگ صفحه) به اعضای همان فضای کاری نمایش داده می‌شود. با «حذف عکس» به حروف اول نام برمی‌گردید. کاربران بدون عکس، حروف اول نامشان را در دایره‌ای رنگی می‌بینند. عکس شما به کاربران فضاهای کاری دیگر نشان داده نمی‌شود.</li>
 <li><strong>حساب من:</strong> روی نامتان در بالا بزنید. می‌توانید «اعلان‌ها را با ایمیل هم برایم بفرست» را روشن کنید (اگر سازمان ایمیل را راه انداخته باشد) و حساب‌های خارجی متصل (مثل Jira یا OpenID) را ببینید، وصل یا قطع کنید.</li>
 </ul>
 

@@ -14,6 +14,15 @@ Dev API + workers + Vite started; signed in as the dev workspace admin in the bu
 
 **Not covered:** creating/using slides, databases, workflows, approvals, tasks, calendar events; live co-editing between two browsers; AI, webhooks and connectors with real hosts (dev config allows none); PNG/SVG/PPTX/PDF downloads; mobile widths, dark mode, keyboard-only use, screen readers; English UI. Test data left in the dev DB: whiteboard "Browser check board" in space ENGINEERIN.
 
+### 13h — Brand assets and profile pictures (ADR-046)
+
+```
+dotnet test Raavi.Tests → 487 passed (6 new avatar tests); vitest 28 files / 183 tests (5 new); vue-tsc clean
+browser (dev stack): logo + favicon links load; a 640×400 picture uploaded through the profile page became 256×256 WebP (3.4 KB), shown in the header, profile, members list, page header and comments; removed again
+```
+
+Brand package in `docs/branding` and `frontend/public` (favicons, manifest, logos), `BrandLogo` on the header and sign-in pages, guide header/favicon. Profile pictures: table `identity.UserAvatars` (migration applied to RaaviDev), content-sniffed PNG/JPEG/WebP only, ≤ 512 KB and ≤ 1024 px, served only to active members of the same workspace, versioned immutable URLs, batched lookups, `UserAvatar` component. **Not done:** pictures where the API gives only a name (activity feed, history, creators of databases/slides/boards/events, mentions), server-side re-encoding, tenant export of pictures, real IIS verification.
+
 ### 13g — Path addressing and a default workspace (ADR-045)
 
 ```

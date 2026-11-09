@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UserAvatar from '@/app/UserAvatar.vue'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useConfirm } from 'primevue/useconfirm'
@@ -129,7 +130,7 @@ onMounted(load)
     <Dialog :visible="!!selected" modal :header="selected?.name" :style="{ inlineSize: 'min(32rem, 95vw)' }" @update:visible="(v) => !v && (selected = null)">
       <ul class="list">
         <li v-for="m in inGroup" :key="m.userId">
-          <span>{{ m.displayName }}</span>
+          <span class="who"><UserAvatar :user-id="m.userId" :name="m.displayName" :size="24" /> {{ m.displayName }}</span>
           <Button text size="small" severity="danger" icon="pi pi-times" :aria-label="t('common.delete')" @click="changeMembership(m.userId, false)" />
         </li>
       </ul>

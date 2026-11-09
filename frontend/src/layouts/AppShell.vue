@@ -14,6 +14,8 @@ import { useHostStore } from '@/stores/host'
 import { useAuthStore } from '@/stores/auth'
 import CommandPalette from '@/modules/wiki/components/CommandPalette.vue'
 import NotificationBell from '@/modules/notifications/NotificationBell.vue'
+import BrandLogo from '@/app/BrandLogo.vue'
+import UserAvatar from '@/app/UserAvatar.vue'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -123,7 +125,7 @@ async function signOut() {
   <a class="raavi-skip-link" href="#main">{{ t('shell.skipToContent') }}</a>
   <header class="shell-header">
     <div class="brand">
-      <span class="brand-mark" aria-hidden="true">ر</span>
+      <BrandLogo icon :size="32" class="brand-mark" aria-hidden="true" />
       <span class="brand-name" data-testid="brand-name">{{ brandName }}</span>
       <Tag v-if="isSystemHost" severity="secondary" :value="t('host.systemBadge')" data-testid="system-badge" />
     </div>
@@ -157,7 +159,7 @@ async function signOut() {
           @update:model-value="switchWorkspace"
         />
         <NotificationBell v-if="!isSystemHost" />
-        <RouterLink v-if="!isSystemHost" :to="{ name: 'profile' }" class="user" data-testid="user-name">{{ auth.me.displayName }}</RouterLink>
+        <RouterLink v-if="!isSystemHost" :to="{ name: 'profile' }" class="user" data-testid="user-name"><UserAvatar :user-id="auth.me.id" :name="auth.me.displayName" :size="28" /> <span class="user-name">{{ auth.me.displayName }}</span></RouterLink>
         <span v-else class="user" data-testid="user-name">{{ auth.me.displayName }}</span>
         <Button text size="small" icon="pi pi-sign-out" :label="t('nav.signOut')" data-testid="sign-out" @click="signOut" />
       </template>
@@ -184,16 +186,7 @@ async function signOut() {
   flex-wrap: wrap;
 }
 .brand { display: flex; align-items: center; gap: var(--raavi-space-2); font-weight: 700; }
-.brand-mark {
-  display: grid;
-  place-items: center;
-  inline-size: 32px;
-  block-size: 32px;
-  border-radius: var(--raavi-radius-sm);
-  background: var(--p-primary-color);
-  color: var(--p-primary-contrast-color);
-  font-family: var(--raavi-font-fa);
-}
+.brand-mark { flex: none; }
 .nav { display: flex; gap: var(--raavi-space-1); flex-wrap: wrap; align-items: center; }
 .admin-menu { position: relative; }
 .admin-toggle { border: 0; background: transparent; font: inherit; cursor: pointer; }
@@ -225,9 +218,9 @@ async function signOut() {
 }
 .nav-link:hover, .nav-link.active { background: var(--p-primary-50, rgba(0, 0, 0, 0.04)); color: var(--p-primary-color); }
 .end { display: flex; align-items: center; gap: var(--raavi-space-3); margin-inline-start: auto; }
-.user { color: var(--raavi-text-muted); font-size: 0.9rem; }
+.user { color: var(--raavi-text-muted); font-size: 0.9rem; display: inline-flex; align-items: center; gap: var(--raavi-space-2); text-decoration: none; }
 .shell-main { padding: var(--raavi-space-6) var(--raavi-space-4); outline: none; }
 @media (max-width: 640px) {
-  .user { display: none; }
+  .user-name { display: none; }
 }
 </style>
