@@ -42,6 +42,12 @@ public sealed class User : Entity
 
     public bool MfaEnabled => ProtectedTotpSecret is not null;
 
+    /// <summary>
+    /// True for an account created from the installation's bootstrap settings: its initial password only opens the first-sign-in flow
+    /// (new password + authenticator enrolment); no session is issued with it. Cleared when a new password is set.
+    /// </summary>
+    public bool MustChangePassword { get; private set; }
+
     public int FailedLoginCount { get; private set; }
 
     public DateTimeOffset? LockoutEndsAt { get; private set; }
@@ -116,8 +122,12 @@ public sealed class User : Entity
     public void SetPasswordHash(string hash)
     {
         PasswordHash = hash;
+        MustChangePassword = false;
         RotateSecurityStamp();
     }
+
+    /// <summary>Marks the current (initial) password as temporary. Call after <see cref="SetPasswordHash"/>.</summary>
+    public void RequirePasswordChange() => MustChangePassword = true;
 
     public void EnableTotp(string protectedSecret, long usedTimeStep)
     {

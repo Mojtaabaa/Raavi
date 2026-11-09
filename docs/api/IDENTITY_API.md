@@ -64,6 +64,8 @@ See also `TENANCY_API.md` for tenant lifecycle endpoints.
 
 ## Bootstrapping a new installation
 
+**Simplest:** set `Raavi:Authentication:Bootstrap:SystemAdministrator:{Email,InitialPassword}` (sandbox `authentication.json`) and restart the API. If no system administrator exists, the API creates one whose temporary password only opens the first sign-in: `POST /api/v1/auth/system/login` with the temporary password answers `401 auth.first_login_required` (no session); `POST /api/v1/auth/system/first-login {email, password}` verifies it (lockout rules apply) and returns `{acceptUrl}` to the normal `/system/setup` page, whose `/setup/inspect` then reports `passwordChangeRequired: true` and `/setup/complete` takes `{token, displayName, password: <temporary>, code, newPassword}` (policy applies; must differ). Afterwards the account is an ordinary administrator with TOTP. Remove the settings after the first sign-in. Alternative (API key + invitation):
+
 1. Configure an operator API key hash (TENANCY_API.md) and run `Raavi.Migrator`.
 2. `POST /api/v1/system/administrators/invitations` with the API key → open the setup link, scan the QR code, set a password, confirm a TOTP code.
 3. Sign in at `/system/login`; create tenants and invite each tenant's first administrator from the UI.

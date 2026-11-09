@@ -37,6 +37,7 @@ Format: Context · Decision · Alternatives considered · Consequences. Status v
 | [031](ADR-031-workflows.md) | Workflows: rules engine on the outbox (Phase 10a) | Accepted |
 | [032](ADR-032-approvals.md) | Page approvals (Phase 10b) | Accepted |
 | [033](ADR-033-scheduling-and-flow-view.md) | Reminders, stale-page trigger, flow view (Phase 10c) | Accepted |
+| [044](ADR-044-bootstrap-system-administrator.md) | Bootstrap system administrator with forced first sign-in (Phase 13f) | Accepted |
 | [043](ADR-043-issue-tracker-connectors.md) | Read-only issue tracker connectors: GitHub, GitLab, Jira (Phase 13a) | Accepted |
 | [042](ADR-042-backup-scheduling-and-alerting.md) | Backup scheduling, status and failure alerts (Phase 12f) | Accepted |
 | [041](ADR-041-release-package-and-upgrade-script.md) | Release package and upgrade script (Phase 12d) | Accepted |

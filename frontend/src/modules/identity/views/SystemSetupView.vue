@@ -18,6 +18,9 @@ const auth = useAuthStore()
 
 const token = ref<string | null>(null)
 const email = ref<string | null>(null)
+const mustChange = ref(false) // bootstrap account: temporary password + a new one
+const newPassword = ref('')
+const confirmPassword = ref('')
 const invalid = ref(false)
 const secret = ref<string | null>(null)
 const qr = ref<string | null>(null)
@@ -34,7 +37,9 @@ onMounted(async () => {
     return
   }
   try {
-    email.value = (await identityApi.inspectSetup(token.value)).email
+    const info = await identityApi.inspectSetup(token.value)
+    email.value = info.email
+    mustChange.value = info.passwordChangeRequired === true
   } catch {
     invalid.value = true
   }
@@ -54,10 +59,14 @@ async function begin() {
 
 async function complete() {
   if (!token.value || busy.value) return
-  busy.value = true
   error.value = null
+  if (mustChange.value && newPassword.value !== confirmPassword.value) {
+    error.value = t('setup.passwordsDiffer')
+    return
+  }
+  busy.value = true
   try {
-    await auth.completeSetup(token.value, displayName.value, password.value, code.value)
+    await auth.completeSetup(token.value, displayName.value, password.value, code.value, mustChange.value ? newPassword.value : undefined)
     await router.replace({ name: 'system-tenants' })
   } catch (e) {
     error.value = errorMessage(e, t, te)
@@ -83,9 +92,20 @@ async function complete() {
             <p class="small">{{ t('setup.manual') }} <code dir="ltr">{{ secret }}</code></p>
             <label for="name">{{ t('common.displayName') }}</label>
             <InputText id="name" v-model="displayName" autocomplete="name" />
-            <label for="pw">{{ t('common.password') }}</label>
-            <Password input-id="pw" v-model="password" :feedback="false" toggle-mask autocomplete="new-password" :placeholder="t('invitation.passwordHint')" :input-props="{ dir: 'ltr' }" />
-            <p class="small muted">{{ t('setup.existingNote') }}</p>
+            <template v-if="mustChange">
+              <p class="small" data-testid="first-login-note">{{ t('setup.firstLoginNote') }}</p>
+              <label for="pw">{{ t('setup.temporaryPassword') }}</label>
+              <Password input-id="pw" v-model="password" :feedback="false" toggle-mask autocomplete="current-password" :input-props="{ dir: 'ltr' }" />
+              <label for="pw-new">{{ t('setup.newPassword') }}</label>
+              <Password input-id="pw-new" v-model="newPassword" :feedback="false" toggle-mask autocomplete="new-password" :placeholder="t('invitation.passwordHint')" :input-props="{ dir: 'ltr' }" />
+              <label for="pw-confirm">{{ t('setup.confirmPassword') }}</label>
+              <Password input-id="pw-confirm" v-model="confirmPassword" :feedback="false" toggle-mask autocomplete="new-password" :input-props="{ dir: 'ltr' }" />
+            </template>
+            <template v-else>
+              <label for="pw">{{ t('common.password') }}</label>
+              <Password input-id="pw" v-model="password" :feedback="false" toggle-mask autocomplete="new-password" :placeholder="t('invitation.passwordHint')" :input-props="{ dir: 'ltr' }" />
+              <p class="small muted">{{ t('setup.existingNote') }}</p>
+            </template>
             <label for="otp">{{ t('auth.code') }}</label>
             <InputText id="otp" v-model="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" dir="ltr" class="otp" data-testid="otp" />
             <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>

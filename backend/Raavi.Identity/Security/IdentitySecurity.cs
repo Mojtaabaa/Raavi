@@ -18,6 +18,8 @@ public sealed class RaaviAuthenticationOptions
 
     public int InvitationLifetimeHours { get; set; } = 72;
 
+    public BootstrapSettings Bootstrap { get; set; } = new();
+
     public sealed class SessionSettings
     {
         public string CookieName { get; set; } = "__Host-raavi";
@@ -35,6 +37,25 @@ public sealed class RaaviAuthenticationOptions
         public string EffectiveCookieName => AllowInsecureHttp ? "raavi-session" : CookieName;
 
         public string AntiforgeryCookieName => AllowInsecureHttp ? "raavi-af" : "__Host-raavi-af";
+    }
+
+    /// <summary>Optional first system administrator created at API start when none exists (Raavi:Authentication:Bootstrap).</summary>
+    public sealed class BootstrapSettings
+    {
+        public BootstrapAdministratorSettings SystemAdministrator { get; set; } = new();
+    }
+
+    public sealed class BootstrapAdministratorSettings
+    {
+        /// <summary>Sign-in name of the account (an e-mail-shaped address). Empty = no bootstrap account.</summary>
+        public string Email { get; set; } = string.Empty;
+
+        /// <summary>Temporary password. Only valid for the first-sign-in flow; it need not meet the password policy because it must be replaced at once.</summary>
+        public string InitialPassword { get; set; } = string.Empty;
+
+        public string DisplayName { get; set; } = "Administrator";
+
+        public bool IsConfigured => !string.IsNullOrWhiteSpace(Email) && !string.IsNullOrEmpty(InitialPassword);
     }
 
     public sealed class LocalSettings

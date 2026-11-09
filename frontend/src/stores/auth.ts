@@ -45,8 +45,8 @@ export const useAuthStore = defineStore('auth', () => {
     return signedIn(await identityApi.acceptInvitation(token, mode, password, displayName))
   }
 
-  async function completeSetup(token: string, displayName: string, password: string, code: string) {
-    return signedIn(await identityApi.completeSetup(token, displayName, password, code))
+  async function completeSetup(token: string, displayName: string, password: string, code: string, newPassword?: string) {
+    return signedIn(await identityApi.completeSetup(token, displayName, password, code, newPassword))
   }
 
   async function logout() {

@@ -126,6 +126,10 @@ public static class IdentityEndpoints
             (await svc.LoginAsync(http, body, ct).ConfigureAwait(false)).ToHttp(Results.Ok))
             .RequireRateLimiting(LoginRateLimitPolicy);
 
+        systemAuth.MapPost("/first-login", async (HttpContext http, SystemFirstLoginRequest body, SystemIdentityService svc, CancellationToken ct) =>
+            (await svc.FirstLoginAsync(body, BaseUrl(http), ct).ConfigureAwait(false)).ToHttp(Results.Ok))
+            .RequireRateLimiting(LoginRateLimitPolicy);
+
         systemAuth.MapPost("/setup/inspect", async (SystemSetupBeginRequest body, SystemIdentityService svc, CancellationToken ct) =>
             (await svc.InspectSetupAsync(body.Token, ct).ConfigureAwait(false)).ToHttp(Results.Ok))
             .RequireRateLimiting(LoginRateLimitPolicy);

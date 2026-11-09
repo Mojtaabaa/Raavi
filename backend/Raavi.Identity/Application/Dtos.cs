@@ -15,7 +15,10 @@ public sealed record AcceptInvitationRequest(string Token, string Mode, string P
 
 public sealed record SystemSetupBeginRequest(string Token);
 
-public sealed record SystemSetupCompleteRequest(string Token, string DisplayName, string Password, string Code);
+/// <param name="NewPassword">Only for a bootstrap account: the replacement for the temporary password given in <paramref name="Password"/>.</param>
+public sealed record SystemSetupCompleteRequest(string Token, string DisplayName, string Password, string Code, string? NewPassword = null);
+
+public sealed record SystemFirstLoginRequest(string Email, string Password);
 
 public sealed record CreateInvitationRequest(string Email, bool TenantAdministrator);
 
@@ -40,7 +43,7 @@ public sealed record InvitationDto(Guid Id, string Email, bool TenantAdministrat
 /// <summary>The link is shown exactly once to the inviting administrator (no e-mail delivery yet — SMTP arrives with notifications).</summary>
 public sealed record InvitationCreatedDto(Guid Id, string Email, DateTimeOffset ExpiresAt, Uri AcceptUrl);
 
-public sealed record InvitationInfoDto(string Email, DateTimeOffset ExpiresAt, bool TenantAdministrator);
+public sealed record InvitationInfoDto(string Email, DateTimeOffset ExpiresAt, bool TenantAdministrator, bool PasswordChangeRequired = false);
 
 public sealed record GroupDto(Guid Id, string Name, string? Description, string Source, int MemberCount);
 

@@ -167,13 +167,17 @@ describe('whiteboards', () => {
     expect(w.get('[data-testid="board"]').text()).toContain('2 elements')
 
     await w.get('[data-testid="new-board"]').trigger('click')
-    await flushPromises()
+    // the dialog is rendered asynchronously; wait for it instead of assuming one tick is enough (flaky on a loaded machine)
+    for (let i = 0; i < 100 && !document.body.querySelector('[data-testid="board-title"]'); i++) {
+      await new Promise((r) => setTimeout(r, 20))
+      await flushPromises()
+    }
     const input = document.body.querySelector<HTMLInputElement>('[data-testid="board-title"]')!
     input.value = 'Ideas'
     input.dispatchEvent(new Event('input'))
     await flushPromises()
     document.body.querySelector<HTMLButtonElement>('[data-testid="save-board"]')!.click()
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 100 && !f.calls.some((c) => c.url === '/api/v1/whiteboards/b2'); i++) {
       await new Promise((r) => setTimeout(r, 30))
       await flushPromises()
     }

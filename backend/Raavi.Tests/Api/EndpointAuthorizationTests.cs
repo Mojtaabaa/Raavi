@@ -35,6 +35,7 @@ public sealed class EndpointAuthorizationTests(SqlServerFixture fx, ITestOutputH
         "POST /api/v1/auth/login/credentials/{providerId}",
         "POST /api/v1/auth/login/local",
         "POST /api/v1/auth/logout",
+        "POST /api/v1/auth/system/first-login",
         "POST /api/v1/auth/system/login",
         "POST /api/v1/auth/system/setup/begin",
         "POST /api/v1/auth/system/setup/complete",

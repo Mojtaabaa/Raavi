@@ -121,10 +121,12 @@ export const identityApi = {
     api<Me>('POST', '/auth/invitations/accept', { token, mode, password, displayName }),
 
   systemLogin: (email: string, password: string, code: string) => api<Me>('POST', '/auth/system/login', { email, password, code }),
-  inspectSetup: (token: string) => api<{ email: string; expiresAt: string }>('POST', '/auth/system/setup/inspect', { token }),
+  /** First sign-in of a bootstrap account: verifies the temporary password and returns the setup link (no session). */
+  systemFirstLogin: (email: string, password: string) => api<{ acceptUrl: string }>('POST', '/auth/system/first-login', { email, password }),
+  inspectSetup: (token: string) => api<{ email: string; expiresAt: string; passwordChangeRequired?: boolean }>('POST', '/auth/system/setup/inspect', { token }),
   beginSetup: (token: string) => api<{ secret: string; otpAuthUri: string }>('POST', '/auth/system/setup/begin', { token }),
-  completeSetup: (token: string, displayName: string, password: string, code: string) =>
-    api<Me>('POST', '/auth/system/setup/complete', { token, displayName, password, code }),
+  completeSetup: (token: string, displayName: string, password: string, code: string, newPassword?: string) =>
+    api<Me>('POST', '/auth/system/setup/complete', { token, displayName, password, code, ...(newPassword ? { newPassword } : {}) }),
 
   members: () => api<Member[]>('GET', '/tenant/members'),
   suspendMember: (id: string) => api<void>('POST', `/tenant/members/${id}/suspend`),

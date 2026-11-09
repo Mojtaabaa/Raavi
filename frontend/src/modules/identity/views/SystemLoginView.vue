@@ -7,6 +7,8 @@ import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import { ApiError } from '@/core/api/http'
+import { identityApi } from '@/core/api/identity'
 import { errorMessage } from '@/core/api/errors'
 import { useAuthStore } from '@/stores/auth'
 import { safeRedirect } from '@/router'
@@ -29,6 +31,20 @@ async function submit() {
     await auth.systemLogin(email.value, password.value, code.value)
     await router.replace(safeRedirect(route.query.redirect) ?? { name: 'system-tenants' })
   } catch (e) {
+    // Correct temporary password of a bootstrap account: continue with the first sign-in (new password + authenticator) instead of failing.
+    if (e instanceof ApiError && e.code === 'auth.first_login_required') {
+      try {
+        const started = await identityApi.systemFirstLogin(email.value, password.value)
+        const hash = new URL(started.acceptUrl, window.location.origin).hash
+        password.value = ''
+        await router.replace({ name: 'system-setup', hash })
+        return
+      } catch (inner) {
+        error.value = errorMessage(inner, t, te)
+        password.value = ''
+        return
+      }
+    }
     error.value = errorMessage(e, t, te)
     password.value = ''
     code.value = ''

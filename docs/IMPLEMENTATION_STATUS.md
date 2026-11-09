@@ -14,6 +14,14 @@ Dev API + workers + Vite started; signed in as the dev workspace admin in the bu
 
 **Not covered:** creating/using slides, databases, workflows, approvals, tasks, calendar events; live co-editing between two browsers; AI, webhooks and connectors with real hosts (dev config allows none); PNG/SVG/PPTX/PDF downloads; mobile widths, dark mode, keyboard-only use, screen readers; English UI. Test data left in the dev DB: whiteboard "Browser check board" in space ENGINEERIN.
 
+### 13f — Bootstrap system administrator (ADR-044)
+
+```
+dotnet test Raavi.Tests → 459 passed (3 new bootstrap tests); vitest 26 files / 164 tests (3 new); vue-tsc clean (NODE_OPTIONS=--max-old-space-size=4096)
+```
+
+Settings `Raavi:Authentication:Bootstrap:SystemAdministrator` (empty by default) create the first system administrator at API start when none exists; its temporary password opens only `/auth/system/first-login` → setup page (new password per policy + TOTP). Migration `BootstrapAdministrator` adds `Users.MustChangePassword`. **Not verified:** on a real server; the migration was not applied to RaaviDev yet. Also fixed: a flaky wait in `whiteboards.test.ts`.
+
 ### 13e — IIS hosting of the API, Persian install guide (ADR-041 addendum)
 
 `deployment/iis/web.config` (shipped in `web/`), `Update-Raavi.ps1 -AppPool/-Service`, `INSTALL_WINDOWS_IIS.md` rewritten (API = IIS site, workers = NSSM) and `INSTALL_WINDOWS_IIS_fa.md` (Persian). `Test-ReleaseScripts.ps1 -WithFrontend` → 26 checks passed. **Not verified:** a real IIS/ARR/URL Rewrite/NSSM installation, the per-site ARR variant, WebSocket (`/hubs`) through ARR.

@@ -117,6 +117,7 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
             b.Property(x => x.PreferredLocale).HasMaxLength(8).IsUnicode(false);
             b.Property(x => x.RowVersion).IsRowVersion();
             b.Ignore(x => x.MfaEnabled);
+            b.Property(x => x.MustChangePassword).HasDefaultValue(false);
             // Local sign-in name: unique among users that have an address.
             b.HasIndex(x => x.NormalizedEmail).IsUnique().HasFilter("[NormalizedEmail] IS NOT NULL");
         });

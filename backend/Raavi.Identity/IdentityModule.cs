@@ -84,6 +84,7 @@ public static class IdentityModule
     {
         services.AddIdentityCore(configuration);
         services.AddOptions<SystemApiKeyOptions>().Bind(configuration.GetSection(SystemApiKeyOptions.Section));
+        services.AddHostedService<BootstrapAdministratorSeeder>();
 
         services.AddAuthentication(RaaviSessionAuthenticationHandler.SchemeName)
             .AddScheme<AuthenticationSchemeOptions, RaaviSessionAuthenticationHandler>(RaaviSessionAuthenticationHandler.SchemeName, null)

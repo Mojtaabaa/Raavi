@@ -112,11 +112,17 @@ These are **server-wide** ARR settings. If other sites on the server rely on ARR
 3. `D:\Raavi\web\web.config` (shipped in the package, source `deployment/iis/web.config`) does the rest: proxies `api/`, `hubs/`, `health/` to `http://127.0.0.1:5180`, serves `index.html` for every other non-file URL, sets the Content-Security-Policy and caches only the hashed files in `assets/`. `/internal/*` is **not** proxied on purpose. If your API listens elsewhere, change the two URLs in that file (and re-apply that change after upgrades).
 4. Never put `sandbox\` inside the web folder; the application refuses to start if it is inside a web root.
 
-## 8. First start
+## 8. First start (default administrator)
 
-1. Create the bootstrap operator key hash and set `Raavi:Security:SystemApiKeys` (see `docs/api/IDENTITY_API.md`, "Bootstrapping a new installation"): invite the first **system administrator**, open the setup link on `https://admin.example.com`, scan the TOTP QR code, set a password.
-2. Sign in at `/system/login`, create the first workspace, invite its administrator, then remove/rotate the bootstrap key.
-3. Open `https://<slug>.example.com`, sign in, create a space and a page.
+1. In `D:\Raavi\sandbox\config\authentication.json` fill the bootstrap account (nothing is shipped by default; an empty value means "no bootstrap account"):
+
+```json
+"Bootstrap": { "SystemAdministrator": { "Email": "admin@vesta.local", "InitialPassword": "<temporary password>", "DisplayName": "Administrator" } }
+```
+   The "user name" is an e-mail-shaped address (it does not have to exist). Use a temporary password that is hard to guess — the site is reachable from the internet until you have signed in. Restart the API pool (`Restart-WebAppPool RaaviApi`); on start the API creates the account **only if no system administrator exists yet** (the log says "waiting for its first sign-in").
+2. Open `https://admin.example.com/system/login`, type the e-mail and the temporary password (leave the code empty) and press sign in. You are taken to the setup page automatically: choose a **new password** (at least 12 characters), scan the QR code with an authenticator app, type the 6-digit code. You are signed in and the temporary password no longer works. (System administrators always need the authenticator code afterwards.)
+3. **Remove the `Bootstrap` values from `authentication.json`** (set them back to empty) and restart the pool. Create the first workspace and invite its administrator from the system pages.
+4. If the temporary password is lost before the first sign-in, change it in the settings and restart the pool: while the account has not completed its first sign-in the configured password is applied again. Operator API keys and invitations (`Raavi:Security:SystemApiKeys`, `docs/api/IDENTITY_API.md`) remain available as an alternative.
 
 ## 9. Not needed / not included in this version
 

@@ -575,6 +575,11 @@ namespace Raavi.Identity.Persistence.Migrations
                     b.Property<DateTimeOffset?>("LockoutEndsAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<bool>("MustChangePassword")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");

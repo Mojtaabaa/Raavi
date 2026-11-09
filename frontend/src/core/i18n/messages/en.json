@@ -90,7 +90,12 @@
     "manual": "Or enter this key manually:",
     "start": "Start setup",
     "complete": "Complete and sign in",
-    "existingNote": "If you already have an account with this address, enter its current password."
+    "existingNote": "If you already have an account with this address, enter its current password.",
+    "firstLoginNote": "This is the first sign-in of this account. Choose a new password (at least 12 characters) and enrol an authenticator app; the temporary password stops working afterwards.",
+    "temporaryPassword": "Temporary password",
+    "newPassword": "New password",
+    "confirmPassword": "Repeat the new password",
+    "passwordsDiffer": "The two new passwords are not the same."
   },
   "members": {
     "title": "Workspace members",
@@ -175,7 +180,8 @@
     "password": {
       "length": "Password must be at least 12 characters.",
       "too_simple": "Password is too simple.",
-      "contains_email": "Password must not contain your e-mail name."
+      "contains_email": "Password must not contain your e-mail name.",
+      "unchanged": "Choose a password different from the temporary one."
     },
     "member": {
       "last_administrator": "A workspace must keep at least one active administrator.",
