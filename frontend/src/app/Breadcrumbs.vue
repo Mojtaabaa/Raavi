@@ -44,7 +44,7 @@ const folded = computed(() => items.value.filter((i) => i.middle))
 ol { list-style: none; display: flex; align-items: center; flex-wrap: wrap; gap: 2px var(--raavi-space-1); margin: 0; padding: 0; }
 li { display: inline-flex; align-items: center; gap: var(--raavi-space-1); min-inline-size: 0; }
 .sep { font-size: 0.7rem; color: var(--raavi-text-muted); }
-:global([dir='rtl']) .sep { transform: scaleX(-1); }
+.crumbs :dir(rtl) .sep, .sep:dir(rtl) { transform: scaleX(-1); }
 .link, .plain, .here { max-inline-size: 16rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 2px 6px; border-radius: var(--raavi-radius-sm); }
 .link { color: var(--raavi-text-muted); text-decoration: none; }
 .link:hover { color: var(--p-primary-color); background: var(--p-primary-50, rgba(0, 0, 0, 0.05)); }
