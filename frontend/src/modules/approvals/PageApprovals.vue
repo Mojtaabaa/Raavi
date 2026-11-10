@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { zonedInputToIso } from '@/core/runtime/display'
+import CalendarDateInput from '@/app/CalendarDateInput.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
@@ -59,7 +61,7 @@ async function submit() {
       note: note.value.trim(),
       mode: mode.value,
       approverIds: approvers.value.map((a) => a.id),
-      dueAt: due.value ? new Date(due.value).toISOString() : null,
+      dueAt: due.value ? zonedInputToIso(due.value) : null,
     })
     open.value = false
     await load()
@@ -100,7 +102,7 @@ function changed(updated: Approval) {
           <option value="Any">{{ t('approvals.modes.Any') }}</option>
         </select>
         <label for="appr-due">{{ t('approvals.dueOptional') }}</label>
-        <input id="appr-due" v-model="due" type="datetime-local" data-testid="approval-due-input" />
+        <CalendarDateInput id="appr-due" v-model="due" time data-testid="approval-due-input" />
         <label for="appr-note">{{ t('approvals.noteOptional') }}</label>
         <textarea id="appr-note" v-model="note" rows="3" maxlength="500" dir="auto" data-testid="approval-note" />
         <Button type="submit" :label="t('approvals.send')" :loading="saving" :disabled="approvers.length === 0" data-testid="send-approval" />

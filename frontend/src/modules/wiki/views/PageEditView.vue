@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { isoToZonedInput, zonedInputToIso } from '@/core/runtime/display'
+import CalendarDateInput from '@/app/CalendarDateInput.vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
@@ -275,7 +277,7 @@ function openPublish() {
   schedule.value = false
   const inOneHour = new Date(Date.now() + 3600_000)
   inOneHour.setSeconds(0, 0)
-  publishAt.value = new Date(inOneHour.getTime() - inOneHour.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+  publishAt.value = isoToZonedInput(inOneHour.toISOString())
   publishOpen.value = true
 }
 
@@ -288,7 +290,7 @@ async function publish() {
     // Live mode: the API flushes the collaboration server and publishes the latest shared draft (If-Match: *).
     const r = await wikiApi.publish(id.value, live.value ? '*' : draftEtag.value, {
       changeSummary: changeSummary.value || null,
-      publishAt: schedule.value && publishAt.value ? new Date(publishAt.value).toISOString() : null,
+      publishAt: schedule.value && publishAt.value ? zonedInputToIso(publishAt.value) : null,
     })
     publishOpen.value = false
     const outcome = r.value.outcome
@@ -428,7 +430,7 @@ function close() {
         </div>
         <template v-if="schedule">
           <label for="publish-at">{{ t('wiki.publish.at') }}</label>
-          <input id="publish-at" v-model="publishAt" type="datetime-local" class="p-inputtext" required />
+          <CalendarDateInput id="publish-at" v-model="publishAt" time required />
         </template>
         <Button type="submit" :label="schedule ? t('wiki.publish.scheduleButton') : t('wiki.publish.button')" :loading="busy" data-testid="confirm-publish" />
       </form>

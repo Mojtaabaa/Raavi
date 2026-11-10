@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import CalendarDateInput from '@/app/CalendarDateInput.vue'
+import { formatDate } from '@/core/i18n/locales'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useConfirm } from 'primevue/useconfirm'
@@ -110,7 +112,7 @@ function purge() {
 }
 
 const pages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
-const when = (iso: string) => new Intl.DateTimeFormat(locale.locale === 'fa' ? 'fa-IR' : 'en-GB', { dateStyle: 'medium', timeStyle: 'medium' }).format(new Date(iso))
+const when = (iso: string) => formatDate(iso, locale.locale, { dateStyle: 'medium', timeStyle: 'medium' })
 const num = (n: number) => new Intl.NumberFormat(locale.locale === 'fa' ? 'fa-IR' : 'en-US').format(n)
 const serverSeries = computed(() => summary.value?.days.map((d) => d.server) ?? [])
 const clientSeries = computed(() => summary.value?.days.map((d) => d.client) ?? [])
@@ -154,8 +156,8 @@ const today = computed(() => summary.value?.days.at(-1))
     <div class="filters" role="search">
       <input v-model="q" type="search" class="grow" :placeholder="t('errorLog.search')" :aria-label="t('errorLog.search')" data-testid="error-search" />
       <select v-model="source" :aria-label="t('errorLog.source')"><option value="">{{ t('errorLog.allSources') }}</option><option value="server">{{ t('errorLog.server') }}</option><option value="client">{{ t('errorLog.client') }}</option></select>
-      <label>{{ t('activityLog.from') }} <input v-model="from" type="date" /></label>
-      <label>{{ t('activityLog.to') }} <input v-model="to" type="date" /></label>
+      <label>{{ t('activityLog.from') }} <CalendarDateInput v-model="from" /></label>
+      <label>{{ t('activityLog.to') }} <CalendarDateInput v-model="to" /></label>
       <button v-if="fingerprint" type="button" class="reset" @click="fingerprint = ''">{{ t('errorLog.clearGroup') }}</button>
       <button v-if="q || source || from || to" type="button" class="reset" @click="((q = ''), (source = ''), (from = ''), (to = ''))">{{ t('activityLog.clear') }}</button>
     </div>

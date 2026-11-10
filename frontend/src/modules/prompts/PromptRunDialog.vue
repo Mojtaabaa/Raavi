@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatDate } from '@/core/i18n/locales'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
@@ -154,7 +155,7 @@ async function copyResult() {
 async function saveAsPage() {
   if (!result.value?.result || !saveSpace.value || !props.prompt) return
   try {
-    const page = await wikiApi.createContent(saveSpace.value, { title: `${props.prompt.title} — ${new Date().toLocaleDateString()}`, parentId: null, contentType: 'page', body: textToDoc(result.value.result), publish: false })
+    const page = await wikiApi.createContent(saveSpace.value, { title: `${props.prompt.title} — ${formatDate(new Date().toISOString(), locale.locale)}`, parentId: null, contentType: 'page', body: textToDoc(result.value.result), publish: false })
     toast.add({ severity: 'success', summary: t('prompts.run.savedAsDraft'), life: 4000 })
     emit('update:visible', false)
     await router.push({ name: 'page-edit', params: { key: saveSpace.value, id: page.id } })

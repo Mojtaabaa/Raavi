@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useLocaleStore } from '@/stores/locale'
+import { formatDate } from '@/core/i18n/locales'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
@@ -9,6 +11,7 @@ import { errorMessage } from '@/core/api/errors'
 
 /** AI provider of the workspace (Phase 11a): OpenAI-compatible endpoint, model, key (write-only), limits and this month's usage. */
 const { t, te } = useI18n()
+const localeStore = useLocaleStore()
 const toast = useToast()
 
 const current = ref<AiSettings | null>(null)
@@ -116,7 +119,7 @@ async function save() {
       <h2>{{ t('ai.index.title') }}</h2>
       <p>{{ t('ai.index.summary', { pages: index.pages, chunks: index.chunks, embedded: index.embeddedChunks }) }}</p>
       <p class="muted">{{ index.embeddingsOn ? t('ai.index.hybrid', { model: index.embeddingModel }) : t('ai.index.keywordOnly') }}<template v-if="index.pagesToIndex > 0"> · {{ t('ai.index.pending', { n: index.pagesToIndex }) }}</template></p>
-      <p v-if="index.lastIndexedAt" class="muted small">{{ t('ai.index.last', { time: new Date(index.lastIndexedAt).toLocaleString() }) }}</p>
+      <p v-if="index.lastIndexedAt" class="muted small">{{ t('ai.index.last', { time: formatDate(index.lastIndexedAt, localeStore.locale, { dateStyle: 'medium', timeStyle: 'short' }) }) }}</p>
       <div class="idx-actions">
         <Button size="small" outlined icon="pi pi-refresh" :label="t('ai.index.run')" :loading="indexing" data-testid="index-run" @click="runIndex(false)" />
         <Button size="small" text severity="secondary" icon="pi pi-replay" :label="t('ai.index.rebuild')" :loading="indexing" data-testid="index-rebuild" @click="runIndex(true)" />

@@ -2,6 +2,8 @@
  * Supported UI locales (ADR-022). Adding a language = add an entry here + a message file; no component changes.
  * Direction is a property of the locale, never inferred by mirroring CSS.
  */
+import { display } from '@/core/runtime/display'
+
 export type TextDirection = 'rtl' | 'ltr'
 
 export interface LocaleDefinition {
@@ -51,7 +53,13 @@ export function formatDate(
   options: Intl.DateTimeFormatOptions & { calendar?: 'persian' | 'gregory'; timeZone?: string } = {},
 ): string {
   const def = LOCALES[locale]
-  const calendar = options.calendar ?? def.defaultCalendar
+  const calendar = options.calendar ?? (display.calendar === 'persian' ? 'persian' : display.calendar === 'gregory' ? 'gregory' : def.defaultCalendar)
   const { calendar: _ignored, ...rest } = options
-  return new Intl.DateTimeFormat(`${def.intlTag}-u-ca-${calendar}`, { dateStyle: 'medium', ...rest }).format(new Date(isoUtc))
+  // the workspace's time zone applies to every instant shown (date-only values are passed with timeZone: 'UTC' by their callers)
+  return new Intl.DateTimeFormat(`${def.intlTag}-u-ca-${calendar}`, { dateStyle: 'medium', ...(display.timeZone ? { timeZone: display.timeZone } : {}), ...rest }).format(new Date(isoUtc))
+}
+
+/** Date and time in the workspace's time zone and calendar. */
+export function formatDateTime(isoUtc: string, locale: SupportedLocale): string {
+  return formatDate(isoUtc, locale, { dateStyle: 'medium', timeStyle: 'short' })
 }

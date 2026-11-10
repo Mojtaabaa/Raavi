@@ -79,6 +79,7 @@ const allNav = computed<NavItem[]>(() => {
       ? [
           { to: { name: 'system-tenants' }, label: t('nav.tenants'), icon: 'pi pi-building' },
           { to: { name: 'system-users' }, label: t('systemUsers.title'), icon: 'pi pi-users' },
+          { to: { name: 'system-email' }, label: t('email.title'), icon: 'pi pi-envelope' },
           { to: { name: 'system-errors' }, label: t('errorLog.title'), icon: 'pi pi-exclamation-triangle' },
         ]
       : []
@@ -106,6 +107,7 @@ const adminNav = computed<NavItem[]>(() => {
     { to: { name: 'admin-groups' }, label: t('nav.groups'), icon: 'pi pi-sitemap' },
     { to: { name: 'admin-providers' }, label: t('nav.providers'), icon: 'pi pi-key' },
     { to: { name: 'admin-permissions' }, label: t('nav.permissions'), icon: 'pi pi-shield' },
+    { to: { name: 'admin-display' }, label: t('display.title'), icon: 'pi pi-clock' },
     { to: { name: 'admin-ai' }, label: t('nav.ai'), icon: 'pi pi-sparkles' },
     { to: { name: 'admin-connectors' }, label: t('nav.connectors'), icon: 'pi pi-github' },
     { to: { name: 'admin-webhooks' }, label: t('nav.webhooks'), icon: 'pi pi-link' },

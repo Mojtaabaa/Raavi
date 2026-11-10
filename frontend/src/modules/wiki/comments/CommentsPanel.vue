@@ -111,7 +111,7 @@ async function create(doc: RaaviDoc, anchor: TextQuote | null) {
 
 function focusAnchor(id: string) {
   emit('update:active', id)
-  if (SAFE_ID.test(id)) document.querySelector(`[data-thread-id="${id}"]`)?.scrollIntoView?.({ block: 'center' })
+  if (SAFE_ID.test(id)) document.querySelector(`[data-thread-id="${id}"]`)?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
 }
 
 // A highlighted passage was clicked in the page: show its thread.
@@ -140,7 +140,7 @@ watch(() => props.pendingQuote, async (q) => {
     </header>
 
     <div v-if="pendingQuote && canComment" id="inline-composer" class="inline-new" data-testid="inline-composer">
-      <blockquote dir="auto">{{ pendingQuote.exact }}</blockquote>
+      <blockquote dir="auto">{{ pendingQuote.exact.length > 220 ? pendingQuote.exact.slice(0, 220).trimEnd() + '…' : pendingQuote.exact }}</blockquote>
       <CommentComposer
         ref="inlineComposer"
         :busy="busy"

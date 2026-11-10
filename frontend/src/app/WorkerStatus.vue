@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatDate } from '@/core/i18n/locales'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Dialog from 'primevue/dialog'
@@ -37,7 +38,7 @@ async function load() {
   }
 }
 
-const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(locale.locale === 'fa' ? 'fa-IR' : 'en-GB') : '—')
+const when = (iso: string | null) => (iso ? formatDate(iso, locale.locale, { dateStyle: 'medium', timeStyle: 'short' }) : '—')
 const backlog = computed(() => (report.value?.jobs.Enqueued ?? 0) + (report.value?.jobs.Scheduled ?? 0))
 
 watch(allowed, load)

@@ -60,6 +60,16 @@ public sealed class TenantConfigurationService(TenancyDbContext db, TenancyAudit
         return Result<TenantSettingsDto>.Success(ToDto(s));
     }
 
+    /// <summary>Time zone, calendar and default language, edited by the workspace's own administrators (the storage quota is untouched).</summary>
+    public async Task<Result<TenantSettingsDto>> UpdateDisplayAsync(UpdateDisplayRequest request, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var current = await db.TenantSettings.AsNoTracking().FirstOrDefaultAsync(ct).ConfigureAwait(false);
+        return current is null
+            ? Result<TenantSettingsDto>.Failure(NotProvisioned)
+            : await UpdateSettingsAsync(new UpdateSettingsRequest(request.DefaultLocale, request.TimeZone, request.Calendar, current.StorageQuotaBytes), ct).ConfigureAwait(false);
+    }
+
     public async Task<Result<TenantBrandingDto>> UpdateBrandingAsync(UpdateBrandingRequest request, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(request);

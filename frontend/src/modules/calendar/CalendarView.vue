@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CalendarDateInput from '@/app/CalendarDateInput.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
@@ -288,13 +289,13 @@ async function cancelThis() {
         <div class="pair">
           <div>
             <label for="ev-start">{{ t('calendar.starts') }}</label>
-            <InputText id="ev-start" v-model="form.startDate" type="date" dir="ltr" required :disabled="readOnly" data-testid="event-start" />
+            <CalendarDateInput id="ev-start" v-model="form.startDate" required :disabled="readOnly" data-testid="event-start" />
             <small class="muted" data-testid="start-label">{{ preview(form.startDate) }}</small>
             <InputText v-if="!form.allDay" v-model="form.startTime" type="time" dir="ltr" :aria-label="t('calendar.startTime')" :disabled="readOnly" />
           </div>
           <div>
             <label for="ev-end">{{ t('calendar.ends') }}</label>
-            <InputText id="ev-end" v-model="form.endDate" type="date" dir="ltr" :min="form.startDate" :disabled="readOnly" data-testid="event-end" />
+            <CalendarDateInput id="ev-end" v-model="form.endDate" :min="form.startDate" :disabled="readOnly" data-testid="event-end" />
             <small class="muted">{{ preview(form.endDate) }}</small>
             <InputText v-if="!form.allDay" v-model="form.endTime" type="time" dir="ltr" :aria-label="t('calendar.endTime')" :disabled="readOnly" />
           </div>
@@ -328,7 +329,7 @@ async function cancelThis() {
 
           <label>{{ t('calendar.endsRule') }}</label>
           <SelectButton v-model="form.endMode" :options="endModes" option-label="label" option-value="value" :allow-empty="false" :disabled="readOnly" />
-          <InputText v-if="form.endMode === 'until'" v-model="form.until" type="date" dir="ltr" :min="form.startDate" :aria-label="t('calendar.endUntil')" :disabled="readOnly" />
+          <CalendarDateInput v-if="form.endMode === 'until'" v-model="form.until" :min="form.startDate" :aria-label="t('calendar.endUntil')" :disabled="readOnly" />
           <InputNumber v-if="form.endMode === 'count'" v-model="form.count" :min="1" :max="1000" :use-grouping="false" :aria-label="t('calendar.endCount')" :disabled="readOnly" />
         </template>
 

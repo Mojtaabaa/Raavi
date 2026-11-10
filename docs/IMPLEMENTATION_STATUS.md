@@ -14,6 +14,10 @@ Dev API + workers + Vite started; signed in as the dev workspace admin in the bu
 
 **Not covered:** creating/using slides, databases, workflows, approvals, tasks, calendar events; live co-editing between two browsers; AI, webhooks and connectors with real hosts (dev config allows none); PNG/SVG/PPTX/PDF downloads; mobile widths, dark mode, keyboard-only use, screen readers; English UI. Test data left in the dev DB: whiteboard "Browser check board" in space ENGINEERIN.
 
+### 21 — Comment quotes, e-mail settings, time zone and calendar (ADR-053)
+
+Quote cut + "show more" + jump to the passage; system "E-mail settings" page (SMTP / pickup, protected password, test message, applied to API and Workers live); Administration → Display (time zone, calendar, default language) applied to every displayed time; calendar-aware date and date-time fields. Tests: 2 backend, 5 frontend. **Not verified:** a real SMTP server, the Persian picker on real devices, time display on every single screen (formatters were unified in the screens that used ad-hoc ones).
+
 ### 20 — Prompt Hub (ADR-052)
 
 Library (personal/public, categories tree with drag & drop, search/filter/sort), editor on the existing Tiptap editor with variable chips and insertion menu, typed input variables, draft/published versions with diff and restore, context providers (page, selection, section, pages, space, Jira issue, generic), preview / manual copy / automatic execution through the shared `AiService.CompleteAsync`, ratings and feedback, usage events and statistics, fork, administrator analytics, "AI prompts" button on pages (save as draft page / add to page draft with confirmation). Tests: 6 + 8 + 3 backend (PromptHubTests, PromptRunTests, PromptTemplateTests), 11 frontend. **Not done / not verified:** Templar and Jira-project context (unavailable), user/group sharing, per-permission category rights, retention job, real AI provider and a real Jira (fakes only), visual RTL check, load/perf measurement of the analytics queries.

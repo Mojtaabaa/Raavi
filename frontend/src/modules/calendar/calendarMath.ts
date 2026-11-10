@@ -96,3 +96,19 @@ export function weekdayLabel(iso: string, intlTag: string, style: 'short' | 'lon
 export function dateLabel(iso: string, cal: CalendarSystem, intlTag: string): string {
   return new Intl.DateTimeFormat(`${intlTag}-u-ca-${cal}`, { timeZone: 'UTC', dateStyle: 'medium' }).format(at(iso))
 }
+
+/** The ISO date of year/month/day in the given calendar (day is clamped to the month). Found by bisection over Intl, like the rest of this file. */
+export function isoFromParts(y: number, m: number, d: number, cal: CalendarSystem): string {
+  if (cal === 'gregory') return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+  const key = (p: DayParts) => p.y * 10_000 + p.m * 100 + p.d
+  const target = y * 10_000 + m * 100 + 1
+  let lo = `${y + 621}-01-01`
+  let hi = `${y + 622}-12-31`
+  while (daysBetween(lo, hi) > 0) {
+    const mid = addDays(lo, Math.floor(daysBetween(lo, hi) / 2))
+    if (key(partsOf(mid, cal)) < target) lo = addDays(mid, 1)
+    else hi = mid
+  }
+  const first = lo
+  return addDays(first, Math.min(d, daysInMonth(first, cal)) - 1)
+}

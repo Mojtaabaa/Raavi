@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import UserAvatar from '@/app/UserAvatar.vue'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
@@ -19,6 +19,18 @@ const emit = defineEmits<{ changed: [thread: Thread]; focusAnchor: [id: string];
 const { t } = useI18n()
 const locale = useLocaleStore()
 const confirm = useConfirm()
+
+/** A long quote is shown cut (a few lines) with "show more"; clicking the quote always jumps to the start of the quoted passage in the page. */
+const QUOTE_CHARS = 220
+const QUOTE_LINES = 3
+const quoteOpen = ref(false)
+const quoteFull = computed(() => props.thread.anchor?.exact ?? '')
+const quoteLong = computed(() => quoteFull.value.length > QUOTE_CHARS || quoteFull.value.split(/\n/).length > QUOTE_LINES)
+const quoteShown = computed(() => {
+  if (quoteOpen.value || !quoteLong.value) return quoteFull.value
+  const lines = quoteFull.value.split(/\n/).slice(0, QUOTE_LINES).join('\n')
+  return (lines.length > QUOTE_CHARS ? lines.slice(0, QUOTE_CHARS).trimEnd() : lines) + '…'
+})
 
 const replying = ref(false)
 const editing = ref<string | null>(null)
@@ -87,8 +99,9 @@ function openPicker(e: Event, comment: Comment) {
   <article :class="['thread', { active, resolved: thread.status === 'Resolved' }]" :aria-label="t('comments.thread')" :data-thread="thread.id">
     <header v-if="thread.kind === 'Inline' && thread.anchor" class="quote">
       <button type="button" class="quote-text" dir="auto" :disabled="orphaned" :title="orphaned ? t('comments.orphaned') : t('comments.showInPage')" @click="emit('focusAnchor', thread.id)">
-        {{ thread.anchor.exact }}
+        {{ quoteShown }}
       </button>
+      <Button v-if="quoteLong" text size="small" :label="quoteOpen ? t('comments.quoteLess') : t('comments.quoteMore')" :aria-expanded="quoteOpen" data-testid="quote-toggle" @click="quoteOpen = !quoteOpen" />
       <Tag v-if="orphaned" severity="secondary" :value="t('comments.orphanedShort')" />
     </header>
     <Tag v-if="thread.status === 'Resolved'" severity="success" icon="pi pi-check" :value="t('comments.resolvedBy', { name: thread.resolvedByName ?? t('wiki.unknownUser') })" />
@@ -157,8 +170,8 @@ function openPicker(e: Event, comment: Comment) {
 .thread { display: grid; gap: var(--raavi-space-2); padding: var(--raavi-space-3); border: 1px solid var(--raavi-border); border-radius: var(--raavi-radius-sm); }
 .thread.active { border-color: #d9a800; box-shadow: 0 0 0 2px color-mix(in srgb, #f5c400 40%, transparent); }
 .thread.resolved { opacity: 0.85; }
-.quote { display: flex; align-items: center; gap: var(--raavi-space-2); }
-.quote-text { all: unset; cursor: pointer; border-inline-start: 3px solid #d9a800; padding-inline-start: var(--raavi-space-2); color: var(--raavi-text-muted); font-style: italic; overflow-wrap: anywhere; }
+.quote { display: flex; align-items: flex-start; gap: var(--raavi-space-2); flex-wrap: wrap; }
+.quote-text { all: unset; cursor: pointer; white-space: pre-line; flex: 1; min-inline-size: 0; border-inline-start: 3px solid #d9a800; padding-inline-start: var(--raavi-space-2); color: var(--raavi-text-muted); font-style: italic; overflow-wrap: anywhere; }
 .quote-text:focus-visible { outline: 2px solid var(--p-primary-color); }
 .quote-text:disabled { cursor: default; text-decoration: line-through; }
 .comments { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--raavi-space-3); }

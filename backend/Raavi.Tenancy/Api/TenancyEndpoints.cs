@@ -85,6 +85,20 @@ public static class TenancyEndpoints
         errors.MapPost("/purge", async (PurgeErrorsRequest body, ErrorLogService svc, CancellationToken ct) =>
             Results.Ok(new { deleted = await svc.PurgeAsync(body.OlderThanDays, ct).ConfigureAwait(false) }));
 
+        // ── Tenant host, workspace administrators: time zone, calendar and default language. ──
+        var own = api.MapGroup("/tenant/settings").RequireHostKind(RaaviHostKind.Tenant).RequireAuthorization(RaaviPolicies.TenantAdministrator);
+        own.MapGet(string.Empty, async (TenantConfigurationService svc, CancellationToken ct) => (await svc.GetSettingsAsync(ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+        own.MapPut(string.Empty, async (UpdateDisplayRequest body, TenantConfigurationService svc, ITenantDirectory directory, ITenantContext tenant, CancellationToken ct) =>
+        {
+            var result = await svc.UpdateDisplayAsync(body, ct).ConfigureAwait(false);
+            if (result.IsSuccess)
+            {
+                await directory.InvalidateAsync(tenant.Tenant.TenantId, cancellationToken: ct).ConfigureAwait(false);
+            }
+
+            return result.ToHttp(Results.Ok);
+        });
+
         // ── System host, anonymous, rate-limited: login discovery by tenant code. ───────────────────
         api.MapGet("/discovery/tenants/{code}", async (string code, ITenantDirectory directory, ITenantUrlResolver urls, CancellationToken ct) =>
             {

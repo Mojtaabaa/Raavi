@@ -14,6 +14,8 @@ public sealed record AddDomainRequest(string Host);
 
 public sealed record UpdateSettingsRequest(string DefaultLocale, string TimeZone, string Calendar, long? StorageQuotaBytes);
 
+public sealed record UpdateDisplayRequest(string DefaultLocale, string TimeZone, string Calendar);
+
 public sealed record UpdateBrandingRequest(string? PrimaryColor, string? SecondaryColor, string? WelcomeMessageFa, string? WelcomeMessageEn);
 
 public sealed record TenantDto(Guid Id, string Code, string Slug, string DisplayNameFa, string DisplayNameEn, TenantStatus Status, string? StatusReason, DateTimeOffset CreatedAt, DateTimeOffset? ActivatedAt, DateTimeOffset? SuspendedAt, DateTimeOffset? DeactivatedAt, string? Url = null, DateTimeOffset? DeletionScheduledFor = null, DateTimeOffset? DeletedAt = null)

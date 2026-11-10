@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory, type RouteLocationNormalized, type RouteRecordRaw } from 'vue-router'
+import { setDisplay } from '@/core/runtime/display'
 import { routerBase } from '@/core/runtime/base'
 import { useHostStore } from '@/stores/host'
 import { useAuthStore } from '@/stores/auth'
@@ -62,6 +63,7 @@ export const routes: RouteRecordRaw[] = [
   { path: '/admin/export', name: 'admin-export', component: () => import('@/modules/administration/views/ExportView.vue'), meta: { host: 'tenant', requires: 'tenantAdmin' } },
   { path: '/admin/connectors', name: 'admin-connectors', component: () => import('@/modules/integrations/ConnectorsView.vue'), meta: { host: 'tenant', requires: 'tenantAdmin' } },
   { path: '/admin/webhooks', name: 'admin-webhooks', component: () => import('@/modules/integrations/WebhooksView.vue'), meta: { host: 'tenant', requires: 'tenantAdmin' } },
+  { path: '/admin/display', name: 'admin-display', component: () => import('@/modules/administration/views/DisplaySettingsView.vue'), meta: { host: 'tenant', requires: 'tenantAdmin' } },
   { path: '/admin/ai', name: 'admin-ai', component: () => import('@/modules/ai/AiSettingsView.vue'), meta: { host: 'tenant', requires: 'tenantAdmin' } },
   { path: '/admin/providers', name: 'admin-providers', component: () => import('@/modules/identity/views/ProvidersView.vue'), meta: { host: 'tenant', requires: 'tenantAdmin' } },
   { path: '/admin/migrations/confluence', name: 'admin-migrations', component: () => import('@/modules/administration/views/ConfluenceMigrationView.vue'), meta: { host: 'tenant', requires: 'tenantAdmin' } },
@@ -70,6 +72,7 @@ export const routes: RouteRecordRaw[] = [
   { path: '/system/login', name: 'system-login', component: () => import('@/modules/identity/views/SystemLoginView.vue'), meta: { host: 'system', guestOnly: true } },
   { path: '/system/setup', name: 'system-setup', component: () => import('@/modules/identity/views/SystemSetupView.vue'), meta: { host: 'system' } },
   { path: '/system/errors', name: 'system-errors', component: () => import('@/modules/administration/views/ErrorLogView.vue'), meta: { host: 'system', requires: 'systemAdmin' } },
+  { path: '/system/email', name: 'system-email', component: () => import('@/modules/tenants/views/SystemEmailView.vue'), meta: { host: 'system', requires: 'systemAdmin' } },
   { path: '/system/users', name: 'system-users', component: () => import('@/modules/tenants/views/SystemUsersView.vue'), meta: { host: 'system', requires: 'systemAdmin' } },
   { path: '/system/tenants', name: 'system-tenants', component: () => import('@/modules/tenants/views/SystemTenantsView.vue'), meta: { host: 'system', requires: 'systemAdmin' } },
   { path: '/status', name: 'status', component: () => import('@/modules/status/StatusView.vue'), meta: { bare: true, public: true } },
@@ -89,6 +92,7 @@ async function bootstrap(): Promise<void> {
   if (ctx.kind === 'tenant') {
     applyBranding(ctx.tenant.branding)
     locale.applyTenantDefault(ctx.tenant.defaultLocale)
+    setDisplay(ctx.tenant.timeZone, ctx.tenant.calendar)
   }
   if (ctx.kind === 'tenant' || ctx.kind === 'system') {
     const me = await auth.load()

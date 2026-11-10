@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CalendarDateInput from '@/app/CalendarDateInput.vue'
 import UserAvatar from '@/app/UserAvatar.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -168,7 +169,7 @@ function remove(task: Task) {
         <label for="task-notes">{{ t('tasks.notes') }}</label>
         <Textarea id="task-notes" v-model="form.notes" rows="3" maxlength="4000" auto-resize />
         <label for="task-due">{{ t('tasks.dueDate') }}</label>
-        <InputText id="task-due" v-model="form.dueDate" type="date" dir="ltr" />
+        <CalendarDateInput id="task-due" v-model="form.dueDate" />
         <label for="task-assignee">{{ t('tasks.assignee') }}</label>
         <p v-if="form.assigneeId" class="muted">
           {{ form.assigneeName }}

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import CalendarDateInput from '@/app/CalendarDateInput.vue'
+import { formatDate } from '@/core/i18n/locales'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
@@ -82,7 +84,7 @@ onBeforeUnmount(() => clearTimeout(timer))
 
 const pages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
 const options = computed(() => (tab.value === 'content' ? kinds.value : types.value))
-const when = (iso: string) => new Intl.DateTimeFormat(locale.locale === 'fa' ? 'fa-IR' : 'en-GB', { dateStyle: 'medium', timeStyle: 'medium' }).format(new Date(iso))
+const when = (iso: string) => formatDate(iso, locale.locale, { dateStyle: 'medium', timeStyle: 'medium' })
 const kindLabel = (k: string) => (te(`wiki.activity.${k}`) ? t(`wiki.activity.${k}`) : k)
 const num = (n: number) => new Intl.NumberFormat(locale.locale === 'fa' ? 'fa-IR' : 'en-US').format(n)
 
@@ -122,8 +124,8 @@ function csv() {
         <option value="">{{ t('activityLog.allKinds') }}</option>
         <option v-for="k in options" :key="k" :value="k">{{ tab === 'content' ? kindLabel(k) : k }}</option>
       </select>
-      <label>{{ t('activityLog.from') }} <input v-model="from" type="date" /></label>
-      <label>{{ t('activityLog.to') }} <input v-model="to" type="date" /></label>
+      <label>{{ t('activityLog.from') }} <CalendarDateInput v-model="from" /></label>
+      <label>{{ t('activityLog.to') }} <CalendarDateInput v-model="to" /></label>
       <button v-if="q || kind || from || to" type="button" class="reset" @click="((q = ''), (kind = ''), (from = ''), (to = ''))">{{ t('activityLog.clear') }}</button>
     </div>
     <p class="count muted" role="status" data-testid="log-count">{{ t('activityLog.found', { n: num(total) }) }}</p>

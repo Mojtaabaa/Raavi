@@ -80,9 +80,10 @@ public sealed class EmailOptions
 }
 
 /// <summary>MailKit-based sender for both SMTP and pickup-directory delivery.</summary>
-public sealed class MailKitEmailSender(IOptions<EmailOptions> options) : IEmailSender
+public sealed class MailKitEmailSender(EmailSettingsStore settings) : IEmailSender
 {
-    private readonly EmailOptions _options = options.Value;
+    /// <summary>Read on every use: the settings saved in the application take effect without a restart.</summary>
+    private EmailOptions _options => settings.Current();
 
     public bool IsEnabled => _options.Mode != EmailMode.Disabled;
 
@@ -94,36 +95,37 @@ public sealed class MailKitEmailSender(IOptions<EmailOptions> options) : IEmailS
             return;
         }
 
-        using var mime = Build(message);
-        if (_options.Mode == EmailMode.Pickup)
+        var options = _options;
+        using var mime = Build(message, options);
+        if (options.Mode == EmailMode.Pickup)
         {
-            Directory.CreateDirectory(_options.PickupDirectory);
-            var path = Path.Combine(_options.PickupDirectory, $"{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}.eml");
+            Directory.CreateDirectory(options.PickupDirectory);
+            var path = Path.Combine(options.PickupDirectory, $"{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}.eml");
             await mime.WriteToAsync(path, cancellationToken).ConfigureAwait(false);
             return;
         }
 
-        using var client = new SmtpClient { Timeout = _options.Smtp.TimeoutSeconds * 1000 };
-        var security = _options.Smtp.Security switch
+        using var client = new SmtpClient { Timeout = options.Smtp.TimeoutSeconds * 1000 };
+        var security = options.Smtp.Security switch
         {
             "SslOnConnect" => SecureSocketOptions.SslOnConnect,
             "None" => SecureSocketOptions.None,
             _ => SecureSocketOptions.StartTls,
         };
-        await client.ConnectAsync(_options.Smtp.Host, _options.Smtp.Port, security, cancellationToken).ConfigureAwait(false);
-        if (!string.IsNullOrEmpty(_options.Smtp.UserName))
+        await client.ConnectAsync(options.Smtp.Host, options.Smtp.Port, security, cancellationToken).ConfigureAwait(false);
+        if (!string.IsNullOrEmpty(options.Smtp.UserName))
         {
-            await client.AuthenticateAsync(_options.Smtp.UserName, _options.Smtp.Password ?? string.Empty, cancellationToken).ConfigureAwait(false);
+            await client.AuthenticateAsync(options.Smtp.UserName, options.Smtp.Password ?? string.Empty, cancellationToken).ConfigureAwait(false);
         }
 
         await client.SendAsync(mime, cancellationToken).ConfigureAwait(false);
         await client.DisconnectAsync(true, cancellationToken).ConfigureAwait(false);
     }
 
-    private MimeMessage Build(EmailMessage message)
+    private static MimeMessage Build(EmailMessage message, EmailOptions options)
     {
         var mime = new MimeMessage();
-        mime.From.Add(new MailboxAddress(_options.FromName, _options.FromAddress));
+        mime.From.Add(new MailboxAddress(options.FromName, options.FromAddress));
         mime.To.Add(new MailboxAddress(message.ToName, message.To));
         mime.Subject = message.Subject;
         mime.Headers.Add("Auto-Submitted", "auto-generated");
@@ -141,6 +143,7 @@ public static class EmailServiceCollectionExtensions
             o.Validate();
             return true;
         }).ValidateOnStart();
+        services.AddSingleton<EmailSettingsStore>();
         services.AddSingleton<IEmailSender, MailKitEmailSender>();
         return services;
     }

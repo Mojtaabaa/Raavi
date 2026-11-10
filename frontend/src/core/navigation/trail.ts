@@ -25,6 +25,8 @@ const LABEL: Record<string, string> = {
   'admin-activity': 'activityLog.title',
   'system-tenants': 'nav.tenants',
   'system-users': 'systemUsers.title',
+  'system-email': 'email.title',
+  'admin-display': 'display.title',
   prompts: 'prompts.title',
   'prompt-new': 'prompts.new',
   prompt: 'prompts.title',

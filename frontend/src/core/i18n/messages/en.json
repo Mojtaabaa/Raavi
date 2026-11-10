@@ -39,7 +39,8 @@
     "export": "Data export",
     "breadcrumbs": "You are here",
     "breadcrumbsMore": "Show the hidden levels",
-    "more": "More"
+    "more": "More",
+    "display": "Display (time zone, calendar)"
   },
   "common": {
     "save": "Save",
@@ -528,6 +529,14 @@
       "draft_exists": "There is an unpublished draft. Discard it first to restore an older version.",
       "version_not_found": "That version does not exist.",
       "diff_too_large": "The versions are too large to compare."
+    },
+    "email": {
+      "settings_invalid": "The e-mail settings are not valid: check the sender address, server and port.",
+      "mode_invalid": "Choose how e-mail is delivered.",
+      "no_storage": "The server has no place to store the settings.",
+      "address_invalid": "Enter a valid e-mail address.",
+      "disabled": "E-mail is switched off.",
+      "send_failed": "The test message could not be sent. Check the server, port, security and credentials."
     }
   },
   "profile": {
@@ -1066,7 +1075,9 @@
       "watching": "Watching",
       "on": "You will be notified about comments and new versions of this page.",
       "off": "You stopped watching this page."
-    }
+    },
+    "quoteMore": "Show more",
+    "quoteLess": "Show less"
   },
   "notifications": {
     "title": "Notifications",
@@ -2365,5 +2376,54 @@
       "lastDays": "Last days:",
       "owner": "Owner"
     }
+  },
+  "calendarInput": {
+    "date": "Date",
+    "day": "Day",
+    "month": "Month",
+    "year": "Year",
+    "time": "Time"
+  },
+  "display": {
+    "title": "Display (time zone and calendar)",
+    "intro": "Every date and time in the workspace is shown in this time zone and calendar, and date fields follow the calendar. Stored times do not change.",
+    "timeZone": "Time zone",
+    "calendar": "Calendar",
+    "language": "Default language",
+    "persian": "Persian (Jalali)",
+    "gregorian": "Gregorian",
+    "preview": "Now",
+    "saved": "Display settings saved."
+  },
+  "email": {
+    "title": "E-mail settings",
+    "intro": "How Raavi sends e-mail (notifications and mentions). Saved here, the settings apply at once to the web application and the worker service; the password is stored protected and is never shown again.",
+    "fromConfig": "No setting has been saved here yet; the values from the configuration files are in use.",
+    "mode": "Delivery",
+    "modes": {
+      "Disabled": "Off",
+      "Smtp": "SMTP server",
+      "Pickup": "Pickup folder (files)"
+    },
+    "from": "Sender address",
+    "fromName": "Sender name",
+    "host": "SMTP server",
+    "port": "Port",
+    "securityLabel": "Connection security",
+    "security": {
+      "StartTls": "STARTTLS (recommended)",
+      "SslOnConnect": "SSL/TLS on connect",
+      "None": "None (trusted internal relay only)"
+    },
+    "user": "User name",
+    "password": "Password",
+    "passwordKept": "A password is stored (leave empty to keep it)",
+    "removePassword": "Remove the stored password",
+    "saved": "E-mail settings saved.",
+    "testTitle": "Send a test message",
+    "testTo": "Send to",
+    "testSend": "Send test",
+    "testSent": "The test message was sent.",
+    "saveFirst": "The test uses the saved settings: save first."
   }
 }

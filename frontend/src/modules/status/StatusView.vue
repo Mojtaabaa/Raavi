@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatDate } from '@/core/i18n/locales'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
@@ -134,7 +135,7 @@ const setLocale = (code: (typeof SUPPORTED_LOCALES)[number]) => locale.setLocale
           <p class="sub">{{ t(`status.overallHelp.${overall}`) }}</p>
         </div>
         <div class="hero-side">
-          <span class="muted">{{ t('status.lastCheck') }}: <strong>{{ lastOkAt ? lastOkAt.toLocaleTimeString(locale.locale === 'fa' ? 'fa-IR' : 'en-GB') : '—' }}</strong></span>
+          <span class="muted">{{ t('status.lastCheck') }}: <strong>{{ lastOkAt ? formatDate(lastOkAt.toISOString(), locale.locale, { timeStyle: 'medium', dateStyle: undefined }) : '—' }}</strong></span>
         </div>
       </section>
 

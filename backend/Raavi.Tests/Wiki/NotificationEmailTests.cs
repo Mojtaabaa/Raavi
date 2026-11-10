@@ -29,13 +29,15 @@ public sealed class NotificationEmailTests
         Assert.Equal("sara@acme.test", en.To);
     }
 
+    private static EmailSettingsStore Store(EmailOptions o) => new(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(), Microsoft.AspNetCore.DataProtection.DataProtectionProvider.Create("t"), Options.Create(o));
+
     [Fact]
     public async Task Pickup_mode_writes_rfc822_files_and_disabled_mode_sends_nothing()
     {
         var dir = Path.Combine(Path.GetTempPath(), "raavi-mail-" + Guid.NewGuid().ToString("N"));
         try
         {
-            var sender = new MailKitEmailSender(Options.Create(new EmailOptions { Mode = EmailMode.Pickup, FromAddress = "no-reply@raavi.test", PickupDirectory = dir }));
+            var sender = new MailKitEmailSender(Store(new EmailOptions { Mode = EmailMode.Pickup, FromAddress = "no-reply@raavi.test", PickupDirectory = dir }));
             Assert.True(sender.IsEnabled);
             await sender.SendAsync(new EmailMessage("sara@acme.test", "Sara", "Hello", "text", "<p>html</p>"));
             var file = Assert.Single(Directory.GetFiles(dir, "*.eml"));
@@ -43,7 +45,7 @@ public sealed class NotificationEmailTests
             Assert.Contains("To: Sara <sara@acme.test>", raw, StringComparison.Ordinal);
             Assert.Contains("Auto-Submitted: auto-generated", raw, StringComparison.Ordinal);
 
-            var disabled = new MailKitEmailSender(Options.Create(new EmailOptions()));
+            var disabled = new MailKitEmailSender(Store(new EmailOptions()));
             Assert.False(disabled.IsEnabled);
             await disabled.SendAsync(new EmailMessage("a@b.c", "A", "s", "t", "h"));
         }
