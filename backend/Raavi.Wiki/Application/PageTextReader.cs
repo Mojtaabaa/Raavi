@@ -20,6 +20,6 @@ public sealed class PageTextReader(PageService pages, WikiDbContext db) : IPageT
         var node = loaded.Value.Node;
         var json = await db.PageVersions.AsNoTracking().Where(v => v.Id == node.CurrentVersionId).Select(v => v.ContentJson).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
         var text = json is null ? string.Empty : RaaviDocument.Parse(json).PlainText;
-        return new PageText(node.Id, node.Title, loaded.Value.Space.Space.Key, text);
+        return new PageText(node.Id, node.Title, loaded.Value.Space.Space.Key, text, loaded.Value.Space.Space.Name, node.CreatedBy, node.UpdatedAt);
     }
 }

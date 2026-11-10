@@ -33,6 +33,7 @@ public static class WikiModule
         services.AddScoped<SpaceService>();
         services.AddScoped<PageService>();
         services.AddScoped<Raavi.Application.Abstractions.Ai.IPageTextReader, PageTextReader>();
+        services.AddScoped<Raavi.Application.Abstractions.Ai.ISpaceInfoReader, SpaceInfoReader>();
         services.AddScoped<Raavi.Application.Abstractions.Ai.IContentIndexSource, ContentIndexSource>();
         services.AddScoped<Raavi.Application.Abstractions.Ai.IViewableContentFilter, ViewableContentFilter>();
         services.AddScoped<DiscoveryService>();

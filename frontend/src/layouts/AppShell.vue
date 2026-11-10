@@ -70,7 +70,7 @@ const brandName = computed(() => {
 const isSystemHost = computed(() => host.context?.kind === 'system')
 
 /** Items used every day stay in the bar; the rest sit behind "More" (on narrow screens everything is in the folded menu anyway). */
-const RARELY = new Set(['calendar', 'approvals'])
+const RARELY = new Set(['calendar', 'approvals', 'prompts'])
 const allNav = computed<NavItem[]>(() => {
   const me = auth.me
   if (!me) return []
@@ -90,6 +90,7 @@ const allNav = computed<NavItem[]>(() => {
     { to: { name: 'calendar' }, label: t('nav.calendar'), icon: 'pi pi-calendar' },
     { to: { name: 'approvals' }, label: t('nav.approvals'), icon: 'pi pi-verified' },
     { to: { name: 'search' }, label: t('smartSearch.nav'), icon: 'pi pi-sparkles' },
+    { to: { name: 'prompts' }, label: t('prompts.title'), icon: 'pi pi-bookmark' },
   ]
 })
 

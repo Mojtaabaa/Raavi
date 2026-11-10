@@ -36,6 +36,7 @@ public static class IntegrationsModule
         services.AddHttpClient(ConnectorHttp.ClientName).ConfigurePrimaryHttpMessageHandler(WebhookHostPolicy.CreateHandler).ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(90));
         services.AddScoped<IssueConnectorService>();
         services.AddScoped<IssueLookupService>();
+        services.AddScoped<Raavi.Application.Abstractions.Ai.IIssueContextReader, IssueContextReader>();
         services.AddScoped<WebhookSender>();
         services.AddScoped<WebhookService>();
         services.AddScoped<IOutboxHandler, WebhookDispatcher>();

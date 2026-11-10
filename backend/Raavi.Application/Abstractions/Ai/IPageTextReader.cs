@@ -1,7 +1,7 @@
 namespace Raavi.Application.Abstractions.Ai;
 
 /// <summary>A page as plain text, exactly what the current user may read.</summary>
-public sealed record PageText(Guid ContentId, string Title, string SpaceKey, string Text);
+public sealed record PageText(Guid ContentId, string Title, string SpaceKey, string Text, string? SpaceName = null, Guid? CreatedBy = null, DateTimeOffset? UpdatedAt = null);
 
 /// <summary>
 /// Gives the AI module the text of a page <b>for the current user</b> (implemented by the Wiki module). Returns null when the page

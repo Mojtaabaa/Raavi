@@ -14,6 +14,7 @@ import { SCHEMA_VERSION } from '../registry'
 import { createEditorRegistry, isSafeHref, setUploadHook } from '../setup'
 import { startLiveSession, type CollaborationTarget, type LiveSession } from '../collaboration'
 import { CommentAnchors, commentAnchorsKey, flatten, quoteRange, type AnchorHighlight, type TextQuote } from '../extensions/commentAnchors'
+import { PromptVariables, refreshVariableMarks } from '../extensions/promptVariables'
 import '../content.css'
 
 /**
@@ -32,6 +33,8 @@ const props = withDefaults(
     compact?: boolean
     /** Read mode: inline comment anchors to highlight (ADR-024). */
     anchors?: AnchorHighlight[] | null
+    /** Prompt Hub: draw {{variables}} as chips; the function returns the names that are known (others are marked as unknown). */
+    variableNames?: (() => Set<string>) | null
     activeAnchor?: string | null
     label?: string
   }>(),
@@ -94,6 +97,7 @@ onMounted(async () => {
       ...registry.extensions({ views: true }),
       ...(live?.extensions ?? []),
       ...(props.anchors ? [CommentAnchors.configure({ onLocated: (ids) => emit('located', ids) })] : []),
+      ...(props.variableNames ? [PromptVariables.configure({ known: props.variableNames })] : []),
     ],
     ...(live ? {} : { content: props.modelValue?.doc ?? null }),
     editable: props.editable,
@@ -245,7 +249,11 @@ async function onFile(e: Event) {
   }
 }
 
-defineExpose({ editor })
+/** Inserts text at the cursor (used by the prompt variable menu). */
+function insertText(text: string) {
+  editor.value?.chain().focus().insertContent(text).run()
+}
+defineExpose({ editor, insertText, refreshVariables: () => editor.value && refreshVariableMarks(editor.value as never) })
 </script>
 
 <template>

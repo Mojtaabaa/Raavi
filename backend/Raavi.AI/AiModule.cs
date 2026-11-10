@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Raavi.AI.Persistence;
+using Raavi.AI.PromptHub;
 using Raavi.Application.Abstractions.Authorization;
 using Raavi.Infrastructure.Http;
 using Raavi.Infrastructure.Persistence;
@@ -36,12 +37,26 @@ public static class AiModule
         services.AddScoped<RagService>();
         services.AddScoped<AiIndexJob>();
         services.AddScoped<AiService>();
+        services.AddScoped<PromptHub.PromptHubService>();
+        services.AddScoped<PromptHub.PromptRunService>();
+        services.AddScoped<PromptHub.PromptCommunityService>();
+        services.AddScoped<PromptHub.PromptContextRegistry>();
+        services.AddScoped<PromptHub.IPromptContextProvider, PromptHub.PageContextProvider>();
+        services.AddScoped<PromptHub.IPromptContextProvider, PromptHub.SelectionContextProvider>();
+        services.AddScoped<PromptHub.IPromptContextProvider, PromptHub.SectionContextProvider>();
+        services.AddScoped<PromptHub.IPromptContextProvider, PromptHub.PagesContextProvider>();
+        services.AddScoped<PromptHub.IPromptContextProvider, PromptHub.SpaceContextProvider>();
+        services.AddScoped<PromptHub.IPromptContextProvider, PromptHub.JiraIssueContextProvider>();
+        services.AddScoped<PromptHub.IPromptContextProvider, PromptHub.JiraProjectContextProvider>();
+        services.AddScoped<PromptHub.IPromptContextProvider, PromptHub.TemplarReportContextProvider>();
+        services.AddScoped<PromptHub.IPromptContextProvider, PromptHub.GenericContextProvider>();
         return services;
     }
 
     public static void MapAiEndpoints(this RouteGroupBuilder api)
     {
         ArgumentNullException.ThrowIfNull(api);
+        api.MapPromptHubEndpoints();
         var g = api.MapGroup("/ai").RequireHostKind(RaaviHostKind.Tenant);
         var members = g.MapGroup(string.Empty).RequireAuthorization(RaaviPolicies.AuthenticatedUser);
         var admin = g.MapGroup(string.Empty).RequireAuthorization(RaaviPolicies.TenantAdministrator);

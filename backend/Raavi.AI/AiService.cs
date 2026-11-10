@@ -34,6 +34,8 @@ public sealed record AiUsageDto(int TokensThisMonth, int RequestsThisMonth, int 
 /// usage accounting, a monthly token cap and a per-user hourly request limit. Page text arrives only through <see cref="IPageTextReader"/>
 /// (the current user's own View right), the key is protected per tenant and never returned or logged, and no prompt or answer is stored.
 /// </summary>
+public sealed record AiCompletion(string Text, string Model, int PromptTokens, int CompletionTokens);
+
 public sealed class AiService(
     AiDbContext db,
     IPageTextReader reader,
@@ -176,22 +178,44 @@ public sealed class AiService(
             return Result<AiAnswerDto>.Failure(PageEmpty);
         }
 
+        var max = options.Value.MaxInputChars;
+        var truncated = page.Text.Length > max;
+        var messages = BuildMessages(page, truncated ? page.Text[..max] : page.Text, truncated, question);
+        var done = await CompleteAsync(feature, messages, ct).ConfigureAwait(false);
+        return done.IsSuccess
+            ? Result<AiAnswerDto>.Success(new AiAnswerDto(done.Value.Text, done.Value.Model, done.Value.PromptTokens, done.Value.CompletionTokens, truncated))
+            : Result<AiAnswerDto>.Failure(done.Error!);
+    }
+
+    /// <summary>
+    /// The one door to the workspace's model for every feature (page assistant, Prompt Hub): configuration, hourly request limit, monthly token cap,
+    /// host policy, key handling, timeout and the usage row are all here. The key never leaves this method.
+    /// </summary>
+    public async Task<Result<AiCompletion>> CompleteAsync(string feature, IReadOnlyList<AiMessage> messages, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(messages);
+        var settings = await db.Settings.AsNoTracking().FirstOrDefaultAsync(ct).ConfigureAwait(false);
+        if (settings is not { Enabled: true, ProtectedApiKey: not null } || !hosts.IsConfigured)
+        {
+            return Result<AiCompletion>.Failure(NotConfigured);
+        }
+
         var now = clock.UtcNow;
         var hourAgo = now.AddHours(-1);
         if (await db.Usage.CountAsync(u => u.UserId == current.UserId && u.At >= hourAgo, ct).ConfigureAwait(false) >= options.Value.MaxRequestsPerUserPerHour)
         {
-            return Result<AiAnswerDto>.Failure(RateLimited);
+            return Result<AiCompletion>.Failure(RateLimited);
         }
 
         if (settings.MonthlyTokenCap > 0 && await TokensSinceAsync(MonthStart(now), ct).ConfigureAwait(false) >= settings.MonthlyTokenCap)
         {
-            return Result<AiAnswerDto>.Failure(QuotaExceeded);
+            return Result<AiCompletion>.Failure(QuotaExceeded);
         }
 
         var baseUrl = hosts.TryValidate(settings.BaseUrl, out _); // the policy may have changed since the settings were saved
         if (baseUrl is null)
         {
-            return Result<AiAnswerDto>.Failure(NotConfigured);
+            return Result<AiCompletion>.Failure(NotConfigured);
         }
 
         string apiKey;
@@ -201,12 +225,9 @@ public sealed class AiService(
         }
         catch (System.Security.Cryptography.CryptographicException)
         {
-            return Result<AiAnswerDto>.Failure(new Error("ai.key_unreadable", "The stored API key cannot be read; enter it again.", ErrorKind.Conflict));
+            return Result<AiCompletion>.Failure(new Error("ai.key_unreadable", "The stored API key cannot be read; enter it again.", ErrorKind.Conflict));
         }
 
-        var max = options.Value.MaxInputChars;
-        var truncated = page.Text.Length > max;
-        var messages = BuildMessages(page, truncated ? page.Text[..max] : page.Text, truncated, question);
         try
         {
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -214,15 +235,19 @@ public sealed class AiService(
             var result = await chat.CompleteAsync(new AiEndpoint(baseUrl, settings.Model, apiKey), messages, settings.MaxOutputTokensPerRequest, cts.Token).ConfigureAwait(false);
             db.Usage.Add(AiUsage.Record(current.UserId, feature, settings.Model, result.PromptTokens, result.CompletionTokens, AiOutcome.Succeeded, null, now));
             await db.SaveChangesAsync(ct).ConfigureAwait(false);
-            return Result<AiAnswerDto>.Success(new AiAnswerDto(result.Text, settings.Model, result.PromptTokens, result.CompletionTokens, truncated));
+            return Result<AiCompletion>.Success(new AiCompletion(result.Text, settings.Model, result.PromptTokens, result.CompletionTokens));
         }
         catch (AiProviderException ex)
         {
             db.Usage.Add(AiUsage.Record(current.UserId, feature, settings.Model, 0, 0, AiOutcome.Failed, ex.Code, now));
             await db.SaveChangesAsync(CancellationToken.None).ConfigureAwait(false);
-            return Result<AiAnswerDto>.Failure(new Error(ex.Code, ex.Message, ErrorKind.Unavailable));
+            return Result<AiCompletion>.Failure(new Error(ex.Code, ex.Message, ErrorKind.Unavailable));
         }
     }
+
+    /// <summary>Whether the workspace has switched AI on with a usable key (no secrets involved).</summary>
+    public async Task<bool> IsAvailableAsync(CancellationToken ct) =>
+        (await db.Settings.AsNoTracking().FirstOrDefaultAsync(ct).ConfigureAwait(false)) is { Enabled: true, ProtectedApiKey: not null } && hosts.IsConfigured;
 
     private static List<AiMessage> BuildMessages(PageText page, string text, bool truncated, string? question)
     {

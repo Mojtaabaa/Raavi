@@ -202,6 +202,18 @@ public sealed class AiDbContext(DbContextOptions<AiDbContext> options, ITenantCo
 
     public DbSet<AiIndexedPage> IndexedPages => Set<AiIndexedPage>();
 
+    public DbSet<Raavi.AI.PromptHub.PromptCategory> PromptCategories => Set<Raavi.AI.PromptHub.PromptCategory>();
+
+    public DbSet<Raavi.AI.PromptHub.Prompt> Prompts => Set<Raavi.AI.PromptHub.Prompt>();
+
+    public DbSet<Raavi.AI.PromptHub.PromptVersion> PromptVersions => Set<Raavi.AI.PromptHub.PromptVersion>();
+
+    public DbSet<Raavi.AI.PromptHub.PromptEvent> PromptEvents => Set<Raavi.AI.PromptHub.PromptEvent>();
+
+    public DbSet<Raavi.AI.PromptHub.PromptExecution> PromptExecutions => Set<Raavi.AI.PromptHub.PromptExecution>();
+
+    public DbSet<Raavi.AI.PromptHub.PromptRating> PromptRatings => Set<Raavi.AI.PromptHub.PromptRating>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -250,6 +262,88 @@ public sealed class AiDbContext(DbContextOptions<AiDbContext> options, ITenantCo
             Keys(b);
             b.Property(x => x.EmbeddingModel).HasMaxLength(AiSettings.MaxModelLength);
             b.HasIndex(x => new { x.TenantId, x.ContentId }).IsUnique();
+        });
+
+        modelBuilder.Entity<Raavi.AI.PromptHub.PromptCategory>(b =>
+        {
+            b.ToTable("PromptCategories", HistorySchema);
+            Keys(b);
+            b.Property(x => x.Name).HasMaxLength(Raavi.AI.PromptHub.PromptCategory.MaxNameLength);
+            b.Property(x => x.Description).HasMaxLength(1000);
+            b.Property(x => x.Status).HasConversion<int>();
+            b.HasIndex(x => new { x.TenantId, x.ParentId, x.SortOrder });
+        });
+
+        modelBuilder.Entity<Raavi.AI.PromptHub.Prompt>(b =>
+        {
+            b.ToTable("Prompts", HistorySchema);
+            Keys(b);
+            b.Property(x => x.Title).HasMaxLength(Raavi.AI.PromptHub.Prompt.MaxTitleLength);
+            b.Property(x => x.Description).HasMaxLength(1000);
+            b.Property(x => x.Tags).HasMaxLength(600);
+            b.Property(x => x.Language).HasMaxLength(8).IsUnicode(false);
+            b.Property(x => x.ContextKinds).HasMaxLength(200).IsUnicode(false);
+            b.Property(x => x.ForkedFromTitle).HasMaxLength(Raavi.AI.PromptHub.Prompt.MaxTitleLength);
+            b.Property(x => x.Visibility).HasConversion<int>();
+            b.Property(x => x.Status).HasConversion<int>();
+            b.Property(x => x.Modes).HasConversion<int>();
+            b.Property(x => x.Revision).IsConcurrencyToken();
+            b.Ignore(x => x.TagList);
+            b.Ignore(x => x.ContextList);
+            b.HasIndex(x => new { x.TenantId, x.OwnerId, x.Status, x.UpdatedAt });
+            b.HasIndex(x => new { x.TenantId, x.Visibility, x.Status, x.PublishedAt });
+            b.HasIndex(x => new { x.TenantId, x.CategoryId });
+            b.HasIndex(x => new { x.TenantId, x.ForkedFromId });
+        });
+
+        modelBuilder.Entity<Raavi.AI.PromptHub.PromptVersion>(b =>
+        {
+            b.ToTable("PromptVersions", HistorySchema);
+            Keys(b);
+            b.Property(x => x.ContentJson).HasColumnType("nvarchar(max)");
+            b.Property(x => x.ContentText).HasColumnType("nvarchar(max)");
+            b.Property(x => x.ChangeNote).HasMaxLength(500);
+            b.Property(x => x.VariablesJson).HasColumnType("nvarchar(max)").HasDefaultValue("[]");
+            b.HasIndex(x => new { x.TenantId, x.PromptId, x.Number }).IsUnique();
+        });
+
+        modelBuilder.Entity<Raavi.AI.PromptHub.PromptEvent>(b =>
+        {
+            b.ToTable("PromptEvents", HistorySchema);
+            Keys(b);
+            b.Property(x => x.Type).HasMaxLength(40).IsUnicode(false);
+            b.Property(x => x.Context).HasMaxLength(32).IsUnicode(false);
+            b.Property(x => x.Mode).HasMaxLength(16).IsUnicode(false);
+            b.Property(x => x.Status).HasMaxLength(16).IsUnicode(false);
+            b.Property(x => x.Model).HasMaxLength(AiSettings.MaxModelLength);
+            b.Property(x => x.ErrorClass).HasMaxLength(64).IsUnicode(false);
+            b.Property(x => x.Details).HasMaxLength(500);
+            b.HasIndex(x => new { x.TenantId, x.PromptId, x.At });
+            b.HasIndex(x => new { x.TenantId, x.Type, x.At });
+            b.HasIndex(x => new { x.TenantId, x.UserId, x.At });
+        });
+
+        modelBuilder.Entity<Raavi.AI.PromptHub.PromptExecution>(b =>
+        {
+            b.ToTable("PromptExecutions", HistorySchema);
+            Keys(b);
+            b.Property(x => x.ContextKind).HasMaxLength(32).IsUnicode(false);
+            b.Property(x => x.Status).HasConversion<int>();
+            b.Property(x => x.Model).HasMaxLength(AiSettings.MaxModelLength);
+            b.Property(x => x.ErrorClass).HasMaxLength(64).IsUnicode(false);
+            b.Property(x => x.SourcesJson).HasColumnType("nvarchar(max)");
+            b.Property(x => x.ResultText).HasColumnType("nvarchar(max)");
+            b.HasIndex(x => new { x.TenantId, x.UserId, x.StartedAt });
+            b.HasIndex(x => new { x.TenantId, x.PromptId, x.StartedAt });
+        });
+
+        modelBuilder.Entity<Raavi.AI.PromptHub.PromptRating>(b =>
+        {
+            b.ToTable("PromptRatings", HistorySchema);
+            Keys(b);
+            b.Property(x => x.FeedbackKind).HasMaxLength(24).IsUnicode(false);
+            b.Property(x => x.Comment).HasMaxLength(1000);
+            b.HasIndex(x => new { x.TenantId, x.PromptId, x.UserId }).IsUnique();
         });
 
         base.OnModelCreating(modelBuilder);

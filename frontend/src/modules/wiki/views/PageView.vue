@@ -25,6 +25,8 @@ import { spaceTrail } from '@/core/navigation/trail'
 import CommentsPanel from '../comments/CommentsPanel.vue'
 import PageApprovals from '@/modules/approvals/PageApprovals.vue'
 import PageAssistant from '@/modules/ai/PageAssistant.vue'
+import PagePromptsDialog from '@/modules/prompts/PagePromptsDialog.vue'
+import { textToDoc } from '@/core/api/prompts'
 import { commentsApi } from '@/core/api/comments'
 import type { AnchorHighlight, TextQuote } from '@/modules/editor/extensions/commentAnchors'
 
@@ -60,6 +62,34 @@ const discussable = computed(() => page.value?.contentType === 'page' && page.va
 function onQuote(q: TextQuote | null) {
   selection.value = q
 }
+const promptsOpen = ref(false)
+/** Adds an AI answer to the page's DRAFT after an explicit confirmation; the published page and existing text are never overwritten. */
+function insertIntoPage(text: string) {
+  if (!page.value || !text.trim()) return
+  const id = page.value.id
+  confirm.require({
+    header: t('prompts.page.insertTitle'),
+    message: t('prompts.page.insertConfirm'),
+    icon: 'pi pi-exclamation-triangle',
+    acceptProps: { label: t('prompts.page.insertYes') },
+    rejectProps: { severity: 'secondary', outlined: true, label: t('common.cancel') },
+    accept: async () => {
+      try {
+        const draft = await wikiApi.draft(id)
+        const current = draft.value
+        const addition = textToDoc(text).doc.content ?? []
+        const base = current.exists ? current.body : { schema: 'raavi.doc' as const, schemaVersion: 2, doc: { type: 'doc' as const, content: [] as never[] } }
+        const body = { ...base, doc: { ...base.doc, content: [...(base.doc.content ?? []), ...addition] } }
+        await wikiApi.saveDraft(id, draft.etag, { title: current.title || page.value!.title, body })
+        toast.add({ severity: 'success', summary: t('prompts.page.inserted'), life: 5000 })
+        promptsOpen.value = false
+      } catch (e) {
+        toast.add({ severity: 'error', summary: errorMessage(e, t, te), life: 5000 })
+      }
+    },
+  })
+}
+
 function commentOnSelection() {
   pendingQuote.value = selection.value
   selection.value = null
@@ -244,6 +274,7 @@ function onMoved(p: Page, newEtag: string | null) {
           size="small"
           severity="secondary"
         />
+        <Button v-if="page.contentType === 'page'" icon="pi pi-bookmark" :label="t('prompts.page.button')" size="small" severity="secondary" outlined data-testid="page-prompts-button" @click="promptsOpen = true" />
         <template v-if="actions.length">
           <Button icon="pi pi-ellipsis-h" text rounded size="small" :aria-label="t('wiki.page.more')" aria-haspopup="true" aria-controls="page-actions" @click="(e) => menu?.toggle(e)" />
           <Menu id="page-actions" ref="menu" :model="actions" popup />
@@ -280,6 +311,7 @@ function onMoved(p: Page, newEtag: string | null) {
       @activate="(id) => (activeThread = id)"
       @located="(ids) => (located = ids)"
     />
+    <PagePromptsDialog v-if="page.contentType === 'page'" v-model:visible="promptsOpen" :page-id="page.id" :space-key="page.spaceKey" :selected-text="selection?.exact ?? null" @insert="insertIntoPage" />
     <div v-if="selection && page.rights.canComment && discussable" class="selection-bar" role="region" :aria-label="t('comments.selection')">
       <Button size="small" icon="pi pi-comment" :label="t('comments.commentOnSelection')" data-testid="comment-selection" @click="commentOnSelection" />
       <span class="muted" dir="auto">“{{ selection.exact.length > 80 ? selection.exact.slice(0, 80) + '…' : selection.exact }}”</span>

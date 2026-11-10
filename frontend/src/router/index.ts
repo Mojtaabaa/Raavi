@@ -28,6 +28,9 @@ export const routes: RouteRecordRaw[] = [
   { path: '/approvals', name: 'approvals', component: () => import('@/modules/approvals/ApprovalsView.vue'), meta: { host: 'tenant', requires: 'user' } },
   { path: '/calendar', name: 'calendar', component: () => import('@/modules/calendar/CalendarView.vue'), meta: { host: 'tenant', requires: 'user' } },
   { path: '/tasks', name: 'tasks', component: () => import('@/modules/tasks/TasksView.vue'), meta: { host: 'tenant', requires: 'user' } },
+  { path: '/prompts', name: 'prompts', component: () => import('@/modules/prompts/PromptHubView.vue'), meta: { host: 'tenant', requires: 'user' } },
+  { path: '/prompts/new', name: 'prompt-new', component: () => import('@/modules/prompts/PromptEditView.vue'), meta: { host: 'tenant', requires: 'user' } },
+  { path: '/prompts/:id', name: 'prompt', component: () => import('@/modules/prompts/PromptEditView.vue'), meta: { host: 'tenant', requires: 'user' } },
   { path: '/spaces', name: 'spaces', component: () => import('@/modules/wiki/views/SpacesView.vue'), meta: { host: 'tenant', requires: 'user' } },
   {
     path: '/spaces/:key',
