@@ -242,6 +242,10 @@ public static class IdentityEndpoints
         // ── System administration (system host) ────────────────────────────────────────────────
         var system = api.MapGroup("/system").RequireHostKind(RaaviHostKind.System).RequireAuthorization(RaaviPolicies.SystemAdministrator);
 
+        system.MapGet("/users", async (string? q, bool? withoutWorkspace, int? skip, int? take, SystemUserService svc, CancellationToken ct) =>
+            Results.Ok(await svc.ListAsync(q, withoutWorkspace ?? false, skip ?? 0, take ?? 50, ct).ConfigureAwait(false)));
+        system.MapPost("/users/delete", async (DeleteUsersRequest body, SystemUserService svc, CancellationToken ct) =>
+            (await svc.DeleteAsync(body, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
         system.MapGet("/administrators", async (SystemIdentityService svc, CancellationToken ct) => Results.Ok(await svc.ListAdministratorsAsync(ct).ConfigureAwait(false)));
         system.MapPost("/administrators/invitations", async (HttpContext http, CreateInvitationRequest body, SystemIdentityService svc, CancellationToken ct) =>
             (await svc.InviteAdministratorAsync(body.Email, BaseUrl(http), ct).ConfigureAwait(false)).ToHttp(i => Results.Created($"/api/v1/system/administrators/invitations/{i.Id}", i)));

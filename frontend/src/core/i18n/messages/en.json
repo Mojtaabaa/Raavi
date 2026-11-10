@@ -261,7 +261,8 @@
       "home_page_invalid": "The home page must be a page of this space.",
       "not_archived": "The space is not archived.",
       "type_invalid": "Unknown space type.",
-      "description_too_long": "The description is too long."
+      "description_too_long": "The description is too long.",
+      "key_conflict": "A space with this key already exists."
     },
     "content": {
       "not_found": "Page not found, or you do not have permission to view it.",
@@ -476,6 +477,15 @@
       "type_invalid": "Only PNG, JPEG or WebP pictures are accepted.",
       "too_large": "The logo is too large (256 KB at most).",
       "failed": "The logo could not be changed."
+    },
+    "import": {
+      "archive_invalid": "This file is not a Raavi space export archive.",
+      "no_space": "The archive contains no space.",
+      "many_spaces": "The archive contains several spaces. Export a single space instead.",
+      "too_big": "The archive is larger than the allowed size."
+    },
+    "users": {
+      "none_selected": "Select at least one account."
     }
   },
   "profile": {
@@ -2027,5 +2037,60 @@
     "copyPaste": "Copy / paste the selected element",
     "nextElement": "Next element",
     "zoom": "Zoom in, out, fit"
+  },
+  "workers": {
+    "title": "Worker service (RaaviWorkers)",
+    "short": "Worker",
+    "stoppedShort": "Worker stopped",
+    "running": "The worker service is running.",
+    "stopped": "The worker service is not running.",
+    "neverStarted": "The worker service has never started on this installation.",
+    "lastHeartbeat": "Last report",
+    "checkedAt": "Checked at",
+    "waiting": "Jobs waiting",
+    "processing": "Jobs running",
+    "failed": "Failed jobs",
+    "since": "running since {date}",
+    "effect": "While it is stopped: notifications and the activity feed are not produced, scheduled jobs (reminders, backups, smart-search index, workspace deletion) do not run, and jobs pile up.",
+    "fix": "Start it on the server (PowerShell as administrator):"
+  },
+  "systemUsers": {
+    "title": "Accounts",
+    "intro": "Every account of the installation and the number of workspaces it belongs to. Accounts without any workspace (left over after workspaces were deleted) can be removed; accounts that still belong to a workspace and system administrators cannot.",
+    "search": "Search name or email",
+    "onlyWithout": "Only accounts without a workspace ({n})",
+    "count": "{n} of {total} shown",
+    "workspaces": "Workspaces",
+    "systemAdmin": "System administrator",
+    "lastLogin": "Last sign-in",
+    "deleteSelected": "Delete selected ({n})",
+    "deleteAll": "Delete all without a workspace ({n})",
+    "confirmTitle": "Delete accounts",
+    "confirmSome": "Delete {n} selected accounts permanently? This cannot be undone.",
+    "confirmAll": "Delete all {n} accounts that belong to no workspace permanently? This cannot be undone.",
+    "deleted": "{n} accounts deleted.",
+    "skipped": "{n} were not deleted (they still belong to a workspace or have a system role).",
+    "noneDeletable": "None of the accounts shown can be deleted."
+  },
+  "spaceTransfer": {
+    "export": "Export space",
+    "exported": "The export was downloaded.",
+    "import": "Import space",
+    "importHelp": "Creates a NEW space from an archive that was exported from a Raavi space (same or another workspace). Pages with their tree, labels, attachments and comments are imported; links between pages are re-pointed.",
+    "file": "Archive (.zip)",
+    "newKey": "Key of the new space",
+    "newKeyHelp": "Leave empty to use the key from the archive. The key must not exist yet.",
+    "newName": "Name (optional)",
+    "done": "Imported {pages} pages, {attachments} files and {comments} comments.",
+    "notImported": "Not imported (not supported yet): {what}.",
+    "permissionsNote": "Permissions are not part of the archive: only you have access to the new space. Open its settings to grant access.",
+    "open": "Open the space",
+    "kinds": {
+      "tasks": "tasks",
+      "events": "calendar events",
+      "databases": "databases",
+      "slideDecks": "slide decks",
+      "whiteboards": "whiteboards"
+    }
   }
 }

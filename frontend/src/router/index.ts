@@ -67,6 +67,7 @@ export const routes: RouteRecordRaw[] = [
   { path: '/system/login', name: 'system-login', component: () => import('@/modules/identity/views/SystemLoginView.vue'), meta: { host: 'system', guestOnly: true } },
   { path: '/system/setup', name: 'system-setup', component: () => import('@/modules/identity/views/SystemSetupView.vue'), meta: { host: 'system' } },
   { path: '/system/errors', name: 'system-errors', component: () => import('@/modules/administration/views/ErrorLogView.vue'), meta: { host: 'system', requires: 'systemAdmin' } },
+  { path: '/system/users', name: 'system-users', component: () => import('@/modules/tenants/views/SystemUsersView.vue'), meta: { host: 'system', requires: 'systemAdmin' } },
   { path: '/system/tenants', name: 'system-tenants', component: () => import('@/modules/tenants/views/SystemTenantsView.vue'), meta: { host: 'system', requires: 'systemAdmin' } },
   { path: '/status', name: 'status', component: () => import('@/modules/status/StatusView.vue'), meta: { bare: true, public: true } },
   { path: '/not-found', name: 'not-found', component: () => import('@/modules/tenants/views/WorkspaceNotFound.vue'), meta: { bare: true } },

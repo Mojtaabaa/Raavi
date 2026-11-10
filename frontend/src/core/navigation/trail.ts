@@ -24,6 +24,7 @@ const LABEL: Record<string, string> = {
   'admin-migrations': 'nav.migrations',
   'admin-activity': 'activityLog.title',
   'system-tenants': 'nav.tenants',
+  'system-users': 'systemUsers.title',
   'space-workflows': 'workflows.nav',
   'space-whiteboards': 'whiteboards.nav',
   'space-slides': 'slides.nav',

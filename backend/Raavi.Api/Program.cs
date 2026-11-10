@@ -107,6 +107,7 @@ api.MapSlideEndpoints();
 api.MapWhiteboardEndpoints();
 api.MapWorkflowEndpoints();
 api.MapExportEndpoints();
+api.MapWorkersStatus();
 api.MapApprovalEndpoints();
 api.MapMigrationEndpoints();
 api.MapAiEndpoints();

@@ -20,6 +20,7 @@ import Breadcrumbs from '@/app/Breadcrumbs.vue'
 import ShortcutsDialog from '@/app/ShortcutsDialog.vue'
 import NavDropdown, { type NavItem } from './NavDropdown.vue'
 import BackToTop from '@/app/BackToTop.vue'
+import WorkerStatus from '@/app/WorkerStatus.vue'
 import ThemePicker from '@/app/ThemePicker.vue'
 import Popover from 'primevue/popover'
 import UserAvatar from '@/app/UserAvatar.vue'
@@ -77,6 +78,7 @@ const allNav = computed<NavItem[]>(() => {
     return me.isSystemAdministrator
       ? [
           { to: { name: 'system-tenants' }, label: t('nav.tenants'), icon: 'pi pi-building' },
+          { to: { name: 'system-users' }, label: t('systemUsers.title'), icon: 'pi pi-users' },
           { to: { name: 'system-errors' }, label: t('errorLog.title'), icon: 'pi pi-exclamation-triangle' },
         ]
       : []
@@ -178,6 +180,7 @@ async function signOut() {
     </nav>
     <div class="end">
       <SelectButton v-model="current" :options="options" option-label="label" option-value="code" :allow-empty="false" :aria-label="t('shell.language')" data-testid="locale-switch" />
+      <WorkerStatus />
       <HelpLink compact />
       <Button text size="small" icon="pi pi-palette" :aria-label="t('theme.title')" :title="t('theme.title')" data-testid="theme-button" @click="themePopover?.toggle($event)" />
       <Popover ref="themePopover"><div class="theme-pop"><ThemePicker /></div></Popover>

@@ -15,6 +15,7 @@ import Checkbox from 'primevue/checkbox'
 import Tag from 'primevue/tag'
 import { SPACE_TYPES, wikiApi, type SpaceSummary, type SpaceType, type SpaceVisibility } from '@/core/api/wiki'
 import { errorMessage } from '@/core/api/errors'
+import { opsApi, type SpaceImportResult } from '@/core/api/ops'
 import { useAuthStore } from '@/stores/auth'
 
 const { t, te } = useI18n()
@@ -30,6 +31,33 @@ const administration = ref(false)
 const canCreate = ref(false)
 
 const createOpen = ref(false)
+const importOpen = ref(false)
+const importFile = ref<File | null>(null)
+const importKey = ref('')
+const importName = ref('')
+const importing = ref(false)
+const imported = ref<SpaceImportResult | null>(null)
+
+async function runImport() {
+  if (!importFile.value) return
+  importing.value = true
+  try {
+    imported.value = await opsApi.importSpace(importFile.value, importKey.value, importName.value)
+    await load()
+  } catch (e) {
+    toast.add({ severity: 'error', summary: errorMessage(e, t, te), life: 6000 })
+  } finally {
+    importing.value = false
+  }
+}
+
+function openImported() {
+  const key = imported.value?.key
+  importOpen.value = false
+  imported.value = null
+  importFile.value = null
+  if (key) router.push({ name: 'space', params: { key } })
+}
 const form = ref({ name: '', key: '', description: '', type: 'Team' as SpaceType, visibility: 'Open' as SpaceVisibility })
 const keyTouched = ref(false)
 const saving = ref(false)
@@ -87,7 +115,10 @@ async function create() {
   <section class="page">
     <header class="page-head">
       <h1>{{ t('wiki.spaces.title') }}</h1>
-      <Button v-if="canCreate" icon="pi pi-plus" :label="t('wiki.spaces.create')" data-testid="create-space" @click="createOpen = true" />
+      <div v-if="canCreate" class="head-actions">
+        <Button outlined icon="pi pi-upload" :label="t('spaceTransfer.import')" data-testid="import-space" @click="importOpen = true" />
+        <Button icon="pi pi-plus" :label="t('wiki.spaces.create')" data-testid="create-space" @click="createOpen = true" />
+      </div>
     </header>
 
     <div class="filters">
@@ -118,6 +149,27 @@ async function create() {
       <Column field="description" :header="t('wiki.spaces.description')" />
     </DataTable>
 
+    <Dialog v-model:visible="importOpen" modal :header="t('spaceTransfer.import')" :style="{ inlineSize: 'min(34rem, 95vw)' }">
+      <form v-if="!imported" class="form" data-testid="import-form" @submit.prevent="runImport">
+        <p class="muted">{{ t('spaceTransfer.importHelp') }}</p>
+        <label for="imp-file">{{ t('spaceTransfer.file') }}</label>
+        <input id="imp-file" type="file" accept=".zip,application/zip" data-testid="import-file" @change="importFile = ($event.target as HTMLInputElement).files?.[0] ?? null" />
+        <label for="imp-key">{{ t('spaceTransfer.newKey') }}</label>
+        <InputText id="imp-key" v-model="importKey" maxlength="32" dir="ltr" data-testid="import-key" />
+        <small class="muted">{{ t('spaceTransfer.newKeyHelp') }}</small>
+        <label for="imp-name">{{ t('spaceTransfer.newName') }}</label>
+        <InputText id="imp-name" v-model="importName" maxlength="200" />
+        <Button type="submit" icon="pi pi-upload" :label="t('spaceTransfer.import')" :loading="importing" :disabled="!importFile" data-testid="import-run" />
+      </form>
+      <div v-else class="form" data-testid="import-result">
+        <p>{{ t('spaceTransfer.done', { pages: imported.pages, attachments: imported.attachments, comments: imported.comments }) }}</p>
+        <p v-if="Object.keys(imported.notImported).length" class="muted">{{ t('spaceTransfer.notImported', { what: Object.keys(imported.notImported).map((k) => t(`spaceTransfer.kinds.${k}`)).join('، ') }) }}</p>
+        <ul v-if="imported.warnings.length" class="warnings"><li v-for="w in imported.warnings" :key="w">{{ w }}</li></ul>
+        <p class="muted">{{ t('spaceTransfer.permissionsNote') }}</p>
+        <Button icon="pi pi-arrow-right" :label="t('spaceTransfer.open')" @click="openImported" />
+      </div>
+    </Dialog>
+
     <Dialog v-model:visible="createOpen" modal :header="t('wiki.spaces.create')" :style="{ inlineSize: 'min(32rem, 95vw)' }">
       <form class="form" @submit.prevent="create">
         <label for="sp-name">{{ t('wiki.spaces.name') }}</label>
@@ -146,6 +198,8 @@ h1 { margin: 0; font-size: 1.4rem; }
 .row { display: flex; align-items: center; gap: var(--raavi-space-2); }
 .form { display: grid; gap: var(--raavi-space-2); }
 .muted { color: var(--raavi-text-muted); }
+.head-actions { display: flex; gap: var(--raavi-space-2); flex-wrap: wrap; }
+.warnings { margin: 0; padding-inline-start: 1.2rem; max-block-size: 10rem; overflow: auto; font-size: 0.85rem; }
 .tag { margin-inline-start: var(--raavi-space-2); }
 .sr-only { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 </style>

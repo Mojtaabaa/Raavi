@@ -78,6 +78,7 @@ public static class IdentityModule
         services.AddScoped<AuthService>();
         services.AddScoped<TenantIdentityAdminService>();
         services.AddScoped<SystemIdentityService>();
+        services.AddScoped<SystemUserService>();
         return services;
     }
 

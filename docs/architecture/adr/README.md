@@ -39,6 +39,7 @@ Format: Context · Decision · Alternatives considered · Consequences. Status v
 | [033](ADR-033-scheduling-and-flow-view.md) | Reminders, stale-page trigger, flow view (Phase 10c) | Accepted |
 | [049](ADR-049-smart-search-and-rag.md) | Smart search and retrieval-augmented answers (Phase 11b) | Accepted |
 | [050](ADR-050-workspace-deletion.md) | Workspace deletion with a grace period and purge | Accepted |
+| [051](ADR-051-operations-users-space-transfer-workers.md) | Accounts without a workspace, space export/import, worker status | Accepted |
 | [048](ADR-048-operations-status-logs-compression.md) | Operations: status page, error log, activity log, compressed page bodies (Phase 15) | Accepted |
 | [047](ADR-047-experience-polish-themes-admin-tools-logo.md) | Experience polish: themes, administrator tools, workspace logo, two-step setting, guidance (Phase 14) | Accepted |
 | [046](ADR-046-brand-assets-and-profile-pictures.md) | Brand assets and profile pictures (Phase 13h) | Accepted |

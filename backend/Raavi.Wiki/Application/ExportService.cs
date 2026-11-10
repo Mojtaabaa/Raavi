@@ -3,6 +3,7 @@ using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Raavi.Application.Abstractions.Authorization;
 using Raavi.Application.Abstractions.Identity;
 using Raavi.Application.Abstractions.Time;
 using Raavi.Application.Common;
@@ -37,7 +38,26 @@ public sealed class ExportService(WikiDbContext db, WikiAuthorizer authz, IPrinc
 
     public static readonly Error InProgress = new("export.in_progress", "An export of this workspace is already running. Try again in a few minutes.", ErrorKind.Conflict);
 
-    public async Task<Result<ExportArchive>> BuildAsync(CancellationToken ct)
+    /// <summary>Export of one space for its administrators (ADR-051).</summary>
+    public async Task<Result<ExportArchive>> BuildSpaceAsync(string key, CancellationToken ct)
+    {
+        var normalized = Space.NormalizeKey(key);
+        var space = await db.Spaces.AsNoTracking().FirstOrDefaultAsync(s => s.Key == normalized, ct).ConfigureAwait(false);
+        if (space is null)
+        {
+            return Result<ExportArchive>.Failure(WikiErrors.SpaceNotFound);
+        }
+
+        var rights = await authz.GetSpaceRightsAsync(space, ct).ConfigureAwait(false);
+        if (!rights.Can(PermissionAction.View))
+        {
+            return Result<ExportArchive>.Failure(WikiErrors.SpaceNotFound);
+        }
+
+        return rights.Can(PermissionAction.ManagePermissions) ? await BuildAsync(ct, normalized).ConfigureAwait(false) : Result<ExportArchive>.Failure(WikiErrors.Forbidden);
+    }
+
+    public async Task<Result<ExportArchive>> BuildAsync(CancellationToken ct, string? spaceKey = null)
     {
         var gate = Gates.GetOrAdd(tenant.Tenant.TenantId, _ => new SemaphoreSlim(1, 1));
         if (!await gate.WaitAsync(0, ct).ConfigureAwait(false))
@@ -52,12 +72,12 @@ public sealed class ExportService(WikiDbContext db, WikiAuthorizer authz, IPrinc
             file = new FileStream(path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 81920, FileOptions.DeleteOnClose | FileOptions.Asynchronous);
             using (var zip = new ZipArchive(file, ZipArchiveMode.Create, leaveOpen: true))
             {
-                await WriteAsync(zip, ct).ConfigureAwait(false);
+                await WriteAsync(zip, spaceKey, ct).ConfigureAwait(false);
             }
 
             file.Position = 0;
             var stamp = clock.UtcNow.ToString("yyyyMMdd-HHmm", System.Globalization.CultureInfo.InvariantCulture);
-            return Result<ExportArchive>.Success(new ExportArchive(file, $"raavi-export-{tenant.Tenant.Slug}-{stamp}.zip"));
+            return Result<ExportArchive>.Success(new ExportArchive(file, spaceKey is null ? $"raavi-export-{tenant.Tenant.Slug}-{stamp}.zip" : $"raavi-space-{spaceKey}-{stamp}.zip"));
         }
         catch
         {
@@ -74,11 +94,11 @@ public sealed class ExportService(WikiDbContext db, WikiAuthorizer authz, IPrinc
         }
     }
 
-    private async Task WriteAsync(ZipArchive zip, CancellationToken ct)
+    private async Task WriteAsync(ZipArchive zip, string? spaceKey, CancellationToken ct)
     {
         var principal = await authz.PrincipalAsync(ct).ConfigureAwait(false);
         var viewable = await authz.ViewableSpaceIdsAsync(ct).ConfigureAwait(false);
-        var spaces = await db.Spaces.AsNoTracking().Where(s => viewable.Contains(s.Id)).OrderBy(s => s.Key).ToListAsync(ct).ConfigureAwait(false);
+        var spaces = await db.Spaces.AsNoTracking().Where(s => viewable.Contains(s.Id) && (spaceKey == null || s.Key == spaceKey)).OrderBy(s => s.Key).ToListAsync(ct).ConfigureAwait(false);
         var users = new Dictionary<Guid, string?>();
         var counts = new Dictionary<string, int>();
         var omitted = new List<object>();

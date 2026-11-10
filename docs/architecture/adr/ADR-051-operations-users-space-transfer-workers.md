@@ -1,0 +1,18 @@
+# ADR-051 — Accounts without a workspace, single-space export/import, worker status
+
+**Status:** Accepted (2026-11-10)
+
+## Context
+After workspace deletion (ADR-050) user accounts stay behind (an account may belong to several workspaces), the installation administrator needs to see how many workspaces each account has and to clean up; a single space could only be moved through the Confluence migration, and nobody could tell from the application whether the `RaaviWorkers` Windows service was running.
+
+## Decisions
+1. **Accounts report** (system host, `GET /system/users?q=&withoutWorkspace=&skip=&take=`): every account with `workspaces` = rows in the membership index, a system-administrator flag and the number of accounts without a workspace. `POST /system/users/delete` ({ ids } or { allWithoutWorkspace: true }, ≤ 1000 per call) deletes **only** accounts that have no membership and no system role — re-checked on the server whatever the client sent — together with their sessions, external identities and avatar, one transaction per account; an account something still refers to (foreign key) is skipped and counted. Each deletion writes a `system.user_deleted` security event. UI: "Accounts" page with search, filter, row selection, delete selected / delete all (confirmation dialog).
+2. **Space export** (`GET /spaces/{key}/export`): the existing workspace export restricted to one space; allowed for space administrators who can view the space (same viewer filtering, same one-export-at-a-time gate, file `raavi-space-KEY-….zip`).
+3. **Space import** (`POST /spaces/import`, multipart `file`, optional `key`, `name`): needs the right to create spaces; always creates a **new** space (key taken → `space.key_taken`). The archive is read entry by entry with limits (≤ 100 000 entries, 25 MB per JSON, 100 MB per file, 2 GB total) and never extracted. Pages go through `IContentImporter` (the writer of the Confluence migration) with a fresh source system per run, parents first, in archive order; labels, attachments (deterministic ids) and comments are imported; authors who are workspace members keep their identity, others are kept by name. After the import, page ids, attachment ids and the space key inside the page bodies are rewritten to the new ones, and the home page is restored. Importing the same archive twice makes two spaces.
+4. **Worker status** (`GET /system/workers` for system administrators, `GET /tenant/workers` for workspace administrators): reads Hangfire's own server table (each server beats about every 30 s; a beat younger than two minutes = Running; none ever = NeverStarted) and counts jobs waiting / running / failed / scheduled. The header shows a green or red dot to administrators only, polling every minute, and a dialog with the details and the command to start the service. The existing /status page keeps its `workers` component.
+
+## Not covered / limits
+- Not exported/imported: permissions (the new space belongs to the importer alone), version history (the current version only), tasks, calendar events, databases, slide decks, whiteboards (they are in the export, the import reports how many it skipped), inline-comment anchors (comments become page comments), page restrictions, drafts.
+- Archives are limited by the web server's upload limit as well: IIS `maxAllowedContentLength` (default 30 MB) must be raised for large archives.
+- The worker dot says that a Hangfire server reports, not that every job type is healthy; a worker that runs but whose jobs fail shows up in "Failed jobs".
+- Deleting accounts does not remove names stored in content they authored (comments/versions keep the display name).

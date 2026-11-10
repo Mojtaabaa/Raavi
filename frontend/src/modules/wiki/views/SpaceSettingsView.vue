@@ -16,6 +16,7 @@ import Dialog from 'primevue/dialog'
 import Message from 'primevue/message'
 import { SPACE_TYPES, wikiApi, type Grant, type PermissionAction, type RaaviDoc, type SpaceType, type Template } from '@/core/api/wiki'
 import { errorMessage } from '@/core/api/errors'
+import { downloadFrom } from '@/core/api/ops'
 import GrantMatrix from '../components/GrantMatrix.vue'
 import SpacePublishingPanel from '../components/SpacePublishingPanel.vue'
 import SpaceTrashPanel from '../components/SpaceTrashPanel.vue'
@@ -65,6 +66,19 @@ async function saveDetails() {
     fail(e)
   } finally {
     busy.value = false
+  }
+}
+
+const exporting = ref(false)
+async function exportSpace() {
+  exporting.value = true
+  try {
+    await downloadFrom(`/spaces/${space.value.key}/export`, `raavi-space-${space.value.key}.zip`)
+    toast.add({ severity: 'success', summary: t('spaceTransfer.exported'), life: 4000 })
+  } catch (status) {
+    toast.add({ severity: 'error', summary: status === 409 ? t('export.inProgress') : t('export.failed'), life: 5000 })
+  } finally {
+    exporting.value = false
   }
 }
 
@@ -134,7 +148,10 @@ async function deleteTemplate(tpl: Template) {
 
 <template>
   <section class="settings">
-    <h1>{{ t('wiki.settings.title', { name: space.name }) }}</h1>
+    <header class="head">
+      <h1>{{ t('wiki.settings.title', { name: space.name }) }}</h1>
+      <Button v-if="space.rights.canAdminister" outlined size="small" icon="pi pi-download" :label="t('spaceTransfer.export')" :loading="exporting" data-testid="export-space" @click="exportSpace" />
+    </header>
     <Message v-if="!space.rights.canView" severity="warn" :closable="false">{{ t('wiki.space.adminOnly') }}</Message>
     <Tabs v-model:value="tab">
       <TabList>
@@ -204,6 +221,7 @@ async function deleteTemplate(tpl: Template) {
 <style scoped>
 .settings { display: grid; gap: var(--raavi-space-3); max-inline-size: 64rem; }
 h1 { margin: 0; font-size: 1.4rem; }
+.head { display: flex; align-items: center; justify-content: space-between; gap: var(--raavi-space-3); flex-wrap: wrap; }
 .form { display: grid; gap: var(--raavi-space-2); max-inline-size: 36rem; }
 .form.wide { max-inline-size: none; }
 .row { display: flex; gap: var(--raavi-space-2); flex-wrap: wrap; }

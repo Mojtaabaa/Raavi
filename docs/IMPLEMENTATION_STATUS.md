@@ -14,6 +14,10 @@ Dev API + workers + Vite started; signed in as the dev workspace admin in the bu
 
 **Not covered:** creating/using slides, databases, workflows, approvals, tasks, calendar events; live co-editing between two browsers; AI, webhooks and connectors with real hosts (dev config allows none); PNG/SVG/PPTX/PDF downloads; mobile widths, dark mode, keyboard-only use, screen readers; English UI. Test data left in the dev DB: whiteboard "Browser check board" in space ENGINEERIN.
 
+### 19 — Accounts report, space export/import, worker status (ADR-051)
+
+System "Accounts" page (workspace count per account, filter, delete selected / all without a workspace — only accounts with no membership and no system role), space export (settings) and import (spaces list; pages, tree, labels, attachments, comments, links rewritten), worker indicator in the header (Hangfire heartbeat, administrators only). Tests: 3 backend (accounts, space round trip with link/attachment rewrite, worker status), 5 frontend. **Not verified:** the heartbeat against a really installed `RaaviWorkers` service (tests have no worker: Running was not observed), large archives through IIS, import of tasks/databases/slides/whiteboards/permissions/history (not implemented).
+
 ### 18 — Workspace deletion and the "More" menu (ADR-050)
 
 Delete request (code typed, access stops, 14-day grace by `Raavi:Tenants:DeletionGraceDays`), cancel, purge now / daily `TenantPurgeJob` (generic `TenantId` scan inside the tenant scope, audit kept, tombstone keeps code and slug), system UI with dialogs; header: calendar and approvals moved behind a "More" dropdown (`NavDropdown`, also used by Administration). Tests: 3 backend (request/cancel, purge isolation, daily job), 3 frontend. **Not verified:** purge of a large real tenant (timing, log growth) and of data from every module (only a wiki space was seeded); four-eyes approval and orphaned-user cleanup are not built.
