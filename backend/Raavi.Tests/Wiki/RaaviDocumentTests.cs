@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Microsoft.Extensions.Configuration;
 using Raavi.Domain.Common;
 using Raavi.Wiki.Domain;
 using Raavi.Wiki.Editor;
@@ -183,7 +184,35 @@ public sealed class RaaviDocumentTests
     [InlineData("//evil.example", false)]
     [InlineData("/\\evil.example", false)]
     [InlineData("ftp://x", false)]
-    public void Link_targets_use_an_allow_list(string href, bool allowed) => Assert.Equal(allowed, EditorSchema.IsSafeHref(href));
+    [InlineData("vianna/UI/TMS/Personnel/Current-classes.html", true)]
+    [InlineData("evil/UI/x", false)]
+    public void Link_targets_use_an_allow_list(string href, bool allowed)
+    {
+        LinkPathRewrites.Configure(new Microsoft.Extensions.Configuration.ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Raavi:Links:PathRewrites:0:Prefix"] = "vianna",
+                ["Raavi:Links:PathRewrites:0:BaseUrl"] = "https://svn.viannacloud.ir",
+            }).Build());
+        Assert.Equal(allowed, EditorSchema.IsSafeHref(href));
+    }
+
+    [Fact]
+    public void Path_prefix_hrefs_rewrite_to_the_configured_base()
+    {
+        LinkPathRewrites.Configure(new Microsoft.Extensions.Configuration.ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Raavi:Links:PathRewrites:0:Prefix"] = "vianna",
+                ["Raavi:Links:PathRewrites:0:BaseUrl"] = "https://svn.viannacloud.ir",
+            }).Build());
+        Assert.True(LinkPathRewrites.TryRewrite("vianna/UI/TMS/Personnel/Current-classes.html", out var url));
+        Assert.Equal("https://svn.viannacloud.ir/UI/TMS/Personnel/Current-classes.html", url);
+        var doc = Doc(D(P("""{"type":"text","text":"file","marks":[{"type":"link","attrs":{"href":"vianna/UI/a.html"}}]}""")));
+        var html = new DocumentHtmlRenderer().Render(doc.Doc, new Dictionary<Guid, string>());
+        Assert.Contains("href=\"https://svn.viannacloud.ir/UI/a.html\"", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("href=\"vianna/", html, StringComparison.Ordinal);
+    }
 
     [Theory]
     [InlineData("Release notes 2026", "release-notes-2026")]

@@ -484,7 +484,7 @@ public sealed partial class EditorSchema
         return new JsonArray([.. v.EnumerateArray().Select(x => Value(item with { Nullable = false }, x, path))]);
     }
 
-    /// <summary>Link targets: http(s), mailto, raavi: and same-site paths. Never javascript:, data:, vbscript: or protocol-relative URLs.</summary>
+    /// <summary>Link targets: http(s), mailto, raavi:, same-site paths, and configured path-prefix rewrites (e.g. <c>vianna/…</c>). Never javascript:, data:, vbscript: or protocol-relative URLs.</summary>
     public static bool IsSafeHref(string href)
     {
         if (string.IsNullOrWhiteSpace(href) || href.Any(c => char.IsControl(c) || char.IsWhiteSpace(c) && c != ' ') || href != href.Trim())
@@ -498,6 +498,11 @@ public sealed partial class EditorSchema
         }
 
         if (href.StartsWith('#'))
+        {
+            return true;
+        }
+
+        if (LinkPathRewrites.IsConfiguredPath(href))
         {
             return true;
         }

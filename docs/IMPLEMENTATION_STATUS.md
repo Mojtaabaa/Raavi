@@ -1,8 +1,12 @@
 # Implementation Status
 
-**Last updated:** 2026-11-08 (Phase 12c: performance baseline)
+**Last updated:** 2026-11-10 (login LTR password eye, page link picker, path rewrites, resolved quote jump, RTL lists)
 
 Statuses: Not Started · Planned · In Progress · Implemented · Tested · Blocked · Deferred. "Tested" requires executed test evidence (listed).
+
+### Editor / login polish (2026-11-10)
+
+LTR login: password reveal icon moves to the inline-start so typed text does not cover it. Editor link dialog: pick a page via space + page tree (cross-space) or type a URL; stored as `/spaces/{key}/pages/{id}`. Configurable `Raavi:Links:PathRewrites` (sandbox + defaults) rewrites path-prefix hrefs such as `vianna/UI/...` to an absolute base (default `https://svn.viannacloud.ir`); allow-list, HTML render and SPA click use the same rules (`GET /editor/link-rewrites`). Resolved inline comments keep quote anchors when "show resolved" is on so quote clicks still jump to the passage. Persian empty search: «موردی یافت نشد». RTL bullet lists: list-item paragraphs inherit direction and CSS flips markers via `:has(> p[dir=rtl|ltr])`.
 
 ## Phase 12 — Enterprise readiness (split: 12a workspace export and 12b backup/restore scripts and 12c performance baseline done; deletion/purge, scheduling, HA, large-scale/k6 load tests, hardening pending)
 

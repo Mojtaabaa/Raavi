@@ -902,6 +902,9 @@
     "link": {
       "title": "Link",
       "url": "Address",
+      "page": "Page",
+      "space": "Space",
+      "pickPage": "Choose a page",
       "invalid": "Only http, https, mailto and links inside Raavi are allowed.",
       "remove": "Remove link"
     },

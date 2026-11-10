@@ -283,7 +283,7 @@ public sealed class DocumentHtmlRenderer
                 "strike" => ("<s>", "</s>"),
                 "code" => ("<code>", "</code>"),
                 "link" when Attr(m, "href") is { } href && EditorSchema.IsSafeHref(href) =>
-                    ($"<a href=\"{E(href)}\" rel=\"noopener noreferrer nofollow\"{(href.StartsWith('/') || href.StartsWith('#') ? string.Empty : " target=\"_blank\"")}>", "</a>"),
+                    LinkOpen(href),
                 "textStyle" when Attr(m, "color") is { } color => ($"<span style=\"color:{E(color)}\">", "</span>"),
                 "highlight" => Attr(m, "color") is { } bg ? ($"<mark style=\"background-color:{E(bg)}\">", "</mark>") : ("<mark>", "</mark>"),
                 _ => (string.Empty, string.Empty),
@@ -293,5 +293,12 @@ public sealed class DocumentHtmlRenderer
         }
 
         sb.Append(open).Append(text).Append(string.Concat(close));
+    }
+
+    private static (string Open, string Close) LinkOpen(string href)
+    {
+        var target = LinkPathRewrites.TryRewrite(href, out var absolute) ? absolute : href;
+        var blank = target.StartsWith('/') || target.StartsWith('#') ? string.Empty : " target=\"_blank\"";
+        return ($"<a href=\"{E(target)}\" rel=\"noopener noreferrer nofollow\"{blank}>", "</a>");
     }
 }

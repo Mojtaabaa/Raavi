@@ -58,6 +58,16 @@ html.raavi-dark {
 .p-iconfield .p-inputtext { padding-inline: 2.5rem; }
 .p-inputicon { color: var(--raavi-icon, var(--raavi-text-muted)); }
 
+/* LTR: password reveal sits on the left so LTR-typed text does not cover the eye. */
+html[dir='ltr'] .p-password .p-password-toggle-mask-icon {
+  inset-inline-end: auto;
+  inset-inline-start: 0.75rem;
+}
+html[dir='ltr'] .p-password .p-password-input {
+  padding-inline-start: 2.5rem;
+  padding-inline-end: 0.75rem;
+}
+
 html { background: var(--raavi-bg); color: var(--raavi-text); }
 html[lang^='fa'] body { font-family: var(--raavi-font-fa); }
 html[lang^='en'] body { font-family: var(--raavi-font-en); }

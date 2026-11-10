@@ -44,8 +44,10 @@ const fail = (e: unknown) => toast.add({ severity: 'error', summary: errorMessag
 const openCount = computed(() => threads.value.filter((th) => th.status === 'Open').length)
 
 function publishAnchors() {
+  // Include every inline thread currently in the panel (Open always; Resolved when "show resolved" is on)
+  // so quote clicks can scroll to the passage even for resolved comments.
   emit('anchors', threads.value
-    .filter((th) => th.kind === 'Inline' && th.anchor && th.status === 'Open')
+    .filter((th) => th.kind === 'Inline' && th.anchor)
     .map((th) => ({ id: th.id, ...th.anchor! })))
 }
 
@@ -158,7 +160,7 @@ watch(() => props.pendingQuote, async (q) => {
       :thread="th"
       :reactions="reactions"
       :active="active === th.id"
-      :orphaned="th.kind === 'Inline' && th.status === 'Open' && !located.includes(th.id)"
+      :orphaned="th.kind === 'Inline' && !located.includes(th.id)"
       @changed="changed"
       @focus-anchor="focusAnchor"
       @error="fail"

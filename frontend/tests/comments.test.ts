@@ -94,6 +94,7 @@ function routes(extra: Record<string, Parameters<typeof fakeFetch>[0][string]> =
     'GET /api/v1/content/p1/comments': () => json({ threads, canComment: true, watching: false, reactions: ['👍', '🎉'] }),
     'GET /api/v1/notifications/unread-count': () => json({ count: 0 }),
     'GET /api/v1/editor/schema': () => json({ schema: 'raavi.doc', schemaVersion: SCHEMA_VERSION, maxBytes: 1, extensions: manifests.map((m) => ({ id: m.id, name: m.name, version: m.version, kind: m.kind, insertable: true })) }),
+    'GET /api/v1/editor/link-rewrites': () => json([{ prefix: 'vianna', baseUrl: 'https://svn.viannacloud.ir' }]),
     ...extra,
   })
 }

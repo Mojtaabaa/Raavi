@@ -134,6 +134,7 @@ describe('wiki views', () => {
       'GET /api/v1/content/p1/draft': () => withETag(draft, '"r2"'),
       'PUT /api/v1/content/p1/draft': () => problem(412, 'precondition.failed'),
       'GET /api/v1/editor/schema': () => json({ schema: 'raavi.doc', schemaVersion: SCHEMA_VERSION, maxBytes: 5242880, extensions: manifests.map((m) => ({ id: m.id, name: m.name, version: m.version, kind: m.kind, insertable: true })) }),
+      'GET /api/v1/editor/link-rewrites': () => json([{ prefix: 'vianna', baseUrl: 'https://svn.viannacloud.ir' }]),
     })
     await new Promise((r) => setTimeout(r, 400)) // the editor's initial normalisation is not a user change
     const editor = wrapper.findComponent(RaaviEditor).vm.editor as Editor

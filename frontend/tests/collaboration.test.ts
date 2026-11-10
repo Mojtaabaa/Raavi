@@ -81,6 +81,7 @@ describe('page editor in live mode', () => {
       'PUT /api/v1/content/p1/draft/title': () => json({ ...draft, title: 'Runbook 2' }),
       'POST /api/v1/content/p1/publish': () => withETag({ outcome: 'Published', page: { ...page, version: 4 } }, '"r4"'),
       'GET /api/v1/editor/schema': () => json({ schema: 'raavi.doc', schemaVersion: SCHEMA_VERSION, maxBytes: 1, extensions: manifests.map((m) => ({ id: m.id, name: m.name, version: m.version, kind: m.kind, insertable: true })) }),
+      'GET /api/v1/editor/link-rewrites': () => json([{ prefix: 'vianna', baseUrl: 'https://svn.viannacloud.ir' }]),
     })
     vi.stubGlobal('fetch', f.fn)
     configureHttp(f.fn)

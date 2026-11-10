@@ -130,6 +130,8 @@ public static class WikiEndpoints
 
         // ── Editor & attachments (Phase 4) ─────────────────────────────────────────────────────
         g.MapGet("/editor/schema", () => Results.Ok(EditorService.Schema()));
+        g.MapGet("/editor/link-rewrites", () => Results.Ok(Raavi.Wiki.Editor.LinkPathRewrites.All()
+            .Select(r => new { prefix = r.Prefix, baseUrl = r.BaseUrl })));
 
         g.MapGet("/content/{id:guid}/html", async (Guid id, EditorService svc, HttpContext http, CancellationToken ct) =>
             (await svc.RenderAsync(id, ct).ConfigureAwait(false)).ToHttp(html => Results.Ok(new { html = WithPathBase(html, http) })));

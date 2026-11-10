@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import { Editor, EditorContent } from '@tiptap/vue-3'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
@@ -8,10 +9,12 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import { useToast } from 'primevue/usetoast'
-import { wikiApi, type RaaviDoc } from '@/core/api/wiki'
+import { contentHref, wikiApi, type RaaviDoc, type SpaceSummary, type TreeNode } from '@/core/api/wiki'
 import { errorMessage } from '@/core/api/errors'
+import PageTree from '@/modules/wiki/components/PageTree.vue'
 import { SCHEMA_VERSION } from '../registry'
 import { createEditorRegistry, isSafeHref, setUploadHook } from '../setup'
+import { ensurePathRewrites, rewritePathHref } from '../pathRewrites'
 import { startLiveSession, type CollaborationTarget, type LiveSession } from '../collaboration'
 import { CommentAnchors, commentAnchorsKey, flatten, quoteRange, type AnchorHighlight, type TextQuote } from '../extensions/commentAnchors'
 import { PromptVariables, refreshVariableMarks } from '../extensions/promptVariables'
@@ -43,11 +46,15 @@ const props = withDefaults(
 const emit = defineEmits<{ 'update:modelValue': [doc: RaaviDoc]; reset: []; revoked: []; quote: [quote: TextQuote | null]; activate: [id: string]; located: [ids: string[]] }>()
 const { t, te } = useI18n()
 const toast = useToast()
+const router = useRouter()
 
 const editor = shallowRef<Editor | null>(null)
 const incompatible = ref<string[]>([])
 const linkOpen = ref(false)
 const linkHref = ref('')
+const linkSpaces = ref<SpaceSummary[]>([])
+const linkSpaceKey = ref<string | null>(null)
+const linkPage = ref<TreeNode | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const pendingKind = ref<'image' | 'file'>('image')
 const uploading = ref(false)
@@ -91,6 +98,7 @@ const registry = createEditorRegistry({
 const envelope = (json: Record<string, unknown>): RaaviDoc => ({ schema: 'raavi.doc', schemaVersion: SCHEMA_VERSION, doc: json as RaaviDoc['doc'] })
 
 onMounted(async () => {
+  void ensurePathRewrites()
   editor.value = new Editor({
     // Live mode: content comes from the shared Yjs document (never from props), history from Yjs.
     extensions: [
@@ -127,10 +135,31 @@ function pushAnchors() {
 }
 watch(() => [props.anchors, props.activeAnchor], pushAnchors, { deep: true })
 
-/** Clicking a highlighted passage focuses its thread (read views are not editable, so this is a plain DOM click). */
+/** Clicking a highlighted passage focuses its thread; clicking a link navigates (openOnClick is off). */
 function onContentClick(e: MouseEvent) {
-  const id = (e.target as HTMLElement | null)?.closest?.('[data-thread-id]')?.getAttribute('data-thread-id')
+  const el = e.target as HTMLElement | null
+  const id = el?.closest?.('[data-thread-id]')?.getAttribute('data-thread-id')
   if (id && props.anchors) emit('activate', id)
+  const anchor = el?.closest?.('a[href]') as HTMLAnchorElement | null
+  if (!anchor || !editor.value?.view.dom.contains(anchor)) return
+  const href = anchor.getAttribute('href')
+  if (!href || !isSafeHref(href)) return
+  e.preventDefault()
+  e.stopPropagation()
+  const rewritten = rewritePathHref(href)
+  if (rewritten) {
+    window.open(rewritten, '_blank', 'noopener,noreferrer')
+    return
+  }
+  if (href.startsWith('/') && !href.startsWith('//')) {
+    void router.push(href)
+    return
+  }
+  if (href.startsWith('#')) {
+    document.getElementById(href.slice(1))?.scrollIntoView?.({ block: 'start' })
+    return
+  }
+  window.open(href, '_blank', 'noopener,noreferrer')
 }
 
 /** A read-only view never receives ProseMirror selection updates, so the DOM selection is mapped by hand. */
@@ -205,12 +234,41 @@ function setDirection(dir: 'ltr' | 'rtl' | null) {
   run((e) => {
     const type = e.isActive('heading') ? 'heading' : 'paragraph'
     e.chain().focus().updateAttributes(type, { dir }).run()
+    // When inside a list item, set dir on every paragraph so CSS can flip bullet markers for RTL.
+    const $from = e.state.selection.$from
+    for (let depth = $from.depth; depth > 0; depth--) {
+      const node = $from.node(depth)
+      if (node.type.name !== 'listItem' && node.type.name !== 'taskItem') continue
+      const pos = $from.before(depth)
+      let tr = e.state.tr
+      node.forEach((child, offset) => {
+        if (child.type.name === 'paragraph' || child.type.name === 'heading') {
+          tr = tr.setNodeMarkup(pos + 1 + offset, undefined, { ...child.attrs, dir })
+        }
+      })
+      if (tr.docChanged) e.view.dispatch(tr)
+      break
+    }
   })
 }
 
-function openLink() {
+async function openLink() {
   linkHref.value = (editor.value?.getAttributes('link').href as string | undefined) ?? ''
+  linkPage.value = null
   linkOpen.value = true
+  void ensurePathRewrites()
+  if (!linkSpaces.value.length) {
+    linkSpaces.value = await wikiApi.spaces().catch(() => [])
+  }
+  if (!linkSpaceKey.value && linkSpaces.value[0]) linkSpaceKey.value = linkSpaces.value[0].key
+}
+
+watch(linkSpaceKey, () => (linkPage.value = null))
+
+function pickLinkPage(node: TreeNode) {
+  if (node.contentType !== 'page' || !linkSpaceKey.value) return
+  linkPage.value = node
+  linkHref.value = contentHref({ id: node.id, spaceKey: linkSpaceKey.value })
 }
 
 const linkValid = computed(() => linkHref.value === '' || isSafeHref(linkHref.value))
@@ -316,10 +374,23 @@ defineExpose({ editor, insertText, refreshVariables: () => editor.value && refre
     <EditorContent v-if="editor" :editor="editor" class="content" :data-testid="compact ? 'comment-editor' : 'document-body'" @mouseup="emitQuote" @keyup="emitQuote" @click="onContentClick" />
     <input ref="fileInput" type="file" class="file-input" tabindex="-1" aria-hidden="true" @change="onFile" />
 
-    <Dialog v-model:visible="linkOpen" modal :header="t('editor.link.title')" :style="{ inlineSize: 'min(28rem, 95vw)' }">
+    <Dialog v-model:visible="linkOpen" modal :header="t('editor.link.title')" :style="{ inlineSize: 'min(36rem, 95vw)' }">
       <form class="link-form" @submit.prevent="applyLink">
+        <label for="link-space">{{ t('editor.link.page') }}</label>
+        <Select
+          id="link-space"
+          v-model="linkSpaceKey"
+          :options="linkSpaces"
+          option-label="name"
+          option-value="key"
+          filter
+          :placeholder="t('editor.link.space')"
+        />
+        <div v-if="linkSpaceKey" class="tree-box" :aria-label="t('editor.link.pickPage')">
+          <PageTree :space-key="linkSpaceKey" :selected-id="linkPage?.id" @select="pickLinkPage" />
+        </div>
         <label for="link-href">{{ t('editor.link.url') }}</label>
-        <InputText id="link-href" v-model="linkHref" dir="ltr" :invalid="!linkValid" placeholder="https://" autofocus />
+        <InputText id="link-href" v-model="linkHref" dir="ltr" :invalid="!linkValid" placeholder="https://" />
         <small v-if="!linkValid" class="error">{{ t('editor.link.invalid') }}</small>
         <div class="row">
           <Button type="submit" :label="t('common.save')" :disabled="!linkValid" />
@@ -348,6 +419,7 @@ defineExpose({ editor, insertText, refreshVariables: () => editor.value && refre
 .editing.compact .content { padding: var(--raavi-space-1) var(--raavi-space-2); min-block-size: 0; }
 .file-input { display: none; }
 .link-form { display: grid; gap: var(--raavi-space-2); }
+.tree-box { max-block-size: 14rem; overflow: auto; border: 1px solid var(--raavi-border); border-radius: var(--raavi-radius-sm); padding: var(--raavi-space-2); }
 .row { display: flex; gap: var(--raavi-space-2); }
 .error { color: #b91c1c; }
 :dir(rtl) .flip :deep(.pi) { transform: scaleX(-1); }

@@ -92,6 +92,8 @@ public sealed class SqlServerFixture : IAsyncLifetime
         ["Raavi:Collaboration:PublicUrl"] = "wss://collab.raavi.test",
         ["Raavi:Collaboration:ServerUrl"] = string.Empty, // no collaboration server in API tests: flush/reset/recheck are no-ops
         ["Raavi:Collaboration:ServiceKey"] = CollaborationServiceKey,
+        ["Raavi:Links:PathRewrites:0:Prefix"] = "vianna",
+        ["Raavi:Links:PathRewrites:0:BaseUrl"] = "https://svn.viannacloud.ir",
         ["Raavi:Authentication:Session:AllowInsecureHttp"] = "false", // tests always exercise the strict production cookie mode
         // Globally defined external providers (tenants enable them through their own policies).
         ["Raavi:IdentityProviders:0:Id"] = "local",

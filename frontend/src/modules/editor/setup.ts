@@ -24,12 +24,14 @@ import AttachmentView from './views/AttachmentView.vue'
 import UnsupportedView from './views/UnsupportedView.vue'
 import ChildrenView from './views/ChildrenView.vue'
 import ContentByLabelView from './views/ContentByLabelView.vue'
+import { isConfiguredPathHref } from './pathRewrites'
 
-/** Same allow-list as the server (`EditorSchema.IsSafeHref`). */
+/** Same allow-list as the server (`EditorSchema.IsSafeHref`), including configured path-prefix rewrites. */
 export function isSafeHref(href: string): boolean {
   if (!href || href !== href.trim() || /[\u0000-\u001f\u007f\\]/.test(href)) return false
   if (href.startsWith('/')) return !href.startsWith('//')
   if (href.startsWith('#')) return true
+  if (isConfiguredPathHref(href)) return true
   try {
     return ['http:', 'https:', 'mailto:', 'raavi:'].includes(new URL(href).protocol)
   } catch {

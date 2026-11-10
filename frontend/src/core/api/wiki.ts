@@ -306,6 +306,7 @@ export const wikiApi = {
   myDrafts: () => api<ContentListItem[]>('GET', '/me/drafts'),
   directory: (q: string) => api<DirectoryEntry[]>('GET', `/directory?q=${enc(q)}`),
   editorSchema: () => api<{ schema: string; schemaVersion: number; maxBytes: number; extensions: { id: string; name: string; version: number; kind: string; insertable: boolean }[] }>('GET', '/editor/schema'),
+  linkRewrites: () => api<{ prefix: string; baseUrl: string }[]>('GET', '/editor/link-rewrites'),
   contentHtml: (id: string) => api<{ html: string }>('GET', `/content/${enc(id)}/html`),
   upload: (contentId: string, file: File) => {
     const form = new FormData()
@@ -317,4 +318,9 @@ export const wikiApi = {
 /** Router location of a content item (ids identify content; the slug only decorates the URL). */
 export function contentRoute(item: { id: string; slug?: string; spaceKey: string }) {
   return { name: 'page', params: { key: item.spaceKey, id: item.id, slug: item.slug || undefined } }
+}
+
+/** Same-site href stored in the document for a page (opaque path; no structured pageId attrs). */
+export function contentHref(item: { id: string; spaceKey: string }) {
+  return `/spaces/${item.spaceKey}/pages/${item.id}`
 }

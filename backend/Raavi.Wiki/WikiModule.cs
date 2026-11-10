@@ -19,6 +19,7 @@ public static class WikiModule
     /// </summary>
     public static IServiceCollection AddWikiModule(this IServiceCollection services, IConfiguration configuration, bool runOutboxPoller = false)
     {
+        Raavi.Wiki.Editor.LinkPathRewrites.Configure(configuration);
         services.AddRaaviDbContext<WikiDbContext>(configuration, WikiDbContext.HistorySchema);
         services.AddRaaviOutbox<WikiDbContext>(runOutboxPoller);
 

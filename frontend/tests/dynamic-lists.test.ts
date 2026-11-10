@@ -65,6 +65,7 @@ describe('dynamic lists in pages (children, content by label)', () => {
     'GET /api/v1/content/p1': () => new Response(JSON.stringify(page), { status: 200, headers: { 'Content-Type': 'application/json', ETag: '"r2"' } }),
     'GET /api/v1/content/p1/comments': () => json({ threads: [], canComment: false, watching: false, reactions: [] }),
     'GET /api/v1/editor/schema': () => json({ schema: 'raavi.doc', schemaVersion: SCHEMA_VERSION, maxBytes: 1, extensions: manifests.map((m) => ({ id: m.id, name: m.name, version: m.version, kind: m.kind, insertable: true })) }),
+    'GET /api/v1/editor/link-rewrites': () => json([{ prefix: 'vianna', baseUrl: 'https://svn.viannacloud.ir' }]),
   }
 
   it('lists the child pages and the pages with the labels, deduplicated, filtered to the space and capped', async () => {
