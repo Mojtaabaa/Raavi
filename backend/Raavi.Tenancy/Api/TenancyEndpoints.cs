@@ -135,6 +135,15 @@ public static class TenancyEndpoints
         system.MapPost("/{tenantId:guid}/deactivate", async (Guid tenantId, ChangeStatusRequest body, TenantAdministrationService svc, CancellationToken ct) =>
             (await svc.DeactivateAsync(tenantId, body.Reason, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
 
+        system.MapPost("/{tenantId:guid}/delete-request", async (Guid tenantId, RequestDeletionRequest body, TenantDeletionService svc, CancellationToken ct) =>
+            (await svc.RequestAsync(tenantId, body.Reason, body.ConfirmCode, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+
+        system.MapPost("/{tenantId:guid}/cancel-deletion", async (Guid tenantId, TenantDeletionService svc, CancellationToken ct) =>
+            (await svc.CancelAsync(tenantId, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+
+        system.MapPost("/{tenantId:guid}/purge", async (Guid tenantId, PurgeTenantRequest body, TenantDeletionService svc, CancellationToken ct) =>
+            (await svc.PurgeNowAsync(tenantId, body.ConfirmCode, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+
         system.MapGet("/{tenantId:guid}/domains", async (Guid tenantId, TenantDomainService svc, CancellationToken ct) =>
             (await svc.ListAsync(tenantId, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
 

@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
-import { aiApi, type AiSettings, type AiUsage } from '@/core/api/ai'
+import { aiApi, type AiSettings, type AiUsage, type IndexStatus } from '@/core/api/ai'
 import { errorMessage } from '@/core/api/errors'
 
 /** AI provider of the workspace (Phase 11a): OpenAI-compatible endpoint, model, key (write-only), limits and this month's usage. */
@@ -14,7 +14,9 @@ const toast = useToast()
 const current = ref<AiSettings | null>(null)
 const usage = ref<AiUsage | null>(null)
 const saving = ref(false)
-const form = ref({ enabled: false, baseUrl: '', model: '', apiKey: '', removeKey: false, monthlyTokenCap: 0, maxOutputTokens: 800 })
+const index = ref<IndexStatus | null>(null)
+const indexing = ref(false)
+const form = ref({ enabled: false, baseUrl: '', model: '', embeddingModel: '', apiKey: '', removeKey: false, monthlyTokenCap: 0, maxOutputTokens: 800 })
 
 const fail = (e: unknown) => toast.add({ severity: 'error', summary: errorMessage(e, t, te), life: 6000 })
 const hasKey = computed(() => !!current.value?.hasApiKey)
@@ -23,19 +25,32 @@ const valid = computed(() => form.value.baseUrl.trim() !== '' && form.value.mode
 
 function apply(s: AiSettings) {
   current.value = s
-  form.value = { enabled: s.enabled, baseUrl: s.baseUrl, model: s.model, apiKey: '', removeKey: false, monthlyTokenCap: s.monthlyTokenCap, maxOutputTokens: s.maxOutputTokens }
+  form.value = { enabled: s.enabled, baseUrl: s.baseUrl, model: s.model, embeddingModel: s.embeddingModel ?? '', apiKey: '', removeKey: false, monthlyTokenCap: s.monthlyTokenCap, maxOutputTokens: s.maxOutputTokens }
 }
 
 async function load() {
   try {
-    const [s, u] = await Promise.all([aiApi.settings(), aiApi.usage()])
+    const [s, u, ix] = await Promise.all([aiApi.settings(), aiApi.usage(), aiApi.indexStatus().catch(() => null)])
     apply(s)
     usage.value = u
+    index.value = ix
   } catch (e) {
     fail(e)
   }
 }
 onMounted(load)
+
+async function runIndex(rebuild: boolean) {
+  indexing.value = true
+  try {
+    index.value = await (rebuild ? aiApi.rebuildIndex() : aiApi.runIndex())
+    toast.add({ severity: 'info', summary: t('ai.index.started'), life: 4000 })
+  } catch (e) {
+    fail(e)
+  } finally {
+    indexing.value = false
+  }
+}
 
 async function save() {
   if (!current.value || !valid.value) return
@@ -47,12 +62,14 @@ async function save() {
         enabled: form.value.enabled,
         baseUrl: form.value.baseUrl.trim(),
         model: form.value.model.trim(),
+        embeddingModel: form.value.embeddingModel.trim(),
         apiKey: key,
         monthlyTokenCap: Number(form.value.monthlyTokenCap) || 0,
         maxOutputTokens: Number(form.value.maxOutputTokens) || 800,
       }),
     )
     usage.value = await aiApi.usage()
+    index.value = await aiApi.indexStatus().catch(() => index.value)
     toast.add({ severity: 'success', summary: t('common.saved'), life: 2000 })
   } catch (e) {
     fail(e)
@@ -77,6 +94,10 @@ async function save() {
       <label for="ai-model">{{ t('ai.model') }}</label>
       <InputText id="ai-model" v-model="form.model" maxlength="100" dir="ltr" data-testid="ai-model" />
 
+      <label for="ai-embed">{{ t('ai.embeddingModel') }}</label>
+      <InputText id="ai-embed" v-model="form.embeddingModel" maxlength="100" dir="ltr" placeholder="text-embedding-3-small" data-testid="ai-embedding-model" />
+      <small class="muted">{{ t('ai.embeddingHelp') }}</small>
+
       <label for="ai-key">{{ t('ai.apiKey') }}</label>
       <input id="ai-key" v-model="form.apiKey" type="password" autocomplete="off" maxlength="500" dir="ltr" :placeholder="hasKey ? t('ai.keyStored') : ''" :disabled="form.removeKey" data-testid="ai-key" />
       <label v-if="hasKey" class="check"><input v-model="form.removeKey" type="checkbox" data-testid="ai-remove-key" /> {{ t('ai.removeKey') }}</label>
@@ -90,6 +111,18 @@ async function save() {
 
       <Button type="submit" :label="t('common.save')" :loading="saving" :disabled="!valid" data-testid="ai-save" />
     </form>
+
+    <section v-if="index" class="usage" :aria-label="t('ai.index.title')" data-testid="ai-index">
+      <h2>{{ t('ai.index.title') }}</h2>
+      <p>{{ t('ai.index.summary', { pages: index.pages, chunks: index.chunks, embedded: index.embeddedChunks }) }}</p>
+      <p class="muted">{{ index.embeddingsOn ? t('ai.index.hybrid', { model: index.embeddingModel }) : t('ai.index.keywordOnly') }}<template v-if="index.pagesToIndex > 0"> · {{ t('ai.index.pending', { n: index.pagesToIndex }) }}</template></p>
+      <p v-if="index.lastIndexedAt" class="muted small">{{ t('ai.index.last', { time: new Date(index.lastIndexedAt).toLocaleString() }) }}</p>
+      <div class="idx-actions">
+        <Button size="small" outlined icon="pi pi-refresh" :label="t('ai.index.run')" :loading="indexing" data-testid="index-run" @click="runIndex(false)" />
+        <Button size="small" text severity="secondary" icon="pi pi-replay" :label="t('ai.index.rebuild')" :loading="indexing" data-testid="index-rebuild" @click="runIndex(true)" />
+      </div>
+      <small class="muted">{{ t('ai.index.help') }}</small>
+    </section>
 
     <section v-if="usage" class="usage" :aria-label="t('ai.usage')" data-testid="ai-usage">
       <h2>{{ t('ai.usage') }}</h2>
@@ -114,4 +147,6 @@ h2 { margin: 0; font-size: 1.1rem; }
 .warn { color: var(--raavi-danger, #b91c1c); margin: 0; }
 .muted { color: var(--raavi-text-muted); margin: 0; }
 .top { margin: 0; padding-inline-start: 1.2rem; }
+.idx-actions { display: flex; gap: var(--raavi-space-2); flex-wrap: wrap; }
+.small { font-size: 0.82rem; }
 </style>

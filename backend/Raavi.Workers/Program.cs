@@ -8,6 +8,7 @@ using Raavi.Tenancy;
 using Raavi.Tenancy.Application;
 using Raavi.Identity;
 using Raavi.Migration;
+using Raavi.AI;
 using Raavi.Integrations;
 using Raavi.Wiki;
 using Raavi.Wiki.Application;
@@ -28,6 +29,8 @@ builder.Services.AddScoped<TenantFanOut<StaleSweepJob, StaleSweepArgs>>();
 builder.Services.AddMigrationModule(builder.Configuration);
 builder.Services.AddIntegrationsModule(builder.Configuration);
 builder.Services.AddScoped<DatabaseMaintenanceJob>();
+builder.Services.AddAiModule(builder.Configuration);
+builder.Services.AddScoped<TenantFanOut<Raavi.AI.AiIndexJob, Raavi.AI.AiIndexArgs>>();
 
 var host = builder.Build();
 SandboxCommand.WarnIfDrifted(builder.Environment.ContentRootPath, builder.Configuration["Raavi:SandboxPath"]!, host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Raavi.Sandbox"));
@@ -41,11 +44,21 @@ recurring.AddOrUpdate<DomainVerificationJob>(
     j => j.RunAsync(CancellationToken.None),
     Cron.Hourly());
 
+// Workspace deletion (ADR-050): once a day the workspaces whose grace period has ended are purged.
+recurring.AddOrUpdate<TenantPurgeJob>(TenantPurgeJob.RecurringJobId, "maintenance", j => j.RunAsync(CancellationToken.None), Cron.Daily(4));
+
 // Time-based workflow trigger: once a day every active tenant gets a stale-page sweep (ADR-033).
 recurring.AddOrUpdate<TenantFanOut<StaleSweepJob, StaleSweepArgs>>(
     StaleSweepJob.RecurringJobId,
     "maintenance",
     j => j.RunAsync(new StaleSweepArgs(1), CancellationToken.None),
     Cron.Daily(3));
+
+// Smart-search index (ADR-049): every 15 minutes each active tenant indexes what changed.
+recurring.AddOrUpdate<TenantFanOut<Raavi.AI.AiIndexJob, Raavi.AI.AiIndexArgs>>(
+    Raavi.AI.AiIndexJob.RecurringJobId,
+    "maintenance",
+    j => j.RunAsync(new Raavi.AI.AiIndexArgs(1), CancellationToken.None),
+    "*/15 * * * *");
 
 await host.RunAsync().ConfigureAwait(false);

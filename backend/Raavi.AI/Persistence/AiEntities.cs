@@ -28,6 +28,9 @@ public sealed class AiSettings : Entity, ITenantOwned
 
     public string? ProtectedApiKey { get; private set; }
 
+    /// <summary>Embedding model for smart search (same provider and key). Empty = keyword search only.</summary>
+    public string EmbeddingModel { get; private set; } = string.Empty;
+
     /// <summary>Tokens (prompt + completion) all members together may use per calendar month (UTC); 0 = unlimited.</summary>
     public int MonthlyTokenCap { get; private set; }
 
@@ -43,8 +46,15 @@ public sealed class AiSettings : Entity, ITenantOwned
     public static AiSettings Create(Guid userId, DateTimeOffset now) => new() { UpdatedBy = userId, UpdatedAt = now };
 
     /// <summary>Replaces the settings. <paramref name="protectedKey"/> null keeps the stored key; an empty string removes it.</summary>
-    public void Update(bool enabled, string baseUrl, string? model, string? protectedKey, int monthlyTokenCap, int maxOutputTokens, Guid userId, DateTimeOffset now)
+    public void Update(bool enabled, string baseUrl, string? model, string? protectedKey, int monthlyTokenCap, int maxOutputTokens, Guid userId, DateTimeOffset now, string? embeddingModel = null)
     {
+        var em = (embeddingModel ?? string.Empty).Trim();
+        if (em.Length > MaxModelLength || em.Any(char.IsControl))
+        {
+            throw new DomainException("ai.model_invalid", $"The model name needs 1–{MaxModelLength} characters.");
+        }
+
+        EmbeddingModel = em;
         var m = (model ?? string.Empty).Trim();
         if (m.Length is 0 or > MaxModelLength || m.Any(char.IsControl))
         {
@@ -110,7 +120,76 @@ public sealed class AiUsage : Entity, ITenantOwned
         new() { UserId = userId, Feature = feature, Model = model, PromptTokens = prompt, CompletionTokens = completion, Outcome = outcome, ErrorCode = errorCode, At = now };
 }
 
-/// <summary>Tenant-scoped AI state (schema <c>ai</c>): settings and usage. Every table is RLS-protected.</summary>
+/// <summary>One searchable passage of a page (ADR-049). A copy of content: it never decides who may see it (the Wiki module's permission check does, at query time).</summary>
+public sealed class AiChunk : Entity, ITenantOwned
+{
+    public const int MaxTextLength = 1300;
+
+    private AiChunk() { }
+
+    public Guid TenantId { get; private set; }
+
+    public Guid ContentId { get; private set; }
+
+    public Guid SpaceId { get; private set; }
+
+    public Guid VersionId { get; private set; }
+
+    public int Position { get; private set; }
+
+    public string Title { get; private set; } = string.Empty;
+
+    public string SpaceKey { get; private set; } = string.Empty;
+
+    public string Text { get; private set; } = string.Empty;
+
+    /// <summary>The text folded for searching (<see cref="Raavi.Application.Common.SearchText"/>): the keyword search matches against this, so spelling variants meet.</summary>
+    public string Norm { get; private set; } = string.Empty;
+
+    public string TitleNorm { get; private set; } = string.Empty;
+
+    /// <summary>Unit-length float32 vector (little-endian), or null when no embedding model was configured when the page was indexed.</summary>
+    public byte[]? Embedding { get; private set; }
+
+    public static AiChunk Create(Guid contentId, Guid spaceId, Guid versionId, int position, string title, string spaceKey, string text, byte[]? embedding) =>
+        new()
+        {
+            ContentId = contentId, SpaceId = spaceId, VersionId = versionId, Position = position, Title = title, SpaceKey = spaceKey, Text = text, Embedding = embedding,
+            Norm = Raavi.Application.Common.SearchText.Normalize(text), TitleNorm = Raavi.Application.Common.SearchText.Normalize(title),
+        };
+}
+
+/// <summary>Which version of which page the index holds, and with which embedding model: the index job's memory (a changed version or model means re-index).</summary>
+public sealed class AiIndexedPage : Entity, ITenantOwned
+{
+    private AiIndexedPage() { }
+
+    public Guid TenantId { get; private set; }
+
+    public Guid ContentId { get; private set; }
+
+    public Guid VersionId { get; private set; }
+
+    public int ChunkCount { get; private set; }
+
+    /// <summary>The embedding model used ("" = none).</summary>
+    public string EmbeddingModel { get; private set; } = string.Empty;
+
+    public DateTimeOffset IndexedAt { get; private set; }
+
+    public static AiIndexedPage Create(Guid contentId, Guid versionId, int chunks, string embeddingModel, DateTimeOffset now) =>
+        new() { ContentId = contentId, VersionId = versionId, ChunkCount = chunks, EmbeddingModel = embeddingModel, IndexedAt = now };
+
+    public void Update(Guid versionId, int chunks, string embeddingModel, DateTimeOffset now)
+    {
+        VersionId = versionId;
+        ChunkCount = chunks;
+        EmbeddingModel = embeddingModel;
+        IndexedAt = now;
+    }
+}
+
+/// <summary>Tenant-scoped AI state (schema <c>ai</c>): settings, usage and the search index. Every table is RLS-protected.</summary>
 public sealed class AiDbContext(DbContextOptions<AiDbContext> options, ITenantContext tenantContext) : RaaviDbContextBase(options, tenantContext)
 {
     public const string HistorySchema = "ai";
@@ -118,6 +197,10 @@ public sealed class AiDbContext(DbContextOptions<AiDbContext> options, ITenantCo
     public DbSet<AiSettings> Settings => Set<AiSettings>();
 
     public DbSet<AiUsage> Usage => Set<AiUsage>();
+
+    public DbSet<AiChunk> Chunks => Set<AiChunk>();
+
+    public DbSet<AiIndexedPage> IndexedPages => Set<AiIndexedPage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -130,6 +213,7 @@ public sealed class AiDbContext(DbContextOptions<AiDbContext> options, ITenantCo
             b.Property(x => x.BaseUrl).HasMaxLength(AiSettings.MaxUrlLength);
             b.Property(x => x.Model).HasMaxLength(AiSettings.MaxModelLength);
             b.Property(x => x.ProtectedApiKey).HasMaxLength(2000);
+            b.Property(x => x.EmbeddingModel).HasMaxLength(AiSettings.MaxModelLength);
             b.Property(x => x.Revision).IsConcurrencyToken();
             b.HasIndex(x => x.TenantId).IsUnique();
         });
@@ -144,6 +228,28 @@ public sealed class AiDbContext(DbContextOptions<AiDbContext> options, ITenantCo
             b.Property(x => x.Outcome).HasConversion<int>();
             b.HasIndex(x => new { x.TenantId, x.At });
             b.HasIndex(x => new { x.TenantId, x.UserId, x.At });
+        });
+
+        modelBuilder.Entity<AiChunk>(b =>
+        {
+            b.ToTable("Chunks", HistorySchema);
+            Keys(b);
+            b.Property(x => x.Title).HasMaxLength(255);
+            b.Property(x => x.SpaceKey).HasMaxLength(32).IsUnicode(false);
+            b.Property(x => x.Text).HasMaxLength(AiChunk.MaxTextLength);
+            b.Property(x => x.Norm).HasMaxLength(AiChunk.MaxTextLength);
+            b.Property(x => x.TitleNorm).HasMaxLength(255);
+            b.Property(x => x.Embedding).HasColumnType("varbinary(max)");
+            b.HasIndex(x => new { x.TenantId, x.ContentId, x.Position }).IsUnique();
+            b.HasIndex(x => new { x.TenantId, x.SpaceKey });
+        });
+
+        modelBuilder.Entity<AiIndexedPage>(b =>
+        {
+            b.ToTable("IndexedPages", HistorySchema);
+            Keys(b);
+            b.Property(x => x.EmbeddingModel).HasMaxLength(AiSettings.MaxModelLength);
+            b.HasIndex(x => new { x.TenantId, x.ContentId }).IsUnique();
         });
 
         base.OnModelCreating(modelBuilder);

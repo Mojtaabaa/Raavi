@@ -52,8 +52,18 @@ watch(q, (value) => {
   }, 200)
 })
 
+async function textSearch() {
+  const text = q.value.trim()
+  visible.value = false
+  await router.push({ name: 'search', query: text ? { q: text } : {} })
+}
+
 async function open(item: Item | undefined) {
-  if (!item) return
+  if (!item) {
+    // Enter with no title match: look in the page TEXT instead
+    if (q.value.trim().length >= 2) await textSearch()
+    return
+  }
   visible.value = false
   if (item.kind === 'space') await router.push({ name: 'space', params: { key: item.space.key } })
   else await router.push(contentRoute(item.item))
@@ -112,6 +122,11 @@ function onKey(e: KeyboardEvent) {
         </template>
       </li>
       <li v-if="q.trim() && items.length === 0" class="muted empty">{{ t('wiki.quickFind.none') }}</li>
+      <li v-if="q.trim().length >= 2" class="text-search" role="option" aria-selected="false" data-testid="palette-text-search" @mousedown.prevent="textSearch">
+        <i class="pi pi-sparkles" aria-hidden="true" />
+        <span class="title">{{ t('wiki.quickFind.textSearch', { q: q.trim() }) }}</span>
+        <small class="muted">{{ t('smartSearch.nav') }}</small>
+      </li>
     </ul>
     <p class="hint muted">{{ t('wiki.quickFind.hint') }}</p>
   </Dialog>
@@ -124,6 +139,7 @@ function onKey(e: KeyboardEvent) {
 .title { flex: 1; overflow-wrap: anywhere; }
 .muted { color: var(--raavi-text-muted); }
 .empty { cursor: default; }
+.text-search { border-block-start: 1px solid var(--raavi-border); margin-block-start: var(--raavi-space-1); }
 .hint { margin: var(--raavi-space-2) 0 0; font-size: 0.8rem; }
 .sr-only { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 </style>

@@ -29,8 +29,6 @@ public static class AiHttp
 /// </summary>
 public sealed class OpenAiChat(IHttpClientFactory clients) : IAiChat
 {
-    private const int MaxResponseBytes = 1_000_000;
-
     public async Task<AiChatResult> CompleteAsync(AiEndpoint endpoint, IReadOnlyList<AiMessage> messages, int maxTokens, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(endpoint);
@@ -47,6 +45,20 @@ public sealed class OpenAiChat(IHttpClientFactory clients) : IAiChat
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", endpoint.ApiKey);
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
+        var bytes = await AiTransport.SendAsync(clients, request, cancellationToken).ConfigureAwait(false);
+        return OpenAiChatParser.Parse(bytes, messages, maxTokens);
+    }
+}
+
+/// <summary>The HTTP exchange shared by chat and embeddings: allow-listed client, error mapping to stable codes, capped response size.</summary>
+public static class AiTransport
+{
+    private const int MaxResponseBytes = 4_000_000;
+
+    public static async Task<byte[]> SendAsync(IHttpClientFactory clients, HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(clients);
+        ArgumentNullException.ThrowIfNull(request);
         HttpResponseMessage response;
         try
         {
@@ -99,12 +111,15 @@ public sealed class OpenAiChat(IHttpClientFactory clients) : IAiChat
                     }
                 }
 
-                return Parse(buffer.ToArray(), messages, maxTokens);
+                return buffer.ToArray();
             }
         }
     }
+}
 
-    private static AiChatResult Parse(byte[] json, IReadOnlyList<AiMessage> messages, int maxTokens)
+public static class OpenAiChatParser
+{
+    public static AiChatResult Parse(byte[] json, IReadOnlyList<AiMessage> messages, int maxTokens)
     {
         try
         {

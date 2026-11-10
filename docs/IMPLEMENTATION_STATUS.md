@@ -14,6 +14,23 @@ Dev API + workers + Vite started; signed in as the dev workspace admin in the bu
 
 **Not covered:** creating/using slides, databases, workflows, approvals, tasks, calendar events; live co-editing between two browsers; AI, webhooks and connectors with real hosts (dev config allows none); PNG/SVG/PPTX/PDF downloads; mobile widths, dark mode, keyboard-only use, screen readers; English UI. Test data left in the dev DB: whiteboard "Browser check board" in space ENGINEERIN.
 
+### 18 — Workspace deletion and the "More" menu (ADR-050)
+
+Delete request (code typed, access stops, 14-day grace by `Raavi:Tenants:DeletionGraceDays`), cancel, purge now / daily `TenantPurgeJob` (generic `TenantId` scan inside the tenant scope, audit kept, tombstone keeps code and slug), system UI with dialogs; header: calendar and approvals moved behind a "More" dropdown (`NavDropdown`, also used by Administration). Tests: 3 backend (request/cancel, purge isolation, daily job), 3 frontend. **Not verified:** purge of a large real tenant (timing, log growth) and of data from every module (only a wiki space was seeded); four-eyes approval and orphaned-user cleanup are not built.
+
+### 17 — Persian search folding and application-shell improvements
+
+Folding (ADR-049 addendum), 213 frontend tests, backend suite re-run; UI: Menu button for narrow screens, "page does not exist" page (was a silent redirect), shortcut list on ?, / opens smart search, quick-find offers a text search, back-to-top button. **Not verified:** folding on real Persian wikis (only constructed examples), phone layout on a real device.
+
+### 16 — Smart search and "ask the wiki" (ADR-049, Phase 11b)
+
+```
+dotnet test Raavi.Tests → 515 passed (7 new: chunker, vectors, scoring/snippets, keyword search without AI, permission leakage incl. prompt and no-call-when-nothing-readable, hybrid with embeddings + failing provider + model change); vitest + smart-search page tests
+live (dev stack, Workers + API): "Index now" → 150 pages / 557 passages indexed in one run from the imported Confluence tenant (785 pages pending, finished by following runs); RAG job registered in Hangfire
+```
+
+Index in SQL Server (`ai.Chunks`, `ai.IndexedPages`, migration `SmartSearchIndex`, RLS), hybrid retrieval (keywords + cosine, reciprocal rank fusion), query-time permission filtering, `AiIndexJob` every 15 minutes, `/ai/search`, `/ai/ask`, index administration, embedding model setting, "Smart search" page. **Not verified:** any real provider (OpenAI-compatible embeddings/chat were exercised against the in-process fake only); search quality on real Persian text (no normalisation of Arabic/Persian letter variants yet); brute-force vector search beyond tens of thousands of passages. **Not done:** ANN store, reranking, indexing of comments/attachments/database rows.
+
 ### 15 — Operations: status page, logs, activity chart, compression, navigation (ADR-048)
 
 ```

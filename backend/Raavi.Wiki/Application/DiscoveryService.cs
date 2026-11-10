@@ -26,12 +26,13 @@ public sealed class DiscoveryService(WikiDbContext db, WikiAuthorizer authz, Spa
 
         var viewableSpaces = (await authz.ViewableSpaceIdsAsync(ct).ConfigureAwait(false)).ToList();
         var upper = q.ToUpperInvariant();
+        var variants = Raavi.Application.Common.SearchText.Variants(q); // ی/ي and ک/ك spellings of the title
         var matchingSpaces = await db.Spaces.AsNoTracking()
-            .Where(s => viewableSpaces.Contains(s.Id) && (s.Name.Contains(q) || s.Key.Contains(upper)))
+            .Where(s => viewableSpaces.Contains(s.Id) && (variants.Any(v => s.Name.Contains(v)) || s.Key.Contains(upper)))
             .OrderBy(s => s.Name).Take(limit).ToListAsync(ct).ConfigureAwait(false);
 
         var candidates = await db.Nodes.AsNoTracking()
-            .Where(n => viewableSpaces.Contains(n.SpaceId) && n.Status == ContentStatus.Current && n.Title.Contains(q))
+            .Where(n => viewableSpaces.Contains(n.SpaceId) && n.Status == ContentStatus.Current && variants.Any(v => n.Title.Contains(v)))
             .OrderByDescending(n => n.UpdatedAt).Take(CandidateLimit).ToListAsync(ct).ConfigureAwait(false);
         var content = await ToListItemsAsync(candidates, limit, ct).ConfigureAwait(false);
         return new QuickFindDto(matchingSpaces.Select(SpaceService.Summary).ToList(), content);

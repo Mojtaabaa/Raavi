@@ -13,9 +13,9 @@ using Raavi.Infrastructure.Http;
 
 namespace Raavi.AI;
 
-public sealed record AiSettingsDto(bool Enabled, string BaseUrl, string Model, bool HasApiKey, int MonthlyTokenCap, int MaxOutputTokens, int Revision, bool HostPolicyConfigured, int TokensThisMonth);
+public sealed record AiSettingsDto(bool Enabled, string BaseUrl, string Model, bool HasApiKey, int MonthlyTokenCap, int MaxOutputTokens, int Revision, bool HostPolicyConfigured, int TokensThisMonth, string EmbeddingModel = "");
 
-public sealed record AiSettingsRequest(bool? Enabled, string? BaseUrl, string? Model, string? ApiKey, int? MonthlyTokenCap, int? MaxOutputTokens);
+public sealed record AiSettingsRequest(bool? Enabled, string? BaseUrl, string? Model, string? ApiKey, int? MonthlyTokenCap, int? MaxOutputTokens, string? EmbeddingModel = null);
 
 public sealed record AiStatusDto(bool Available);
 
@@ -67,7 +67,7 @@ public sealed class AiService(
         var used = await TokensSinceAsync(MonthStart(clock.UtcNow), ct).ConfigureAwait(false);
         return s is null
             ? new AiSettingsDto(false, string.Empty, string.Empty, false, 0, 800, 0, hosts.IsConfigured, used)
-            : new AiSettingsDto(s.Enabled, s.BaseUrl, s.Model, s.ProtectedApiKey is not null, s.MonthlyTokenCap, s.MaxOutputTokensPerRequest, s.Revision, hosts.IsConfigured, used);
+            : new AiSettingsDto(s.Enabled, s.BaseUrl, s.Model, s.ProtectedApiKey is not null, s.MonthlyTokenCap, s.MaxOutputTokensPerRequest, s.Revision, hosts.IsConfigured, used, s.EmbeddingModel);
     }
 
     public async Task<Result<AiSettingsDto>> PutSettingsAsync(int? expectedRevision, AiSettingsRequest request, CancellationToken ct)
@@ -115,7 +115,7 @@ public sealed class AiService(
             return Result<AiSettingsDto>.Failure(new Error("ai.key_required", "Enter an API key before switching AI on.", ErrorKind.Validation));
         }
 
-        settings.Update(enabled, url.ToString(), request.Model, protectedKey, request.MonthlyTokenCap ?? 0, request.MaxOutputTokens ?? 800, current.UserId, now);
+        settings.Update(enabled, url.ToString(), request.Model, protectedKey, request.MonthlyTokenCap ?? 0, request.MaxOutputTokens ?? 800, current.UserId, now, request.EmbeddingModel);
         await db.SaveChangesAsync(ct).ConfigureAwait(false);
         return Result<AiSettingsDto>.Success(await GetSettingsAsync(ct).ConfigureAwait(false));
     }

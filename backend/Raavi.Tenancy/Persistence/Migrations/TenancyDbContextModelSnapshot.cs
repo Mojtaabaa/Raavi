@@ -176,6 +176,19 @@ namespace Raavi.Tenancy.Persistence.Migrations
                     b.Property<DateTimeOffset?>("DeactivatedAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("DeletionRequestedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("DeletionRequestedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTimeOffset?>("DeletionScheduledFor")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<string>("DisplayNameEn")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -200,6 +213,9 @@ namespace Raavi.Tenancy.Persistence.Migrations
                         .UseCollation("Latin1_General_100_BIN2");
 
                     b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("StatusBeforeDeletion")
                         .HasColumnType("int");
 
                     b.Property<string>("StatusReason")

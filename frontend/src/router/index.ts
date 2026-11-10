@@ -49,6 +49,7 @@ export const routes: RouteRecordRaw[] = [
     ],
   },
   { path: '/labels/:name', name: 'label', component: () => import('@/modules/wiki/views/LabelView.vue'), meta: { host: 'tenant', requires: 'user' } },
+  { path: '/search', name: 'search', component: () => import('@/modules/ai/SmartSearchView.vue'), meta: { host: 'tenant', requires: 'user' } },
   { path: '/admin/activity', name: 'admin-activity', component: () => import('@/modules/administration/views/ActivityLogView.vue'), meta: { host: 'tenant', requires: 'tenantAdmin' } },
   { path: '/admin/permissions', name: 'admin-permissions', component: () => import('@/modules/wiki/views/GlobalPermissionsView.vue'), meta: { host: 'tenant', requires: 'tenantAdmin' } },
   { path: '/login', name: 'login', component: () => import('@/modules/identity/views/LoginView.vue'), meta: { host: 'tenant', guestOnly: true } },
@@ -69,7 +70,7 @@ export const routes: RouteRecordRaw[] = [
   { path: '/system/tenants', name: 'system-tenants', component: () => import('@/modules/tenants/views/SystemTenantsView.vue'), meta: { host: 'system', requires: 'systemAdmin' } },
   { path: '/status', name: 'status', component: () => import('@/modules/status/StatusView.vue'), meta: { bare: true, public: true } },
   { path: '/not-found', name: 'not-found', component: () => import('@/modules/tenants/views/WorkspaceNotFound.vue'), meta: { bare: true } },
-  { path: '/:pathMatch(.*)*', redirect: '/' },
+  { path: '/:pathMatch(.*)*', name: 'not-found-page', component: () => import('@/modules/tenants/views/NotFoundPage.vue') },
 ]
 
 let bootstrapped = false

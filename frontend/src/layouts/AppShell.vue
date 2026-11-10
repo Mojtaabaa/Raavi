@@ -17,6 +17,9 @@ import NotificationBell from '@/modules/notifications/NotificationBell.vue'
 import BrandLogo from '@/app/BrandLogo.vue'
 import HelpLink from '@/app/HelpLink.vue'
 import Breadcrumbs from '@/app/Breadcrumbs.vue'
+import ShortcutsDialog from '@/app/ShortcutsDialog.vue'
+import NavDropdown, { type NavItem } from './NavDropdown.vue'
+import BackToTop from '@/app/BackToTop.vue'
 import ThemePicker from '@/app/ThemePicker.vue'
 import Popover from 'primevue/popover'
 import UserAvatar from '@/app/UserAvatar.vue'
@@ -65,9 +68,9 @@ const brandName = computed(() => {
 })
 const isSystemHost = computed(() => host.context?.kind === 'system')
 
-type NavItem = { to: { name: string }; label: string; icon: string }
-
-const nav = computed<NavItem[]>(() => {
+/** Items used every day stay in the bar; the rest sit behind "More" (on narrow screens everything is in the folded menu anyway). */
+const RARELY = new Set(['calendar', 'approvals'])
+const allNav = computed<NavItem[]>(() => {
   const me = auth.me
   if (!me) return []
   if (isSystemHost.value) {
@@ -84,8 +87,12 @@ const nav = computed<NavItem[]>(() => {
     { to: { name: 'tasks' }, label: t('nav.tasks'), icon: 'pi pi-check-square' },
     { to: { name: 'calendar' }, label: t('nav.calendar'), icon: 'pi pi-calendar' },
     { to: { name: 'approvals' }, label: t('nav.approvals'), icon: 'pi pi-verified' },
+    { to: { name: 'search' }, label: t('smartSearch.nav'), icon: 'pi pi-sparkles' },
   ]
 })
+
+const nav = computed(() => allNav.value.filter((i) => !RARELY.has(i.to.name)))
+const moreNav = computed(() => allNav.value.filter((i) => RARELY.has(i.to.name)))
 
 /** Administration pages of a workspace administrator: one menu instead of nine header links (the header overflowed on narrow screens). */
 const adminNav = computed<NavItem[]>(() => {
@@ -104,22 +111,6 @@ const adminNav = computed<NavItem[]>(() => {
     { to: { name: 'admin-migrations' }, label: t('nav.migrations'), icon: 'pi pi-cloud-download' },
   ]
 })
-const adminOpen = ref(false)
-const adminRoot = ref<HTMLElement | null>(null)
-const adminActive = computed(() => adminNav.value.some((i) => route?.name === i.to.name))
-function onDocumentClick(e: MouseEvent) {
-  if (adminOpen.value && adminRoot.value && !adminRoot.value.contains(e.target as Node)) adminOpen.value = false
-}
-function onAdminKey(e: KeyboardEvent) {
-  if (e.key === 'Escape' && adminOpen.value) {
-    adminOpen.value = false
-    ;(adminRoot.value?.querySelector('button') as HTMLElement | null)?.focus()
-  }
-}
-watch(() => route?.fullPath, () => (adminOpen.value = false))
-onMounted(() => document.addEventListener('click', onDocumentClick))
-onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
-
 /** Workspace switcher: the signed-in user's own active workspaces (each workspace host has its own sign-in). */
 const workspaces = ref<Workspace[]>([])
 async function loadWorkspaces() {
@@ -134,8 +125,25 @@ function switchWorkspace(w: Workspace | null) {
 
 /** Quick find (Ctrl/⌘+K) on tenant hosts for signed-in members. */
 const paletteOpen = ref(false)
+const shortcutsOpen = ref(false)
+const menuOpen = ref(false) // the navigation folds behind a button on narrow screens
+watch(() => route?.fullPath, () => (menuOpen.value = false))
+/** True while the person is typing somewhere: single-key shortcuts must not fire then. */
+const isTyping = (t: EventTarget | null) => t instanceof HTMLElement && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName))
 const canSearch = computed(() => !!auth.me && !isSystemHost.value)
 function onGlobalKey(e: KeyboardEvent) {
+  if (!e.ctrlKey && !e.metaKey && !e.altKey && !isTyping(e.target)) {
+    if (e.key === '?') {
+      e.preventDefault()
+      shortcutsOpen.value = true
+      return
+    }
+    if (e.key === '/' && canSearch.value) {
+      e.preventDefault()
+      void router.push({ name: 'search' })
+      return
+    }
+  }
   if (canSearch.value && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
     e.preventDefault()
     paletteOpen.value = true
@@ -158,20 +166,15 @@ async function signOut() {
       <span class="brand-name" data-testid="brand-name">{{ brandName }}</span>
       <Tag v-if="isSystemHost" severity="secondary" :value="t('host.systemBadge')" data-testid="system-badge" />
     </div>
-    <nav v-if="nav.length" class="nav" :aria-label="t('nav.main')">
+    <button v-if="nav.length" type="button" class="menu-toggle" :aria-expanded="menuOpen" aria-controls="main-nav" :aria-label="t('shell.menu')" data-testid="menu-toggle" @click="menuOpen = !menuOpen">
+      <i :class="menuOpen ? 'pi pi-times' : 'pi pi-bars'" aria-hidden="true" /> <span>{{ t('shell.menu') }}</span>
+    </button>
+    <nav v-if="nav.length" id="main-nav" :class="['nav', { open: menuOpen }]" :aria-label="t('nav.main')">
       <RouterLink v-for="item in nav" :key="item.label" :to="item.to" class="nav-link" active-class="active">
         <i :class="item.icon" aria-hidden="true" /> <span>{{ item.label }}</span>
       </RouterLink>
-      <div v-if="adminNav.length" ref="adminRoot" class="admin-menu" @keydown="onAdminKey">
-        <button type="button" :class="['nav-link', 'admin-toggle', { active: adminActive }]" aria-haspopup="true" :aria-expanded="adminOpen" data-testid="admin-menu" @click="adminOpen = !adminOpen">
-          <i class="pi pi-cog" aria-hidden="true" /> <span>{{ t('nav.administration') }}</span> <i class="pi pi-angle-down" aria-hidden="true" />
-        </button>
-        <ul v-if="adminOpen" class="admin-list" :aria-label="t('nav.administration')" data-testid="admin-list">
-          <li v-for="item in adminNav" :key="item.label">
-            <RouterLink :to="item.to" class="nav-link" active-class="active"><i :class="item.icon" aria-hidden="true" /> <span>{{ item.label }}</span></RouterLink>
-          </li>
-        </ul>
-      </div>
+      <NavDropdown v-if="moreNav.length" :items="moreNav" :label="t('nav.more')" icon="pi pi-ellipsis-h" toggle-testid="more-menu" list-testid="more-list" />
+      <NavDropdown v-if="adminNav.length" :items="adminNav" :label="t('nav.administration')" icon="pi pi-cog" toggle-testid="admin-menu" list-testid="admin-list" />
     </nav>
     <div class="end">
       <SelectButton v-model="current" :options="options" option-label="label" option-value="code" :allow-empty="false" :aria-label="t('shell.language')" data-testid="locale-switch" />
@@ -198,6 +201,8 @@ async function signOut() {
     </div>
   </header>
   <CommandPalette v-if="canSearch" v-model:visible="paletteOpen" />
+  <ShortcutsDialog v-model:visible="shortcutsOpen" />
+  <BackToTop />
   <main id="main" class="shell-main" tabindex="-1">
     <Breadcrumbs v-if="auth.me" />
     <slot />
@@ -221,25 +226,14 @@ async function signOut() {
 .brand { display: flex; align-items: center; gap: var(--raavi-space-2); font-weight: 700; }
 .brand-mark { flex: none; }
 .nav { display: flex; gap: var(--raavi-space-1); flex-wrap: wrap; align-items: center; }
-.admin-menu { position: relative; }
-.admin-toggle { border: 0; background: transparent; font: inherit; cursor: pointer; }
-.admin-list {
-  position: absolute;
-  inset-inline-start: 0;
-  inset-block-start: 100%;
-  z-index: 20;
-  min-inline-size: 14rem;
-  margin: 0;
-  padding: var(--raavi-space-1);
-  list-style: none;
-  background: var(--raavi-surface);
-  border: 1px solid var(--raavi-border);
-  border-radius: var(--raavi-radius-sm);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
-  display: grid;
-  gap: 2px;
+.menu-toggle { display: none; align-items: center; gap: var(--raavi-space-1); font: inherit; border: 1px solid var(--raavi-border); background: transparent; color: var(--raavi-text); padding: 0.3rem 0.7rem; border-radius: var(--raavi-radius-sm); cursor: pointer; }
+/* Narrow screens: the navigation sits behind a "Menu" button as a column; the administration list opens inline instead of floating. */
+@media (max-width: 960px) {
+  .menu-toggle { display: inline-flex; }
+  .nav { display: none; order: 9; flex-basis: 100%; flex-direction: column; align-items: stretch; padding-block: var(--raavi-space-2); border-block-start: 1px solid var(--raavi-border); }
+  .nav.open { display: flex; }
+  .nav .nav-link { padding: 0.55rem var(--raavi-space-3); }
 }
-.admin-list .nav-link { display: flex; }
 .nav-link {
   display: inline-flex;
   align-items: center;

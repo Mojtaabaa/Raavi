@@ -100,6 +100,9 @@ export interface Tenant {
   createdAt: string
   /** Address of the workspace (system list only). */
   url?: string | null
+  /** When a workspace waiting for deletion is purged automatically; set when the status is PendingDeletion. */
+  deletionScheduledFor?: string | null
+  deletedAt?: string | null
 }
 
 export const identityApi = {
@@ -164,6 +167,9 @@ export const identityApi = {
   tenants: () => api<{ items: Tenant[]; total: number }>('GET', '/system/tenants?take=100'),
   createTenant: (t: { code: string; slug: string; displayNameFa: string; displayNameEn: string; defaultLocale: string }) => api<Tenant>('POST', '/system/tenants', t),
   suspendTenant: (id: string, reason: string) => api<Tenant>('POST', `/system/tenants/${id}/suspend`, { reason }),
+  requestTenantDeletion: (id: string, reason: string, confirmCode: string) => api<Tenant>('POST', `/system/tenants/${id}/delete-request`, { reason, confirmCode }),
+  cancelTenantDeletion: (id: string) => api<Tenant>('POST', `/system/tenants/${id}/cancel-deletion`),
+  purgeTenant: (id: string, confirmCode: string) => api<Tenant>('POST', `/system/tenants/${id}/purge`, { confirmCode }),
   activateTenant: (id: string) => api<Tenant>('POST', `/system/tenants/${id}/activate`),
   inviteIntoTenant: (id: string, email: string, tenantAdministrator: boolean) =>
     api<InvitationCreated>('POST', `/system/tenants/${id}/invitations`, { email, tenantAdministrator }),

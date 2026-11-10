@@ -9,6 +9,7 @@ type Translate = (key: string) => string
 const LABEL: Record<string, string> = {
   spaces: 'nav.spaces',
   tasks: 'nav.tasks',
+  search: 'smartSearch.title',
   calendar: 'nav.calendar',
   approvals: 'nav.approvals',
   profile: 'profile.title',

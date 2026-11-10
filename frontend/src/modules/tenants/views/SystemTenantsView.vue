@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import DataTable from 'primevue/datatable'
@@ -27,6 +27,10 @@ const createOpen = ref(false)
 const form = reactive({ code: '', slug: '', displayNameFa: '', displayNameEn: '', defaultLocale: 'fa' })
 const suspendTarget = ref<Tenant | null>(null)
 const reason = ref('')
+// Deletion: "request" starts the grace period (access stops, nothing is removed), "purge" removes the data for good; both need the code typed.
+const deleteTarget = ref<{ tenant: Tenant; purge: boolean } | null>(null)
+const deleteReason = ref('')
+const deleteCode = ref('')
 const inviteTarget = ref<Tenant | null>(null)
 const inviteEmail = ref('')
 const link = ref<string | null>(null)
@@ -114,6 +118,42 @@ async function suspend() {
   }
 }
 
+function openDelete(tenant: Tenant, purge: boolean) {
+  deleteTarget.value = { tenant, purge }
+  deleteReason.value = ''
+  deleteCode.value = ''
+}
+
+const deleteReady = computed(() => {
+  const d = deleteTarget.value
+  if (!d) return false
+  return deleteCode.value.trim().toLowerCase() === d.tenant.code.toLowerCase() && (d.purge || deleteReason.value.trim().length > 0)
+})
+
+async function confirmDelete() {
+  const d = deleteTarget.value
+  if (!d || !deleteReady.value) return
+  try {
+    if (d.purge) await identityApi.purgeTenant(d.tenant.id, deleteCode.value)
+    else await identityApi.requestTenantDeletion(d.tenant.id, deleteReason.value, deleteCode.value)
+    toast.add({ severity: 'success', summary: t(d.purge ? 'tenants.purged' : 'tenants.deletionRequested', { name: name(d.tenant) }), life: 5000 })
+    deleteTarget.value = null
+    await load()
+  } catch (e) {
+    fail(e)
+  }
+}
+
+async function cancelDeletion(tenant: Tenant) {
+  try {
+    await identityApi.cancelTenantDeletion(tenant.id)
+    toast.add({ severity: 'success', summary: t('tenants.deletionCancelled', { name: name(tenant) }), life: 4000 })
+    await load()
+  } catch (e) {
+    fail(e)
+  }
+}
+
 async function activate(tenant: Tenant) {
   try {
     await identityApi.activateTenant(tenant.id)
@@ -135,7 +175,7 @@ async function invite() {
   }
 }
 
-const severity = (s: Tenant['status']) => (s === 'Active' ? 'success' : s === 'Provisioning' ? 'info' : 'warn')
+const severity = (s: Tenant['status']) => (s === 'Active' ? 'success' : s === 'Provisioning' ? 'info' : s === 'PendingDeletion' || s === 'Deleted' ? 'danger' : 'warn')
 const name = (x: Tenant) => (localeStore.locale === 'fa' ? x.displayNameFa : x.displayNameEn)
 
 onMounted(load)
@@ -161,16 +201,25 @@ onMounted(load)
       </Column>
       <Column :header="t('tenants.created')"><template #body="{ data }">{{ formatDate(data.createdAt, localeStore.locale) }}</template></Column>
       <Column :header="t('common.status')">
-        <template #body="{ data }"><Tag :severity="severity(data.status)" :value="t(`tenants.statuses.${data.status}`)" /></template>
+        <template #body="{ data }">
+          <Tag :severity="severity(data.status)" :value="t(`tenants.statuses.${data.status}`)" />
+          <div v-if="data.status === 'PendingDeletion' && data.deletionScheduledFor" class="muted small" :data-testid="`tenant-due-${data.code}`">{{ t('tenants.purgeOn', { date: formatDate(data.deletionScheduledFor, localeStore.locale) }) }}</div>
+        </template>
       </Column>
       <Column :header="t('common.actions')">
         <template #body="{ data }">
-          <div class="actions">
+          <div v-if="data.status === 'Deleted'" class="muted small">{{ t('tenants.deletedOn', { date: formatDate(data.deletedAt, localeStore.locale) }) }}</div>
+          <div v-else-if="data.status === 'PendingDeletion'" class="actions">
+            <Button text size="small" icon="pi pi-undo" :label="t('tenants.cancelDeletion')" :data-testid="`tenant-cancel-delete-${data.code}`" @click="cancelDeletion(data)" />
+            <Button text size="small" severity="danger" icon="pi pi-trash" :label="t('tenants.purgeNow')" :data-testid="`tenant-purge-${data.code}`" @click="openDelete(data, true)" />
+          </div>
+          <div v-else class="actions">
             <Button text size="small" :label="t('tenants.inviteAdmin')" @click="inviteTarget = data" />
             <Button text size="small" icon="pi pi-image" :label="t('tenants.logo')" :data-testid="`tenant-logo-${data.code}`" @click="openLogo(data)" />
             <Button text size="small" severity="secondary" icon="pi pi-trash" :aria-label="t('tenants.logoRemove')" :title="t('tenants.logoRemove')" @click="removeLogo(data)" />
             <Button v-if="data.status === 'Active'" text size="small" severity="warn" :label="t('tenants.suspend')" @click="suspendTarget = data" />
             <Button v-else-if="data.status === 'Suspended' || data.status === 'Deactivated'" text size="small" :label="t('tenants.activate')" @click="activate(data)" />
+            <Button text size="small" severity="danger" icon="pi pi-times-circle" :label="t('tenants.delete')" :data-testid="`tenant-delete-${data.code}`" @click="openDelete(data, false)" />
           </div>
         </template>
       </Column>
@@ -200,6 +249,19 @@ onMounted(load)
       </form>
     </Dialog>
 
+    <Dialog :visible="!!deleteTarget" modal :header="deleteTarget?.purge ? t('tenants.purgeNow') : t('tenants.delete')" :style="{ inlineSize: 'min(32rem, 95vw)' }" @update:visible="(v) => !v && (deleteTarget = null)">
+      <form v-if="deleteTarget" class="form" data-testid="delete-dialog" @submit.prevent="confirmDelete">
+        <p class="warning">{{ deleteTarget.purge ? t('tenants.purgeWarning') : t('tenants.deleteWarning') }}</p>
+        <template v-if="!deleteTarget.purge">
+          <label for="del-reason">{{ t('tenants.reason') }}</label>
+          <InputText id="del-reason" v-model="deleteReason" data-testid="delete-reason" />
+        </template>
+        <label for="del-code">{{ t('tenants.typeCode', { code: deleteTarget.tenant.code }) }}</label>
+        <InputText id="del-code" v-model="deleteCode" dir="ltr" autocomplete="off" data-testid="delete-code" />
+        <Button type="submit" severity="danger" :disabled="!deleteReady" :label="deleteTarget.purge ? t('tenants.purgeNow') : t('tenants.delete')" data-testid="delete-confirm" />
+      </form>
+    </Dialog>
+
     <Dialog :visible="!!inviteTarget" modal :header="t('tenants.inviteAdmin')" :style="{ inlineSize: 'min(28rem, 95vw)' }" @update:visible="(v) => !v && (inviteTarget = null)">
       <form class="form" @submit.prevent="invite">
         <label for="inv-email">{{ t('common.email') }}</label>
@@ -225,4 +287,5 @@ h1 { margin: 0; font-size: 1.4rem; }
 .address { color: var(--p-primary-color); text-decoration: none; word-break: break-all; }
 .address:hover { text-decoration: underline; }
 .small { font-size: 0.8rem; }
+.warning { margin: 0; padding: var(--raavi-space-2) var(--raavi-space-3); border-radius: var(--raavi-radius-sm); background: color-mix(in srgb, var(--p-red-500, #dc2626) 12%, transparent); }
 </style>

@@ -75,7 +75,7 @@ describe('ai', () => {
     await flushPromises()
     const put = f.calls.find((c) => c.method === 'PUT')!
     expect(put.headers['if-match'] ?? put.headers['If-Match']).toBe('"r3"')
-    expect(put.body).toEqual({ enabled: true, baseUrl: 'https://ai.example.test/v1/', model: 'other-model', monthlyTokenCap: 1000, maxOutputTokens: 800 }) // no apiKey: the stored one stays
+    expect(put.body).toEqual({ enabled: true, baseUrl: 'https://ai.example.test/v1/', model: 'other-model', embeddingModel: '', monthlyTokenCap: 1000, maxOutputTokens: 800 }) // no apiKey: the stored one stays
 
     // Typing a key sends it; removing sends an empty string.
     const key = w.get('[data-testid="ai-key"]')

@@ -40,6 +40,18 @@ public sealed partial class Tenant : Entity
 
     public DateTimeOffset? SubscriptionEndsAt { get; private set; }
 
+    /// <summary>When deletion was requested and when the data will be purged automatically (grace period, ADR-050).</summary>
+    public DateTimeOffset? DeletionRequestedAt { get; private set; }
+
+    public DateTimeOffset? DeletionScheduledFor { get; private set; }
+
+    public string? DeletionRequestedBy { get; private set; }
+
+    /// <summary>The status to return to when the deletion is cancelled.</summary>
+    public TenantStatus? StatusBeforeDeletion { get; private set; }
+
+    public DateTimeOffset? DeletedAt { get; private set; }
+
     public byte[] RowVersion { get; private set; } = [];
 
     public static Tenant Create(string code, string slug, string displayNameFa, string displayNameEn, DateTimeOffset now)
@@ -119,6 +131,51 @@ public sealed partial class Tenant : Entity
         Status = TenantStatus.Deactivated;
         StatusReason = validReason;
         DeactivatedAt = now;
+    }
+
+    /// <summary>Any live status → PendingDeletion: access stops now, the data is purged when <paramref name="scheduledFor"/> passes.</summary>
+    public void RequestDeletion(string reason, string requestedBy, DateTimeOffset scheduledFor, DateTimeOffset now)
+    {
+        if (Status is TenantStatus.PendingDeletion or TenantStatus.Deleted)
+        {
+            throw Transition("request deletion of");
+        }
+
+        var validReason = RequireReason(reason);
+        StatusBeforeDeletion = Status;
+        Status = TenantStatus.PendingDeletion;
+        StatusReason = validReason;
+        DeletionRequestedAt = now;
+        DeletionScheduledFor = scheduledFor;
+        DeletionRequestedBy = requestedBy;
+    }
+
+    /// <summary>PendingDeletion → the status before the request (nothing was purged yet).</summary>
+    public void CancelDeletion()
+    {
+        if (Status != TenantStatus.PendingDeletion)
+        {
+            throw Transition("cancel the deletion of");
+        }
+
+        Status = StatusBeforeDeletion is null or TenantStatus.Provisioning ? TenantStatus.Deactivated : StatusBeforeDeletion.Value;
+        StatusReason = null;
+        StatusBeforeDeletion = null;
+        DeletionRequestedAt = null;
+        DeletionScheduledFor = null;
+        DeletionRequestedBy = null;
+    }
+
+    /// <summary>PendingDeletion → Deleted (a tombstone: code and slug stay reserved, the data is gone).</summary>
+    public void MarkDeleted(DateTimeOffset now)
+    {
+        if (Status != TenantStatus.PendingDeletion)
+        {
+            throw Transition("purge");
+        }
+
+        Status = TenantStatus.Deleted;
+        DeletedAt = now;
     }
 
     private DomainException Transition(string action) =>

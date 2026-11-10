@@ -46,6 +46,8 @@ public sealed class TenancyDbContext(DbContextOptions<TenancyDbContext> options,
             b.Property(x => x.DisplayNameEn).HasMaxLength(Tenant.MaxDisplayNameLength);
             b.Property(x => x.Status).HasConversion<int>();
             b.Property(x => x.StatusReason).HasMaxLength(500);
+            b.Property(x => x.DeletionRequestedBy).HasMaxLength(200);
+            b.Property(x => x.StatusBeforeDeletion).HasConversion<int?>();
             b.Property(x => x.RowVersion).IsRowVersion();
             b.HasIndex(x => x.Code).IsUnique();
             b.HasIndex(x => x.Slug).IsUnique();

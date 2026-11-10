@@ -45,10 +45,46 @@ public sealed class FakeAiProvider : HttpMessageHandler
         }
 
         Status = HttpStatusCode.OK;
+        EmbeddingStatus = null;
         Reply = "A short summary.";
         OmitUsage = false;
         PromptTokens = 120;
         CompletionTokens = 30;
+    }
+
+    /// <summary>Embedding dimension of the fake model (a bag of hashed words: texts that share words are similar).</summary>
+    public const int Dims = 32;
+
+    /// <summary>When set, embedding requests fail with this status.</summary>
+    public HttpStatusCode? EmbeddingStatus { get; set; }
+
+    private HttpResponseMessage Embeddings(string requestText)
+    {
+        if (EmbeddingStatus is { } failure)
+        {
+            return new HttpResponseMessage(failure) { Content = new StringContent("{}", Encoding.UTF8, "application/json") };
+        }
+
+        var inputs = JsonDocument.Parse(requestText).RootElement.GetProperty("input").EnumerateArray().Select(i => i.GetString() ?? string.Empty).ToList();
+        var data = inputs.Select((t, index) => new { index, embedding = Vector(t) }).ToList();
+        return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(new { data, usage = new { total_tokens = inputs.Sum(i => i.Length) / 4 + 1 } }), Encoding.UTF8, "application/json") };
+    }
+
+    public static float[] Vector(string text)
+    {
+        var v = new float[Dims];
+        foreach (var word in System.Text.RegularExpressions.Regex.Matches(text.ToLowerInvariant(), @"[\p{L}\p{N}]{2,}").Select(m => m.Value))
+        {
+            var h = 17;
+            foreach (var c in word)
+            {
+                h = unchecked((h * 31) + c);
+            }
+
+            v[Math.Abs(h) % Dims] += 1f;
+        }
+
+        return v;
     }
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -57,6 +93,11 @@ public sealed class FakeAiProvider : HttpMessageHandler
         lock (_calls)
         {
             _calls.Add(new AiCall(request.RequestUri!, request.Headers.Authorization?.ToString(), JsonDocument.Parse(text).RootElement.Clone()));
+        }
+
+        if (request.RequestUri!.AbsolutePath.EndsWith("/embeddings", StringComparison.Ordinal))
+        {
+            return Embeddings(text);
         }
 
         if (Status != HttpStatusCode.OK)

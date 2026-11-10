@@ -30,6 +30,8 @@ public static class TenancyModule
         services.AddScoped<TenancyAudit>();
         services.AddScoped<TenantAdministrationService>();
         services.AddScoped<TenantDomainService>();
+        services.AddScoped<TenantDeletionService>();
+        services.AddScoped<TenantPurgeJob>();
         services.AddScoped<TenantConfigurationService>();
         services.AddScoped<DomainVerificationJob>();
         services.AddSingleton<IDnsTxtResolver, DnsClientTxtResolver>();

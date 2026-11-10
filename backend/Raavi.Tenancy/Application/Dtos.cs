@@ -16,9 +16,9 @@ public sealed record UpdateSettingsRequest(string DefaultLocale, string TimeZone
 
 public sealed record UpdateBrandingRequest(string? PrimaryColor, string? SecondaryColor, string? WelcomeMessageFa, string? WelcomeMessageEn);
 
-public sealed record TenantDto(Guid Id, string Code, string Slug, string DisplayNameFa, string DisplayNameEn, TenantStatus Status, string? StatusReason, DateTimeOffset CreatedAt, DateTimeOffset? ActivatedAt, DateTimeOffset? SuspendedAt, DateTimeOffset? DeactivatedAt, string? Url = null)
+public sealed record TenantDto(Guid Id, string Code, string Slug, string DisplayNameFa, string DisplayNameEn, TenantStatus Status, string? StatusReason, DateTimeOffset CreatedAt, DateTimeOffset? ActivatedAt, DateTimeOffset? SuspendedAt, DateTimeOffset? DeactivatedAt, string? Url = null, DateTimeOffset? DeletionScheduledFor = null, DateTimeOffset? DeletedAt = null)
 {
-    public static TenantDto From(Tenant t) => new(t.Id, t.Code, t.Slug, t.DisplayNameFa, t.DisplayNameEn, t.Status, t.StatusReason, t.CreatedAt, t.ActivatedAt, t.SuspendedAt, t.DeactivatedAt);
+    public static TenantDto From(Tenant t) => new(t.Id, t.Code, t.Slug, t.DisplayNameFa, t.DisplayNameEn, t.Status, t.StatusReason, t.CreatedAt, t.ActivatedAt, t.SuspendedAt, t.DeactivatedAt, null, t.DeletionScheduledFor, t.DeletedAt);
 }
 
 public sealed record TenantDomainDto(Guid Id, string Host, bool IsPrimary, TenantDomainStatus Status, string TxtRecordName, string TxtRecordValue, DateTimeOffset CreatedAt, DateTimeOffset? VerifiedAt, DateTimeOffset? LastCheckedAt, int ConsecutiveFailures);
@@ -26,6 +26,10 @@ public sealed record TenantDomainDto(Guid Id, string Host, bool IsPrimary, Tenan
 public sealed record TenantSettingsDto(string DefaultLocale, string TimeZone, string Calendar, long? StorageQuotaBytes);
 
 public sealed record TenantBrandingDto(string? PrimaryColor, string? SecondaryColor, string? WelcomeMessageFa, string? WelcomeMessageEn, int LogoVersion = 0);
+
+public sealed record RequestDeletionRequest(string? Reason, string? ConfirmCode);
+
+public sealed record PurgeTenantRequest(string? ConfirmCode);
 
 public sealed record PagedResult<T>(IReadOnlyList<T> Items, int Total, int Skip, int Take);
 

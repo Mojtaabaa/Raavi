@@ -14,4 +14,7 @@ public sealed class AiOptions
     public int MaxInputChars { get; set; } = 24000;
 
     public int MaxRequestsPerUserPerHour { get; set; } = 20;
+
+    /// <summary>Passages of other pages that may go into one "ask the wiki" prompt.</summary>
+    public int MaxRagPassages { get; set; } = 8;
 }
