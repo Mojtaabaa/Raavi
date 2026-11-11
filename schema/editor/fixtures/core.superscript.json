@@ -1,0 +1,44 @@
+{
+  "schema": "raavi.doc",
+  "schemaVersion": 3,
+  "doc": {
+    "type": "doc",
+    "content": [
+      {
+        "type": "paragraph",
+        "attrs": {
+          "textAlign": null,
+          "dir": null
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "E"
+          },
+          {
+            "type": "text",
+            "marks": [
+              {
+                "type": "superscript"
+              }
+            ],
+            "text": "2"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "attrs": {
+          "textAlign": null,
+          "dir": null
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "end"
+          }
+        ]
+      }
+    ]
+  }
+}

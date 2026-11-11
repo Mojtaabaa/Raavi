@@ -1,7 +1,7 @@
 {
   "id": "core.textStyle",
   "name": "textStyle",
-  "version": 1,
+  "version": 2,
   "kind": "mark",
   "attributes": {
     "color": {
@@ -9,7 +9,57 @@
       "nullable": true,
       "pattern": "^#[0-9a-fA-F]{6}$",
       "default": null
+    },
+    "backgroundColor": {
+      "type": "string",
+      "nullable": true,
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "default": null
+    },
+    "fontFamily": {
+      "type": "string",
+      "nullable": true,
+      "enum": [
+        "Vazirmatn",
+        "Inter",
+        "Georgia",
+        "Tahoma",
+        "ui-monospace"
+      ],
+      "default": null
+    },
+    "fontSize": {
+      "type": "string",
+      "nullable": true,
+      "enum": [
+        "12px",
+        "14px",
+        "16px",
+        "18px",
+        "20px",
+        "24px",
+        "32px"
+      ],
+      "default": null
+    },
+    "lineHeight": {
+      "type": "string",
+      "nullable": true,
+      "enum": [
+        "1",
+        "1.15",
+        "1.5",
+        "1.8",
+        "2"
+      ],
+      "default": null
     }
   },
-  "migrations": []
+  "migrations": [
+    {
+      "from": 1,
+      "to": 2,
+      "description": "Add backgroundColor, fontFamily, fontSize and lineHeight (nullable defaults)."
+    }
+  ]
 }

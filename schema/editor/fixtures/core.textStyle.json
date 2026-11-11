@@ -1,6 +1,6 @@
 {
   "schema": "raavi.doc",
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "doc": {
     "type": "doc",
     "content": [
@@ -17,11 +17,15 @@
               {
                 "type": "textStyle",
                 "attrs": {
-                  "color": "#dc2626"
+                  "color": "#dc2626",
+                  "backgroundColor": "#fef08a",
+                  "fontFamily": "Inter",
+                  "fontSize": "18px",
+                  "lineHeight": "1.5"
                 }
               }
             ],
-            "text": "red"
+            "text": "styled"
           }
         ]
       },

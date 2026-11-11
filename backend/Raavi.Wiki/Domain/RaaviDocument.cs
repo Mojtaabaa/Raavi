@@ -32,6 +32,8 @@ public sealed class RaaviDocument
 
             return doc;
         },
+        // v2 → v3: new optional textStyle attrs and sub/sup marks; existing trees stay valid.
+        [2] = doc => doc,
     };
 
     private RaaviDocument(JsonObject doc)

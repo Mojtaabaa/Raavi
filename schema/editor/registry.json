@@ -1,6 +1,6 @@
 {
   "schema": "raavi.doc",
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "maxBytes": 5242880,
   "maxDepth": 48,
   "history": [
@@ -11,6 +11,10 @@
     {
       "version": 2,
       "description": "Phase 4: extension registry (core + Raavi extensions). v1 documents are valid v2 documents after attribute defaults are applied."
+    },
+    {
+      "version": 3,
+      "description": "Text style kit (backgroundColor, fontFamily, fontSize, lineHeight), subscript and superscript. v2 documents remain valid after attribute defaults."
     }
   ]
 }

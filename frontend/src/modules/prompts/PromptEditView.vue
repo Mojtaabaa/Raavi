@@ -29,7 +29,7 @@ const router = useRouter()
 const toast = useToast()
 const locale = useLocaleStore()
 
-const emptyDoc = (): RaaviDoc => ({ schema: 'raavi.doc', schemaVersion: 2, doc: { type: 'doc', content: [{ type: 'paragraph' }] } })
+const emptyDoc = (): RaaviDoc => ({ schema: 'raavi.doc', schemaVersion: 3, doc: { type: 'doc', content: [{ type: 'paragraph' }] } })
 const isNew = computed(() => route.name === 'prompt-new')
 const detail = ref<PromptDetail | null>(null)
 const categories = ref<PromptCategory[]>([])

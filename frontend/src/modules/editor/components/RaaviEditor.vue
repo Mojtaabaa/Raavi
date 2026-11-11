@@ -59,6 +59,21 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const pendingKind = ref<'image' | 'file'>('image')
 const uploading = ref(false)
 const tick = ref(0) // re-evaluates toolbar state on selection changes
+const colorOpen = ref(false)
+const bgOpen = ref(false)
+
+/** Safe hex palette for text and background (schema allows only #RRGGBB). */
+const TEXT_COLORS = ['#111827', '#dc2626', '#ea580c', '#ca8a04', '#16a34a', '#0891b2', '#2563eb', '#7c3aed', '#db2777']
+const BG_COLORS = ['#fef08a', '#fecaca', '#bbf7d0', '#bae6fd', '#e9d5ff', '#fce7f3', '#e5e7eb', '#ffedd5', '#ffffff']
+const FONT_FAMILIES = [
+  { value: '', labelKey: 'editor.toolbar.fontDefault' },
+  { value: 'Vazirmatn', labelKey: 'editor.toolbar.fontVazirmatn' },
+  { value: 'Inter', labelKey: 'editor.toolbar.fontInter' },
+  { value: 'Georgia', labelKey: 'editor.toolbar.fontGeorgia' },
+  { value: 'Tahoma', labelKey: 'editor.toolbar.fontTahoma' },
+  { value: 'ui-monospace', labelKey: 'editor.toolbar.fontMono' },
+]
+const FONT_SIZES = ['', '12px', '14px', '16px', '18px', '20px', '24px', '32px'] as const
 
 // The toolbar stays in view while a long document scrolls (sticky). Its real height (it wraps on narrow screens) is the offset of the table tools below it.
 const toolbarEl = ref<HTMLElement | null>(null)
@@ -252,6 +267,69 @@ function setDirection(dir: 'ltr' | 'rtl' | null) {
   })
 }
 
+const currentColor = computed(() => {
+  void tick.value
+  return (editor.value?.getAttributes('textStyle').color as string | undefined) ?? null
+})
+const currentBg = computed(() => {
+  void tick.value
+  return (editor.value?.getAttributes('textStyle').backgroundColor as string | undefined)
+    ?? (editor.value?.getAttributes('highlight').color as string | undefined)
+    ?? null
+})
+const currentFont = computed({
+  get: () => {
+    void tick.value
+    return (editor.value?.getAttributes('textStyle').fontFamily as string | undefined) ?? ''
+  },
+  set: (v: string) => {
+    run((e) => {
+      const chain = e.chain().focus()
+      if (v) chain.setFontFamily(v).run()
+      else chain.unsetFontFamily().run()
+    })
+  },
+})
+const currentSize = computed({
+  get: () => {
+    void tick.value
+    return (editor.value?.getAttributes('textStyle').fontSize as string | undefined) ?? ''
+  },
+  set: (v: string) => {
+    run((e) => {
+      const chain = e.chain().focus()
+      if (v) chain.setFontSize(v).run()
+      else chain.unsetFontSize().run()
+    })
+  },
+})
+
+function applyTextColor(hex: string | null) {
+  run((e) => {
+    if (hex) e.chain().focus().setColor(hex).run()
+    else e.chain().focus().unsetColor().run()
+  })
+  colorOpen.value = false
+}
+
+function applyBackgroundColor(hex: string | null) {
+  run((e) => {
+    if (hex) e.chain().focus().setBackgroundColor(hex).setHighlight({ color: hex }).run()
+    else e.chain().focus().unsetBackgroundColor().unsetHighlight().run()
+  })
+  bgOpen.value = false
+}
+
+const fontOptions = computed(() => FONT_FAMILIES.map((f) => ({ value: f.value, label: t(f.labelKey) })))
+const sizeOptions = computed(() =>
+  FONT_SIZES.map((s) => ({ value: s, label: s ?? t('editor.toolbar.sizeDefault') })),
+)
+
+const charCount = computed(() => {
+  void tick.value
+  return editor.value?.storage.characterCount?.characters?.() ?? 0
+})
+
 async function openLink() {
   linkHref.value = (editor.value?.getAttributes('link').href as string | undefined) ?? ''
   linkPage.value = null
@@ -333,8 +411,25 @@ defineExpose({ editor, insertText, refreshVariables: () => editor.value && refre
         <Button text size="small" :class="{ on: active('strike') }" :aria-pressed="active('strike')" :aria-label="t('editor.toolbar.strike')" @click="run((e) => e.chain().focus().toggleStrike().run())"><s>S</s></Button>
         <Button text size="small" icon="pi pi-code" :class="{ on: active('code') }" :aria-pressed="active('code')" :aria-label="t('editor.toolbar.code')" @click="run((e) => e.chain().focus().toggleCode().run())" />
         <Button text size="small" icon="pi pi-link" :class="{ on: active('link') }" :aria-label="t('editor.toolbar.link')" @click="openLink" />
-        <Button text size="small" icon="pi pi-pencil" :class="{ on: active('highlight') }" :aria-label="t('editor.toolbar.highlight')" @click="run((e) => e.chain().focus().toggleHighlight().run())" />
+        <Button text size="small" :class="{ on: active('subscript') }" :aria-label="t('editor.toolbar.subscript')" @click="run((e) => e.chain().focus().toggleSubscript().run())"><span class="subsup">X<sub>2</sub></span></Button>
+        <Button text size="small" :class="{ on: active('superscript') }" :aria-label="t('editor.toolbar.superscript')" @click="run((e) => e.chain().focus().toggleSuperscript().run())"><span class="subsup">X<sup>2</sup></span></Button>
+        <div class="swatch-wrap">
+          <Button text size="small" icon="pi pi-palette" :class="{ on: !!currentColor }" :aria-label="t('editor.toolbar.textColor')" :aria-expanded="colorOpen" @click="colorOpen = !colorOpen; bgOpen = false" />
+          <div v-if="colorOpen" class="swatches" role="listbox" :aria-label="t('editor.toolbar.textColor')">
+            <button type="button" class="swatch clear" :aria-label="t('editor.toolbar.colorClear')" @click="applyTextColor(null)">×</button>
+            <button v-for="c in TEXT_COLORS" :key="c" type="button" class="swatch" :style="{ background: c }" :aria-label="c" :aria-pressed="currentColor === c" @click="applyTextColor(c)" />
+          </div>
+        </div>
+        <div class="swatch-wrap">
+          <Button text size="small" icon="pi pi-pencil" :class="{ on: !!currentBg || active('highlight') }" :aria-label="t('editor.toolbar.backgroundColor')" :aria-expanded="bgOpen" @click="bgOpen = !bgOpen; colorOpen = false" />
+          <div v-if="bgOpen" class="swatches" role="listbox" :aria-label="t('editor.toolbar.backgroundColor')">
+            <button type="button" class="swatch clear" :aria-label="t('editor.toolbar.colorClear')" @click="applyBackgroundColor(null)">×</button>
+            <button v-for="c in BG_COLORS" :key="c" type="button" class="swatch" :style="{ background: c }" :aria-label="c" :aria-pressed="currentBg === c" @click="applyBackgroundColor(c)" />
+          </div>
+        </div>
       </div>
+      <Select v-model="currentFont" :options="fontOptions" option-label="label" option-value="value" size="small" class="font-family" :aria-label="t('editor.toolbar.fontFamily')" />
+      <Select v-model="currentSize" :options="sizeOptions" option-label="label" option-value="value" size="small" class="font-size" :aria-label="t('editor.toolbar.fontSize')" />
       <div class="group">
         <Button text size="small" icon="pi pi-align-left" class="logical-start" :class="{ on: active('paragraph', { textAlign: 'start' }) }" :aria-label="t('editor.toolbar.alignStart')" @click="run((e) => e.chain().focus().setTextAlign('start').run())" />
         <Button text size="small" icon="pi pi-align-center" :class="{ on: active('paragraph', { textAlign: 'center' }) }" :aria-label="t('editor.toolbar.alignCenter')" @click="run((e) => e.chain().focus().setTextAlign('center').run())" />
@@ -360,6 +455,7 @@ defineExpose({ editor, insertText, refreshVariables: () => editor.value && refre
         <span v-for="p in live.peers.value" :key="p.clientId" class="peer" :style="{ borderColor: p.color }" :title="p.name">{{ p.name.slice(0, 1) }}</span>
       </span>
       <span class="hint">{{ t('editor.slashHint') }}</span>
+      <span class="chars" aria-live="polite">{{ t('editor.toolbar.characters', { n: charCount }) }}</span>
     </div>
 
     <div v-if="editable && editor && active('table')" class="table-tools" role="toolbar" :aria-label="t('editor.table.label')">
@@ -409,7 +505,25 @@ defineExpose({ editor, insertText, refreshVariables: () => editor.value && refre
 .group { display: flex; gap: 0; border-inline-end: 1px solid var(--raavi-border); padding-inline-end: var(--raavi-space-1); }
 .toolbar :deep(.on) { background: var(--p-primary-100, rgba(0, 0, 0, 0.08)); }
 .block-type { min-inline-size: 9rem; }
-.hint { color: var(--raavi-text-muted); font-size: 0.8rem; }
+.font-family { min-inline-size: 8rem; }
+.font-size { min-inline-size: 5.5rem; }
+.hint, .chars { color: var(--raavi-text-muted); font-size: 0.8rem; }
+.chars { margin-inline-start: auto; }
+.subsup { font-size: 0.85em; line-height: 1; }
+.swatch-wrap { position: relative; }
+.swatches {
+  position: absolute; inset-block-start: 100%; inset-inline-start: 0; z-index: 6;
+  display: grid; grid-template-columns: repeat(5, 1.4rem); gap: 4px;
+  padding: var(--raavi-space-2); background: var(--raavi-surface, #fff);
+  border: 1px solid var(--raavi-border); border-radius: var(--raavi-radius-sm);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+.swatch {
+  inline-size: 1.4rem; block-size: 1.4rem; border-radius: 3px; border: 1px solid var(--raavi-border);
+  padding: 0; cursor: pointer;
+}
+.swatch.clear { display: grid; place-items: center; background: var(--raavi-surface, #fff); font-size: 0.85rem; line-height: 1; }
+.swatch[aria-pressed='true'] { outline: 2px solid var(--p-primary-color); outline-offset: 1px; }
 .live { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--raavi-text-muted); margin-inline-start: auto; }
 .dot { inline-size: 8px; block-size: 8px; border-radius: 50%; background: #9ca3af; }
 .dot.live { background: #16a34a; }

@@ -78,7 +78,7 @@ function insertIntoPage(text: string) {
         const draft = await wikiApi.draft(id)
         const current = draft.value
         const addition = textToDoc(text).doc.content ?? []
-        const base = current.exists ? current.body : { schema: 'raavi.doc' as const, schemaVersion: 2, doc: { type: 'doc' as const, content: [] as never[] } }
+        const base = current.exists ? current.body : { schema: 'raavi.doc' as const, schemaVersion: 3, doc: { type: 'doc' as const, content: [] as never[] } }
         const body = { ...base, doc: { ...base.doc, content: [...(base.doc.content ?? []), ...addition] } }
         await wikiApi.saveDraft(id, draft.etag, { title: current.title || page.value!.title, body })
         toast.add({ severity: 'success', summary: t('prompts.page.inserted'), life: 5000 })

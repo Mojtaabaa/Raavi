@@ -121,7 +121,7 @@ function editTemplate(tpl: Template | null) {
 
 async function saveTemplate() {
   const f = tplForm.value
-  const body = { name: f.name, description: f.description || null, body: f.body ?? { schema: 'raavi.doc' as const, schemaVersion: 2, doc: { type: 'doc' as const, content: [{ type: 'paragraph' }] } } }
+  const body = { name: f.name, description: f.description || null, body: f.body ?? { schema: 'raavi.doc' as const, schemaVersion: 3, doc: { type: 'doc' as const, content: [{ type: 'paragraph' }] } } }
   try {
     if (f.id) {
       const current = await wikiApi.template(f.id)

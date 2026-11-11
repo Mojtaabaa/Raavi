@@ -1,8 +1,12 @@
 # Implementation Status
 
-**Last updated:** 2026-11-10 (login LTR password eye, page link picker, path rewrites, resolved quote jump, RTL lists)
+**Last updated:** 2026-11-11 (editor text/background colour, TipTap open extensions, schema v3)
 
 Statuses: Not Started · Planned · In Progress · Implemented · Tested · Blocked · Deferred. "Tested" requires executed test evidence (listed).
+
+### Editor TipTap extensions (2026-11-11)
+
+Schema **v3**: `textStyle` gains `backgroundColor`, `fontFamily`, `fontSize`, `lineHeight`; new marks `subscript` / `superscript`. Toolbar: text and background colour swatches, font/size selects, sub/sup. Open TipTap packages wired: BackgroundColor, FontFamily, FontSize, LineHeight, Typography, CharacterCount, Focus, Selection, TrailingNode (Dropcursor/Gapcursor already via StarterKit). Pro/paid TipTap extensions are not used. HTML renderer emits combined textStyle CSS and `sub`/`sup`.
 
 ### Editor / login polish (2026-11-10)
 

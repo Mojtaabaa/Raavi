@@ -1,0 +1,8 @@
+{
+  "id": "core.superscript",
+  "name": "superscript",
+  "version": 1,
+  "kind": "mark",
+  "attributes": {},
+  "migrations": []
+}

@@ -28,6 +28,8 @@
 .raavi-doc.resize-cursor { cursor: col-resize; }
 .raavi-doc .raavi-mention { background: var(--p-primary-50, #eef2ff); color: var(--p-primary-color); border-radius: 3px; padding: 0 0.2em; white-space: nowrap; }
 .raavi-doc .ProseMirror-selectednode { outline: 2px solid var(--p-primary-color); outline-offset: 2px; }
+.raavi-doc .has-focus { outline: 1px dashed color-mix(in srgb, var(--p-primary-color) 45%, transparent); outline-offset: 2px; border-radius: 2px; }
+.raavi-doc ::selection { background: color-mix(in srgb, var(--p-primary-color) 28%, transparent); }
 .raavi-doc p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: var(--raavi-text-muted); float: inline-start; block-size: 0; pointer-events: none; }
 
 /* Remote carets (CollaborationCaret). */

@@ -23,7 +23,7 @@ public sealed class DocumentHtmlRenderer
         {
             AllowedTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
-                "p", "h1", "h2", "h3", "h4", "h5", "h6", "strong", "em", "u", "s", "code", "pre", "a", "span", "br", "hr",
+                "p", "h1", "h2", "h3", "h4", "h5", "h6", "strong", "em", "u", "s", "sub", "sup", "code", "pre", "a", "span", "br", "hr",
                 "ul", "ol", "li", "blockquote", "table", "thead", "tbody", "tr", "th", "td", "colgroup", "col", "img",
                 "div", "details", "summary", "nav", "mark",
             },
@@ -32,7 +32,7 @@ public sealed class DocumentHtmlRenderer
                 "href", "src", "alt", "width", "dir", "class", "start", "type", "colspan", "rowspan", "id", "title", "style",
                 "data-user-id", "data-checked", "data-latex", "data-type", "rel", "target", "role", "download", "loading",
             },
-            AllowedCssProperties = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "color", "background-color", "text-align", "width" },
+            AllowedCssProperties = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "color", "background-color", "text-align", "width", "font-family", "font-size", "line-height" },
             AllowedSchemes = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "http", "https", "mailto", "raavi" },
             UriAttributes = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "href", "src" },
         });
@@ -281,10 +281,12 @@ public sealed class DocumentHtmlRenderer
                 "italic" => ("<em>", "</em>"),
                 "underline" => ("<u>", "</u>"),
                 "strike" => ("<s>", "</s>"),
+                "subscript" => ("<sub>", "</sub>"),
+                "superscript" => ("<sup>", "</sup>"),
                 "code" => ("<code>", "</code>"),
                 "link" when Attr(m, "href") is { } href && EditorSchema.IsSafeHref(href) =>
                     LinkOpen(href),
-                "textStyle" when Attr(m, "color") is { } color => ($"<span style=\"color:{E(color)}\">", "</span>"),
+                "textStyle" => TextStyleOpen(m),
                 "highlight" => Attr(m, "color") is { } bg ? ($"<mark style=\"background-color:{E(bg)}\">", "</mark>") : ("<mark>", "</mark>"),
                 _ => (string.Empty, string.Empty),
             };
@@ -300,5 +302,36 @@ public sealed class DocumentHtmlRenderer
         var target = LinkPathRewrites.TryRewrite(href, out var absolute) ? absolute : href;
         var blank = target.StartsWith('/') || target.StartsWith('#') ? string.Empty : " target=\"_blank\"";
         return ($"<a href=\"{E(target)}\" rel=\"noopener noreferrer nofollow\"{blank}>", "</a>");
+    }
+
+    private static (string Open, string Close) TextStyleOpen(JsonObject mark)
+    {
+        var parts = new List<string>();
+        if (Attr(mark, "color") is { } color)
+        {
+            parts.Add($"color:{E(color)}");
+        }
+
+        if (Attr(mark, "backgroundColor") is { } bg)
+        {
+            parts.Add($"background-color:{E(bg)}");
+        }
+
+        if (Attr(mark, "fontFamily") is { } family)
+        {
+            parts.Add($"font-family:{E(family)}");
+        }
+
+        if (Attr(mark, "fontSize") is { } size)
+        {
+            parts.Add($"font-size:{E(size)}");
+        }
+
+        if (Attr(mark, "lineHeight") is { } height)
+        {
+            parts.Add($"line-height:{E(height)}");
+        }
+
+        return parts.Count == 0 ? (string.Empty, string.Empty) : ($"<span style=\"{string.Join(';', parts)}\">", "</span>");
     }
 }

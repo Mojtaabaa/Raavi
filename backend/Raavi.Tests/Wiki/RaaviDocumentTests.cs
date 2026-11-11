@@ -37,7 +37,7 @@ public sealed class RaaviDocumentTests
 
     private static string Fixture(string id) => File.ReadAllText(Path.Combine(RepoRoot, "schema", "editor", "fixtures", id + ".json"));
 
-    private static RaaviDocument Doc(string docJson) => RaaviDocument.Parse($$"""{"schema":"raavi.doc","schemaVersion":2,"doc":{{docJson}}}""");
+    private static RaaviDocument Doc(string docJson) => RaaviDocument.Parse($$"""{"schema":"raavi.doc","schemaVersion":{{RaaviDocument.CurrentSchemaVersion}},"doc":{{docJson}}}""");
 
     private static string P(string inner) => $$"""{"type":"paragraph","content":[{{inner}}]}""";
 
@@ -47,7 +47,7 @@ public sealed class RaaviDocumentTests
     public void Registry_loads_every_manifest_and_every_manifest_has_a_fixture()
     {
         var schema = EditorSchema.Current;
-        Assert.Equal(2, schema.Info.SchemaVersion);
+        Assert.Equal(3, schema.Info.SchemaVersion);
         Assert.True(schema.Manifests.Count >= 36);
         var onDisk = Directory.GetFiles(Path.Combine(RepoRoot, "schema", "editor", "extensions"), "*.json").Select(f => Path.GetFileNameWithoutExtension(f)!).Order().ToList();
         Assert.Equal(onDisk, schema.Manifests.Select(m => m.Id).Order().ToList()); // embedded == repository
@@ -115,17 +115,17 @@ public sealed class RaaviDocumentTests
         var v1 = """{"schema":"raavi.doc","schemaVersion":1,"doc":{"type":"doc","content":[{"type":"paragraph","attrs":{"dir":"rtl"},"content":[{"type":"text","text":"سلام"}]}]}}""";
         var doc = RaaviDocument.Parse(v1);
         var root = JsonNode.Parse(doc.Json)!;
-        Assert.Equal(2, root["schemaVersion"]!.GetValue<int>());
+        Assert.Equal(3, root["schemaVersion"]!.GetValue<int>());
         var attrs = root["doc"]!["content"]![0]!["attrs"]!;
         Assert.Equal("rtl", attrs["dir"]!.GetValue<string>());
         Assert.Null(attrs["textAlign"]);
         Assert.Equal("content.schema_unsupported",
             Assert.Throws<DomainException>(() => RaaviDocument.Parse("""{"schema":"raavi.doc","schemaVersion":99,"doc":{"type":"doc","content":[]}}""")).Code);
 
-        // Phase 3 stored empty documents (e.g. space home pages) that v2's "block+" rejects: they read as one empty paragraph.
+        // Phase 3 stored empty documents (e.g. space home pages) that v2+'s "block+" rejects: they read as one empty paragraph.
         Assert.Equal(RaaviDocument.Empty.Json, RaaviDocument.Parse("""{"schema":"raavi.doc","schemaVersion":1,"doc":{"type":"doc","content":[]}}""").Json);
         Assert.Equal(RaaviDocument.Empty.Json, RaaviDocument.Parse("""{"schema":"raavi.doc","schemaVersion":1,"doc":{"type":"doc"}}""").Json);
-        Assert.Throws<DomainException>(() => RaaviDocument.Parse("""{"schema":"raavi.doc","schemaVersion":2,"doc":{"type":"doc","content":[]}}"""));
+        Assert.Throws<DomainException>(() => RaaviDocument.Parse("""{"schema":"raavi.doc","schemaVersion":3,"doc":{"type":"doc","content":[]}}"""));
     }
 
     [Fact]
@@ -246,7 +246,7 @@ public sealed class RaaviDocumentTests
     [Fact]
     public void Json_options_are_irrelevant_to_canonical_form()
     {
-        using var a = JsonDocument.Parse("""{ "schemaVersion": 2, "doc": { "content": [ { "type": "paragraph" } ], "type": "doc" }, "schema": "raavi.doc" }""");
+        using var a = JsonDocument.Parse("""{ "schemaVersion": 3, "doc": { "content": [ { "type": "paragraph" } ], "type": "doc" }, "schema": "raavi.doc" }""");
         Assert.Equal(RaaviDocument.Empty.Json, RaaviDocument.Parse(a.RootElement).Json);
     }
 }

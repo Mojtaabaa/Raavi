@@ -1,0 +1,48 @@
+{
+  "schema": "raavi.doc",
+  "schemaVersion": 3,
+  "doc": {
+    "type": "doc",
+    "content": [
+      {
+        "type": "paragraph",
+        "attrs": {
+          "textAlign": null,
+          "dir": null
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "H"
+          },
+          {
+            "type": "text",
+            "marks": [
+              {
+                "type": "subscript"
+              }
+            ],
+            "text": "2"
+          },
+          {
+            "type": "text",
+            "text": "O"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "attrs": {
+          "textAlign": null,
+          "dir": null
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "end"
+          }
+        ]
+      }
+    ]
+  }
+}

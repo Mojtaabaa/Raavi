@@ -3,12 +3,15 @@ import { Extension, type AnyExtension, type Editor, type Range } from '@tiptap/c
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
 import TextAlign from '@tiptap/extension-text-align'
-import { Color, TextStyle } from '@tiptap/extension-text-style'
+import { BackgroundColor, Color, FontFamily, FontSize, LineHeight, TextStyle } from '@tiptap/extension-text-style'
 import Highlight from '@tiptap/extension-highlight'
+import Subscript from '@tiptap/extension-subscript'
+import Superscript from '@tiptap/extension-superscript'
+import Typography from '@tiptap/extension-typography'
 import { TaskItem, TaskList } from '@tiptap/extension-list'
 import { TableKit } from '@tiptap/extension-table'
 import Mention from '@tiptap/extension-mention'
-import { Placeholder } from '@tiptap/extensions'
+import { CharacterCount, Focus, Placeholder, Selection, TrailingNode } from '@tiptap/extensions'
 import { EditorRegistry, manifest, type Registration, type SlashItem } from './registry'
 import { manifestNode } from './extensions/manifestNode'
 import { floatingRenderer, SlashCommand } from './suggestions'
@@ -102,13 +105,24 @@ export function createEditorRegistry(env?: EditorEnvironment): EditorRegistry {
     TextAlign.configure({ types: ['heading', 'paragraph'], alignments: ['start', 'center', 'end', 'justify'] }),
     TextStyle,
     Color,
+    BackgroundColor,
+    FontFamily,
+    FontSize,
+    LineHeight,
     Highlight.configure({ multicolor: true }),
+    Subscript,
+    Superscript,
+    Typography,
+    Focus.configure({ className: 'has-focus', mode: 'all' }),
+    Selection,
+    TrailingNode,
+    CharacterCount,
     TaskList,
     TaskItem.configure({ nested: true }),
     TableKit.configure({ table: { resizable: true } }),
   )
 
-  for (const id of ['core.doc', 'core.text', 'core.paragraph', 'core.listItem', 'core.taskItem', 'core.hardBreak', 'core.bold', 'core.italic', 'core.underline', 'core.strike', 'core.code', 'core.link', 'core.textStyle', 'core.highlight', 'raavi.tableRow', 'raavi.tableCell', 'raavi.tableHeader']) {
+  for (const id of ['core.doc', 'core.text', 'core.paragraph', 'core.listItem', 'core.taskItem', 'core.hardBreak', 'core.bold', 'core.italic', 'core.underline', 'core.strike', 'core.code', 'core.link', 'core.textStyle', 'core.highlight', 'core.subscript', 'core.superscript', 'raavi.tableRow', 'raavi.tableCell', 'raavi.tableHeader']) {
     r.register(core(id))
   }
 

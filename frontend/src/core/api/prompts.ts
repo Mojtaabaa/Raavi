@@ -269,5 +269,5 @@ export const promptRunApi = {
 /** Plain text (as an AI answer) → editor document: one paragraph per line, blank lines dropped. */
 export function textToDoc(text: string): RaaviDoc {
   const lines = text.replace(/\r\n/g, '\n').split('\n').map((l) => l.trimEnd()).filter((l) => l.length > 0)
-  return { schema: 'raavi.doc', schemaVersion: 2, doc: { type: 'doc', content: lines.length ? lines.map((l) => ({ type: 'paragraph', content: [{ type: 'text', text: l }] })) : [{ type: 'paragraph' }] } }
+  return { schema: 'raavi.doc', schemaVersion: 3, doc: { type: 'doc', content: lines.length ? lines.map((l) => ({ type: 'paragraph', content: [{ type: 'text', text: l }] })) : [{ type: 'paragraph' }] } }
 }

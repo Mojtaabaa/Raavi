@@ -127,7 +127,7 @@ describe('Prompt Hub', () => {
   })
 
   it('creates a prompt from the form with the document, tags and modes the person chose', async () => {
-    const created = { prompt: prompt('new1', 'Risk finder', { revision: 1 }), content: { schema: 'raavi.doc', schemaVersion: 2, doc: { type: 'doc', content: [{ type: 'paragraph' }] } }, contentText: 'Find {{page.title}}', shown: null, draft: null, published: null }
+    const created = { prompt: prompt('new1', 'Risk finder', { revision: 1 }), content: { schema: 'raavi.doc', schemaVersion: 3, doc: { type: 'doc', content: [{ type: 'paragraph' }] } }, contentText: 'Find {{page.title}}', shown: null, draft: null, published: null }
     const f = install({
       'GET /api/v1/prompt-categories': () => json(cats),
       'POST /api/v1/prompts': () => json(created, 201),
