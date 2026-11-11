@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Raavi.Application.Abstractions.Tenancy;
 using Raavi.Domain.Common;
+using Raavi.Infrastructure.Messaging;
 using Raavi.Infrastructure.Persistence;
 
 namespace Raavi.Integrations.Persistence;
@@ -18,6 +19,8 @@ public static class WebhookEvents
         "content.published", "content.publish_requested", "content.publish_approved", "content.publish_rejected",
         "comment.created", "comment.resolved",
         "approval.requested", "approval.decided",
+        "jira.page_issue_linked", "jira.page_issue_unlinked", "jira.page_issue_metadata_updated",
+        "jira.page_metadata_updated", "jira.relationship_sync_failed",
     ];
 
     public static bool IsKnown(string type) => All.Contains(type, StringComparer.Ordinal);
@@ -187,7 +190,7 @@ public sealed class WebhookDelivery : Entity, ITenantOwned
 }
 
 /// <summary>Tenant-scoped integration state (schema <c>integrations</c>): webhooks, their delivery log and issue connectors. Every table is RLS-protected.</summary>
-public sealed class IntegrationsDbContext(DbContextOptions<IntegrationsDbContext> options, ITenantContext tenantContext) : RaaviDbContextBase(options, tenantContext)
+public sealed class IntegrationsDbContext(DbContextOptions<IntegrationsDbContext> options, ITenantContext tenantContext) : RaaviDbContextBase(options, tenantContext), IHasOutbox
 {
     public const string HistorySchema = "integrations";
 
@@ -196,6 +199,12 @@ public sealed class IntegrationsDbContext(DbContextOptions<IntegrationsDbContext
     public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
 
     public DbSet<IssueConnector> IssueConnectors => Set<IssueConnector>();
+
+    public DbSet<PageIssueLink> PageIssueLinks => Set<PageIssueLink>();
+
+    public DbSet<PageIssueLinkContext> PageIssueLinkContexts => Set<PageIssueLinkContext>();
+
+    public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -239,6 +248,45 @@ public sealed class IntegrationsDbContext(DbContextOptions<IntegrationsDbContext
             b.HasIndex(x => new { x.TenantId, x.Name }).IsUnique();
         });
 
+        modelBuilder.Entity<PageIssueLink>(b =>
+        {
+            b.ToTable("PageIssueLinks", HistorySchema);
+            Keys(b);
+            b.Property(x => x.IssueId).HasMaxLength(PageIssueLink.MaxIssueIdLength).IsUnicode(false);
+            b.Property(x => x.IssueKey).HasMaxLength(PageIssueLink.MaxKeyLength).IsUnicode(false);
+            b.Property(x => x.Summary).HasMaxLength(PageIssueLink.MaxTitleLength);
+            b.Property(x => x.Status).HasMaxLength(PageIssueLink.MaxStatusLength);
+            b.Property(x => x.IssueType).HasMaxLength(PageIssueLink.MaxTypeLength);
+            b.Property(x => x.Priority).HasMaxLength(PageIssueLink.MaxPriorityLength);
+            b.Property(x => x.Assignee).HasMaxLength(PageIssueLink.MaxAssigneeLength);
+            b.Property(x => x.ProjectKey).HasMaxLength(PageIssueLink.MaxProjectLength).IsUnicode(false);
+            b.Property(x => x.IssueUrl).HasMaxLength(PageIssueLink.MaxUrlLength);
+            b.Property(x => x.Source).HasConversion<string>().HasMaxLength(32).IsUnicode(false);
+            b.Property(x => x.StatusFlag).HasConversion<string>().HasMaxLength(16).IsUnicode(false);
+            b.Property(x => x.SyncState).HasConversion<string>().HasMaxLength(32).IsUnicode(false);
+            b.Property(x => x.RemoteLinkGlobalId).HasMaxLength(PageIssueLink.MaxGlobalIdLength).IsUnicode(false);
+            b.Property(x => x.RemoteLinkId).HasMaxLength(64).IsUnicode(false);
+            b.Property(x => x.LastSyncError).HasMaxLength(PageIssueLink.MaxErrorLength);
+            b.HasIndex(x => new { x.TenantId, x.ContentId, x.StatusFlag });
+            b.HasIndex(x => new { x.TenantId, x.ConnectorId, x.IssueId, x.StatusFlag });
+            b.HasIndex(x => new { x.TenantId, x.ContentId, x.ConnectorId, x.IssueId, x.StatusFlag }).IsUnique();
+            b.HasIndex(x => new { x.TenantId, x.SyncState, x.UpdatedAt });
+            b.HasOne<IssueConnector>().WithMany().HasForeignKey(x => new { x.TenantId, x.ConnectorId }).HasPrincipalKey(c => new { c.TenantId, c.Id }).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PageIssueLinkContext>(b =>
+        {
+            b.ToTable("PageIssueLinkContexts", HistorySchema);
+            Keys(b);
+            b.Property(x => x.Exact).HasMaxLength(PageIssueLinkContext.MaxExactLength);
+            b.Property(x => x.Prefix).HasMaxLength(PageIssueLinkContext.MaxContextLength);
+            b.Property(x => x.Suffix).HasMaxLength(PageIssueLinkContext.MaxContextLength);
+            b.Property(x => x.AnchorJson).HasMaxLength(PageIssueLinkContext.MaxAnchorLength);
+            b.HasIndex(x => new { x.TenantId, x.LinkId });
+            b.HasOne<PageIssueLink>().WithMany().HasForeignKey(x => new { x.TenantId, x.LinkId }).HasPrincipalKey(l => new { l.TenantId, l.Id }).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.ConfigureOutbox(HistorySchema);
         base.OnModelCreating(modelBuilder);
     }
 

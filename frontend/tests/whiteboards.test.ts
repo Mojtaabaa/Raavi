@@ -10,7 +10,7 @@ import { configureHttp } from '@/core/api/http'
 import { createRaaviI18n } from '@/core/i18n'
 import { createRaaviRouter, resetRouterBootstrap } from '@/router'
 import type { BoardElement } from '@/core/api/whiteboards'
-import { bounds, duplicate, elementFromGesture, History, isRtlText, patch, remove, reorder, simplify } from '@/modules/whiteboards/boardModel'
+import { alignBottom, alignCenterX, alignLeft, alignRight, alignTop, bounds, copyElements, createConnector, createImageElement, debounce, distributeH, duplicate, elementFromGesture, groupElements, History, isRtlText, pasteElements, patch, remove, reorder, simplify, ungroupElements } from '@/modules/whiteboards/boardModel'
 import { fakeFetch, json } from './support/fakeApi'
 
 // Konva needs a real canvas, which jsdom does not have: the view is tested with a stand-in that reports the same gestures.
@@ -106,6 +106,68 @@ describe('board model', () => {
     let steps = 0
     while (h.undo([]) !== null) steps++
     expect(steps).toBe(3)
+  })
+
+  it('creates images, aligns a selection, remaps clipboard ids and debounces autosave', () => {
+    const img = createImageElement('att-1', 4, 5, 80, 60, 'Logo')
+    expect(img).toMatchObject({ type: 'Image', attachmentId: 'att-1', x: 4, y: 5, w: 80, h: 60, alt: 'Logo' })
+
+    const round = elementFromGesture('roundRect', 0, 0, 100, 40)!
+    expect(round.type).toBe('RoundRect')
+    expect(round.cornerRadius).toBeGreaterThan(0)
+    const star = elementFromGesture('star', 0, 0, 1, 1)!
+    expect([star.type, star.w, star.h]).toEqual(['Star', 120, 120])
+    const table = elementFromGesture('table', 0, 0, 90, 60)!
+    expect(table.type).toBe('Table')
+    expect(table.cells).toHaveLength(9)
+    const hi = elementFromGesture('highlighter', 0, 0, 0, 0, [0, 0, 12, 0, 24, 6])!
+    expect([hi.type, hi.strokeWidth]).toEqual(['Pen', 12])
+
+    const a = el({ id: 'a', type: 'Rect', x: 0, y: 10, w: 20, h: 10 })
+    const b = el({ id: 'b', type: 'Rect', x: 50, y: 0, w: 10, h: 40 })
+    const c = el({ id: 'c', type: 'Rect', x: 100, y: 0, w: 10, h: 10 })
+    const ids = ['a', 'b']
+    expect(alignLeft([a, b], ids).find((e) => e.id === 'b')!.x).toBe(0)
+    expect(alignRight([a, b], ids).find((e) => e.id === 'a')!.x).toBe(40)
+    expect(alignTop([a, b], ids).find((e) => e.id === 'a')!.y).toBe(0)
+    expect(alignBottom([a, b], ids).find((e) => e.id === 'a')!.y).toBe(30)
+    expect(alignCenterX([a, b], ids).map((e) => e.x)).toEqual([20, 25])
+    expect(distributeH([a, b, c], ['a', 'b', 'c']).find((e) => e.id === 'b')!.x).toBe(55)
+    const alone = [a]
+    expect(alignLeft(alone, ['a'])).toBe(alone)
+
+    const link = createConnector('a', 'b', [20, 15, 50, 20])
+    const pasted = pasteElements(copyElements([a, b, link]), { x: 8, y: 4 })
+    expect(pasted[0]!.id).not.toBe('a')
+    expect(pasted[1]!.id).not.toBe('b')
+    expect(pasted[2]!.fromId).toBe(pasted[0]!.id)
+    expect(pasted[2]!.toId).toBe(pasted[1]!.id)
+    expect(pasted[0]).toMatchObject({ x: 8, y: 14 })
+    expect(pasted[2]!.id).not.toBe(link.id)
+
+    const grouped = groupElements([a, b], ['a', 'b'])
+    expect(grouped.elements.find((e) => e.id === 'a')!.parentId).toBe(grouped.id)
+    const flat = ungroupElements(grouped.elements, grouped.id!)
+    expect(flat.some((e) => e.type === 'Group')).toBe(false)
+    expect(flat.find((e) => e.id === 'a')!.parentId).toBeNull()
+
+    vi.useFakeTimers()
+    try {
+      const fn = vi.fn()
+      const queued = debounce(fn, 800)
+      queued()
+      queued()
+      vi.advanceTimersByTime(799)
+      expect(fn).not.toHaveBeenCalled()
+      vi.advanceTimersByTime(1)
+      expect(fn).toHaveBeenCalledTimes(1)
+      queued()
+      queued.cancel()
+      vi.advanceTimersByTime(800)
+      expect(fn).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

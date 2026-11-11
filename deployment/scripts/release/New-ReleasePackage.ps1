@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Builds a Raavi release package (a folder and a zip) that can be installed or upgraded with Update-Raavi.ps1. (Phase 12d, ADR-041)
+  Builds a Raavi release package (a folder and a zip). Operators copy application folders themselves; ConfigSync.ps1 syncs sandbox settings and runs the migrator. (Phase 12d, ADR-041)
 .DESCRIPTION
   Layout of the package (it mirrors the installation layout, so the application finds sandbox/ and sandbox-defaults/ by walking up):
     api/ workers/ migrator/   dotnet publish output (Release)

@@ -100,6 +100,24 @@ Tenant administrators only (403 for members).
 | GET | `/integrations/issues/connectors` | Any member: enabled connectors, `{id, name, kind}` only |
 | GET | `/integrations/issues/lookup?connector=&reference=` | Any member: `{reference, title, status, url, type}`; references `owner/repo#1`, `group/project#1`, `KEY-1`; errors `issue.*` / `connector.*` |
 
+### Jira page linking (extends ADR-043 for Jira write/link)
+
+Raavi owns Page–Issue relationships; Jira owns issue fields. Requires an enabled Jira connector with a token (Create Issues + Link Issues). See `docs/integrations/`.
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/integrations/jira/connectors` | Enabled Jira connectors `{id, name}` |
+| GET | `/integrations/jira/connectors/{id}/projects` | |
+| GET | `/integrations/jira/connectors/{id}/issuetypes?project=` | |
+| GET | `/integrations/jira/connectors/{id}/createmeta?project=&issuetype=` | Field metadata for create |
+| GET | `/integrations/jira/connectors/{id}/search?q=` | Key, text, or `jql:…` |
+| GET | `/pages/{contentId}/jira-links` | View on page |
+| POST | `/pages/{contentId}/jira-links/create` | Edit; create issue + Remote Link + relationship |
+| POST | `/pages/{contentId}/jira-links` | Edit; link existing `{connectorId, issueKeyOrId, quote?}` |
+| POST | `/pages/{contentId}/jira-links/{linkId}/refresh` | Refresh cached issue fields |
+| DELETE | `/pages/{contentId}/jira-links/{linkId}` | Soft unlink (does not delete the Jira issue) |
+| GET | `/integrations/jira/issues/{connectorId}/{issueId}/pages` | Related pages the caller may View |
+
 Request to the receiver: `POST` JSON `{id, type, occurredAt, tenant, data}` with ids only; headers `X-Raavi-Event`, `X-Raavi-Delivery` (event id), `X-Raavi-Signature: t=<unix>,v1=<hex(HMAC-SHA256(secret, "<t>.<body>"))>`. 2xx = delivered; 5xx/408/429/timeouts are retried by the outbox; other 4xx are final; 20 consecutive failures switch the webhook off. Global configuration (`sandbox/config/integrations.json`): `AllowedWebhookHosts` (empty = webhooks off), `TimeoutSeconds`. Errors: `webhook.name_invalid|url_invalid|host_not_allowed|host_forbidden|events_invalid|not_found|too_many`.
 
 ## AI assistant (Phase 11a, ADR-034)
@@ -142,20 +160,34 @@ Space administrators only (403 for other viewers of the space, 404 when the spac
 
 Triggers: `content.created|updated|moved|archived|trashed|published|publish_requested`, and the time-based `content.stale` (a daily sweep runs the rule for current pages not updated for `staleDays` days, once per page update; run history shows `eventType: content.stale`). Extra error: `workflow.stale_days_invalid`. Errors: `workflow.name_invalid`, `workflow.trigger_invalid`, `workflow.too_many_conditions`, `workflow.actions_invalid`, `workflow.condition_invalid`, `workflow.action_invalid`, `label.invalid`, `workflow.not_found`.
 
-## Whiteboards (Phase 9e, ADR-030)
+## Whiteboards (Phase 9e+, ADR-030 / ADR-035)
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/spaces/{key}/whiteboards` | View; boards with `elementCount` (the `elements` array is empty in lists) |
-| POST | `/spaces/{key}/whiteboards` | Edit on an active space. `{title, elements: [{id, type: Rect|Ellipse|Text|Sticky|Arrow|Pen, x, y, w, h, rotation, stroke, fill, strokeWidth, text, fontSize, rtl, points}]}` |
-| GET/PUT | `/whiteboards/{id}` | PUT replaces title and the whole element list (order = stacking order), needs **If-Match** `"r{n}"` |
+| GET | `/spaces/{key}/whiteboards` | View; `?archived=true` includes archived. List is light (`elements` empty); includes `description`, `favorited`, `archivedAt`, `background`, `gridStyle` |
+| POST | `/spaces/{key}/whiteboards` | Edit on an active space. `{title, description?, background?, gridStyle?, elements:[…]}` |
+| POST | `/spaces/{key}/whiteboards/from-template/{templateId}` | Edit; create from a server template |
+| GET | `/whiteboard-templates` | View; optional `?spaceKey=` |
+| GET/PUT | `/whiteboards/{id}` | PUT replaces title/elements (and optional description/background/gridStyle), needs **If-Match** `"r{n}"` |
 | PUT | `/whiteboards/{id}/title` | Edit; `{title}` — renames without touching elements or live sessions |
+| PUT | `/whiteboards/{id}/meta` | Edit; `{description?, background?, gridStyle?}` |
+| POST | `/whiteboards/{id}/duplicate` | Edit; copies title/elements (images dropped — attachments are not copied) |
+| POST | `/whiteboards/{id}/archive` · `/restore` | Edit; soft archive |
+| PUT/DELETE | `/whiteboards/{id}/favorite` | View; per-user favourite |
 | DELETE | `/whiteboards/{id}` | Edit |
-| GET | `/whiteboards/{id}/export` | View; SVG (`image/svg+xml`). PNG is rendered by the browser from the canvas |
+| GET | `/whiteboards/{id}/export` | View; SVG. PNG is client-side from the canvas |
+| GET | `/whiteboards/{id}/export.json` | View; JSON schemaVersion 1 snapshot (no attachment bytes) |
+| GET/POST | `/whiteboards/{id}/attachments` | View / Edit; board-scoped images (sniffed media type, size cap = `Raavi:Attachments:MaxBytes`) |
+| GET | `/whiteboard-attachments/{id}` | View on owning board; `nosniff`, private cache |
+| GET | `/whiteboards/{id}/revisions` · `…/{revisionId}` | View; last 50 REST-save snapshots |
+| POST | `/whiteboards/{id}/revisions/{revisionId}/restore` | Edit; restores as a new revision (never destructive) |
+| POST | `/whiteboards/{id}/template` | Edit; save board as a space template (images omitted) |
+| GET/POST | `/whiteboards/{id}/comments` | View / Comment|Edit; threads with optional objectId or x/y |
+| POST | `/whiteboards/{id}/comments/{id}/resolve` · `/reopen` | Edit |
 
-Live editing (ADR-035): `POST /collaboration/tickets {contentId: <boardId>, kind: "board"}` returns a ticket for the Yjs document `{tenantId}:board:{boardId}:live` (Edit right required; 403 for readers, 404 otherwise). The collaboration server persists through the signed internal endpoints (`/internal/collaboration/documents/{name}/state|updates|check`), where `updates` carries the full Yjs state and the converted `{elements}` that are validated like a PUT. A whole-board PUT clears the live state and resets connected editors.
+Live editing (ADR-035): `POST /collaboration/tickets {contentId: <boardId>, kind: "board"}` returns a ticket for the Yjs document `{tenantId}:board:{boardId}:live` (Edit right required; 403 for readers, 404 otherwise). Awareness may carry peer cursors/selection. A whole-board PUT clears the live state and resets connected editors.
 
-Elements are validated and normalised (colours `#rrggbb`, finite bounded coordinates, ≤ 2 000 elements, text ≤ 2 000 characters, arrows 2 points, pen ≤ 2 000 points). Errors: `board.title_invalid`, `board.too_many`, `board.element_invalid`, `board.not_found`.
+Element types: `Rect|RoundRect|Ellipse|Diamond|Triangle|Star|Text|Sticky|Arrow|Line|Pen|Image|Connector|Group|Table`. `Image` references `attachmentId` on the same board (never embeds bytes). Colours `#rrggbb`, ≤ 2 000 elements. Errors: `board.title_invalid`, `board.too_many`, `board.element_invalid`, `board.not_found`, `board.attachment_*`.
 
 ## Slides (Phase 9d, ADR-029)
 
@@ -188,9 +220,16 @@ Errors: `db.name_invalid`, `db.column_invalid`, `db.too_many_columns`, `db.colum
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/spaces/{key}/calendar/occurrences?from=&to=` | View; `yyyy-MM-dd`, window ≤ 400 days (`calendar.window_invalid`), ≤ 2 000 occurrences, cancelled ones omitted |
-| GET | `/calendar/occurrences?from=&to=` | the same across every space the caller may view |
-| POST | `/spaces/{key}/calendar/events` | Edit on an active space. `{title, description?, location?, allDay, startDate, startTime? ("HH:mm"), endDate?, endTime?, timeZone? (IANA, default UTC), recurrence?}` |
+| GET | `/calendars?spaceKey=&includeArchived=` | List calendars the caller may see (personal own + org + viewable spaces). Archived hidden unless `includeArchived=true` |
+| GET | `/spaces/{key}/calendars?includeArchived=` | Space calendars (View) |
+| POST | `/calendars` | `{scope: Personal\|Space\|Organization, spaceKey?, name?, description?, color?, icon?}`. Org = tenant admin; Space = Edit on active space |
+| PUT | `/calendars/{id}` | Manage: update name/description/color/icon |
+| POST | `/calendars/{id}/archive` | Manage; default delete path (hides from normal lists, keeps events) |
+| POST | `/calendars/{id}/restore` | Manage |
+| POST | `/calendars/{id}/purge` | Manage; only when archived; body `{confirmName}` must equal calendar name; deletes that calendar’s Raavi-owned events only |
+| GET | `/spaces/{key}/calendar/occurrences?from=&to=&calendarIds=` | View; `yyyy-MM-dd`, window ≤ 400 days (`calendar.window_invalid`), ≤ 2 000 occurrences, cancelled ones omitted; optional comma-separated `calendarIds` |
+| GET | `/calendar/occurrences?from=&to=&calendarIds=` | the same across every space the caller may view |
+| POST | `/spaces/{key}/calendar/events` | Edit on an active space (resolves/creates the space default calendar). `{title, description?, location?, allDay, startDate, startTime? ("HH:mm"), endDate?, endTime?, timeZone? (IANA, default UTC), recurrence?}` |
 | GET/PUT | `/calendar/events/{id}` | PUT needs **If-Match** `"r{n}"` (Edit) |
 | POST | `/calendar/events/{id}/exclusions` | `{date}` cancels one occurrence (`calendar.occurrence_invalid` if the rule does not produce it) |
 | DELETE | `/calendar/events/{id}` | Edit |

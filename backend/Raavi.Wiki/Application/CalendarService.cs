@@ -5,10 +5,12 @@ using Raavi.Application.Abstractions.Authorization;
 using Raavi.Application.Abstractions.Identity;
 using Raavi.Application.Abstractions.Time;
 using Raavi.Application.Common;
+using Raavi.Domain.Common;
 using Raavi.Infrastructure.Http;
 using Raavi.Wiki.Domain;
 using Raavi.Wiki.Persistence;
 using Raavi.Wiki.Security;
+using WikiCalendar = Raavi.Wiki.Domain.Calendar;
 
 namespace Raavi.Wiki.Application;
 
@@ -30,7 +32,14 @@ public sealed record CalendarEventRequest(
 
 public sealed record CalendarExport(string FileName, byte[] Data);
 
-/// <summary>Space calendars (Phase 9b, ADR-027): events with recurrence in Gregorian or Persian terms, permissions from the space, iCalendar export.</summary>
+public sealed record CalendarDto(
+    Guid Id, string Scope, Guid? SpaceId, Guid? OwnerUserId, string Name, string? Description, string Color, string? Icon, bool IsDefault, DateTimeOffset? ArchivedAt, int Revision);
+
+public sealed record CalendarRequest(string? Scope, string? SpaceKey, string? Name, string? Description, string? Color, string? Icon);
+
+public sealed record CalendarHardDeleteRequest(string? ConfirmName);
+
+/// <summary>Calendars + space events (ADR-027 extended): wall-clock recurrence, calendar containers, iCalendar export.</summary>
 public sealed class CalendarService(WikiDbContext db, SpaceService spaces, WikiAuthorizer authz, IPrincipalDirectory directory, ICurrentUser current, IClock clock)
 {
     public const int MaxWindowDays = 400;
@@ -38,14 +47,17 @@ public sealed class CalendarService(WikiDbContext db, SpaceService spaces, WikiA
     public const int ExportHorizonYears = 2;
 
     public static readonly Error NotFound = new("calendar.event_not_found", "Event not found.", ErrorKind.NotFound);
+    public static readonly Error CalendarNotFound = new("calendar.not_found", "Calendar not found.", ErrorKind.NotFound);
     public static readonly Error WindowInvalid = new("calendar.window_invalid", $"Choose a window of at most {MaxWindowDays} days.", ErrorKind.Validation);
     public static readonly Error TimeInvalid = new("calendar.time_invalid", "Times must look like 09:30.", ErrorKind.Validation);
     public static readonly Error RecurrenceInvalid = new("calendar.recurrence_invalid", "The repeat rule is not valid.", ErrorKind.Validation);
+    public static readonly Error ConfirmMismatch = new("calendar.confirm_mismatch", "Type the calendar name to permanently delete it.", ErrorKind.Validation);
+    public static readonly Error NotArchived = new("calendar.not_archived", "Archive the calendar before permanently deleting it.", ErrorKind.Conflict);
 
     private static readonly string[] TimeFormats = ["HH:mm", "HH:mm:ss"];
 
     /// <summary>Occurrences in [from, to] for one space, or for every space the caller may view when <paramref name="spaceKey"/> is null.</summary>
-    public async Task<Result<IReadOnlyList<OccurrenceDto>>> OccurrencesAsync(string? spaceKey, DateOnly from, DateOnly to, CancellationToken ct)
+    public async Task<Result<IReadOnlyList<OccurrenceDto>>> OccurrencesAsync(string? spaceKey, DateOnly from, DateOnly to, CancellationToken ct, IReadOnlyList<Guid>? calendarIds = null)
     {
         if (to < from || to.DayNumber - from.DayNumber > MaxWindowDays)
         {
@@ -73,14 +85,20 @@ public sealed class CalendarService(WikiDbContext db, SpaceService spaces, WikiA
         }
 
         var ids = rights.Keys.ToList();
-        var events = await db.CalendarEvents.AsNoTracking()
-            .Where(e => ids.Contains(e.SpaceId) && e.StartDate <= to && (e.RecurFrequency != RecurrenceFrequency.None || e.EndDate >= from) && (e.RecurUntil == null || e.RecurUntil >= from))
-            .ToListAsync(ct).ConfigureAwait(false);
+        var query = db.CalendarEvents.AsNoTracking()
+            .Where(e => e.SpaceId != null && ids.Contains(e.SpaceId.Value) && e.StartDate <= to && (e.RecurFrequency != RecurrenceFrequency.None || e.EndDate >= from) && (e.RecurUntil == null || e.RecurUntil >= from));
+        if (calendarIds is { Count: > 0 })
+        {
+            var filter = calendarIds.Distinct().ToList();
+            query = query.Where(e => filter.Contains(e.CalendarId));
+        }
+
+        var events = await query.ToListAsync(ct).ConfigureAwait(false);
 
         var list = new List<OccurrenceDto>();
         foreach (var e in events)
         {
-            var r = rights[e.SpaceId];
+            var r = rights[e.SpaceId!.Value];
             var canEdit = r.CanWrite(PermissionAction.Edit);
             var excluded = e.ExcludedDates;
             foreach (var start in RecurrenceExpander.StartDates(e.StartDate, e.Rule, from.AddDays(-e.SpanDays), to))
@@ -128,7 +146,8 @@ public sealed class CalendarService(WikiDbContext db, SpaceService spaces, WikiA
             return Result<CalendarEventDto>.Failure(details.Error!);
         }
 
-        var ev = CalendarEvent.Create(space.Space.Id, details.Value, current.UserId, clock.UtcNow);
+        var calendar = await EnsureSpaceDefaultCalendarAsync(space.Space, ct).ConfigureAwait(false);
+        var ev = CalendarEvent.Create(calendar.Id, space.Space.Id, details.Value, current.UserId, clock.UtcNow);
         db.CalendarEvents.Add(ev);
         await db.SaveChangesAsync(ct).ConfigureAwait(false);
         return Result<CalendarEventDto>.Success(await ToDtoAsync(ev, space, ct).ConfigureAwait(false));
@@ -160,7 +179,7 @@ public sealed class CalendarService(WikiDbContext db, SpaceService spaces, WikiA
             return Result<CalendarEventDto>.Failure(details.Error!);
         }
 
-        ev.Update(details.Value, clock.UtcNow);
+        ev.Update(details.Value, current.UserId, clock.UtcNow);
         await db.SaveChangesAsync(ct).ConfigureAwait(false);
         return Result<CalendarEventDto>.Success(await ToDtoAsync(ev, space, ct).ConfigureAwait(false));
     }
@@ -273,11 +292,234 @@ public sealed class CalendarService(WikiDbContext db, SpaceService spaces, WikiA
         return true;
     }
 
+    /// <summary>Ensures the space has a default calendar (idempotent). Used by create-event and migration backfill.</summary>
+    public async Task<WikiCalendar> EnsureSpaceDefaultCalendarAsync(Space space, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(space);
+        var existing = await db.Calendars.FirstOrDefaultAsync(c => c.SpaceId == space.Id && c.IsDefault && c.Scope == CalendarScope.Space && c.ArchivedAt == null, ct).ConfigureAwait(false);
+        if (existing is not null)
+        {
+            return existing;
+        }
+
+        var cal = WikiCalendar.CreateSpaceDefault(space.Id, space.Name, current.UserId == Guid.Empty ? space.CreatedBy : current.UserId, clock.UtcNow);
+        db.Calendars.Add(cal);
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
+        return cal;
+    }
+
+    public async Task<Result<IReadOnlyList<CalendarDto>>> ListCalendarsAsync(string? spaceKey, bool includeArchived, CancellationToken ct)
+    {
+        var q = db.Calendars.AsNoTracking().AsQueryable();
+        if (!includeArchived)
+        {
+            q = q.Where(c => c.ArchivedAt == null);
+        }
+
+        if (spaceKey is not null)
+        {
+            var space = await spaces.LoadAsync(spaceKey, requireView: true, ct).ConfigureAwait(false);
+            if (space is null)
+            {
+                return Result<IReadOnlyList<CalendarDto>>.Failure(WikiErrors.SpaceNotFound);
+            }
+
+            q = q.Where(c => c.Scope == CalendarScope.Space && c.SpaceId == space.Space.Id);
+        }
+        else
+        {
+            var viewable = (await authz.ViewableSpaceIdsAsync(ct).ConfigureAwait(false)).ToList();
+            q = q.Where(c =>
+                (c.Scope == CalendarScope.Personal && c.OwnerUserId == current.UserId)
+                || (c.Scope == CalendarScope.Organization)
+                || (c.Scope == CalendarScope.Space && c.SpaceId != null && viewable.Contains(c.SpaceId.Value)));
+        }
+
+        var rows = await q.OrderBy(c => c.Name).Take(500).ToListAsync(ct).ConfigureAwait(false);
+        return Result<IReadOnlyList<CalendarDto>>.Success(rows.Select(ToCalendarDto).ToList());
+    }
+
+    public async Task<Result<CalendarDto>> CreateCalendarAsync(CalendarRequest request, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (!Enum.TryParse<CalendarScope>(request.Scope, true, out var scope))
+        {
+            return Result<CalendarDto>.Failure(new Error("calendar.scope_invalid", "Choose Personal, Space or Organization.", ErrorKind.Validation));
+        }
+
+        try
+        {
+            WikiCalendar cal;
+            if (scope == CalendarScope.Personal)
+            {
+                cal = WikiCalendar.CreatePersonal(current.UserId, request.Name, clock.UtcNow);
+                if (!string.IsNullOrWhiteSpace(request.Description) || !string.IsNullOrWhiteSpace(request.Color) || !string.IsNullOrWhiteSpace(request.Icon))
+                {
+                    cal.UpdateMeta(cal.Name, request.Description, request.Color, request.Icon, current.UserId, clock.UtcNow);
+                }
+            }
+            else if (scope == CalendarScope.Organization)
+            {
+                if (!(await authz.PrincipalAsync(ct).ConfigureAwait(false)).IsTenantAdministrator)
+                {
+                    return Result<CalendarDto>.Failure(WikiErrors.Forbidden);
+                }
+
+                cal = WikiCalendar.CreateOrganization(request.Name ?? "Organization", request.Description, request.Color, current.UserId, clock.UtcNow);
+                if (!string.IsNullOrWhiteSpace(request.Icon))
+                {
+                    cal.UpdateMeta(cal.Name, cal.Description, cal.Color, request.Icon, current.UserId, clock.UtcNow);
+                }
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(request.SpaceKey))
+                {
+                    return Result<CalendarDto>.Failure(WikiErrors.SpaceNotFound);
+                }
+
+                var space = await spaces.LoadAsync(request.SpaceKey, requireView: true, ct).ConfigureAwait(false);
+                if (space is null)
+                {
+                    return Result<CalendarDto>.Failure(WikiErrors.SpaceNotFound);
+                }
+
+                if (!space.CanWrite(PermissionAction.Edit) || space.Space.Status == SpaceStatus.Archived)
+                {
+                    return Result<CalendarDto>.Failure(space.Space.Status == SpaceStatus.Archived ? WikiErrors.SpaceArchived : WikiErrors.Forbidden);
+                }
+
+                cal = WikiCalendar.CreateSpace(space.Space.Id, request.Name ?? space.Space.Name, request.Description, request.Color, current.UserId, clock.UtcNow);
+                if (!string.IsNullOrWhiteSpace(request.Icon))
+                {
+                    cal.UpdateMeta(cal.Name, cal.Description, cal.Color, request.Icon, current.UserId, clock.UtcNow);
+                }
+            }
+
+            db.Calendars.Add(cal);
+            await db.SaveChangesAsync(ct).ConfigureAwait(false);
+            return Result<CalendarDto>.Success(ToCalendarDto(cal));
+        }
+        catch (DomainException ex)
+        {
+            return Result<CalendarDto>.Failure(new Error(ex.Code, ex.Message, ErrorKind.Validation));
+        }
+    }
+
+    public async Task<Result<CalendarDto>> UpdateCalendarAsync(Guid id, CalendarRequest request, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var cal = await db.Calendars.FirstOrDefaultAsync(c => c.Id == id, ct).ConfigureAwait(false);
+        if (cal is null || !await CanManageCalendarAsync(cal, ct).ConfigureAwait(false))
+        {
+            return Result<CalendarDto>.Failure(CalendarNotFound);
+        }
+
+        try
+        {
+            cal.UpdateMeta(request.Name, request.Description, request.Color, request.Icon, current.UserId, clock.UtcNow);
+            await db.SaveChangesAsync(ct).ConfigureAwait(false);
+            return Result<CalendarDto>.Success(ToCalendarDto(cal));
+        }
+        catch (DomainException ex)
+        {
+            return Result<CalendarDto>.Failure(new Error(ex.Code, ex.Message, ErrorKind.Validation));
+        }
+    }
+
+    public async Task<Result<CalendarDto>> ArchiveCalendarAsync(Guid id, bool restore, CancellationToken ct)
+    {
+        var cal = await db.Calendars.FirstOrDefaultAsync(c => c.Id == id, ct).ConfigureAwait(false);
+        if (cal is null || !await CanManageCalendarAsync(cal, ct).ConfigureAwait(false))
+        {
+            return Result<CalendarDto>.Failure(CalendarNotFound);
+        }
+
+        if (restore)
+        {
+            cal.Restore(current.UserId, clock.UtcNow);
+        }
+        else
+        {
+            cal.Archive(current.UserId, clock.UtcNow);
+        }
+
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
+        return Result<CalendarDto>.Success(ToCalendarDto(cal));
+    }
+
+    /// <summary>
+    /// Permanently deletes an archived Raavi calendar and its owned events only. Never touches external/Jira/Templar authority.
+    /// Requires typing the calendar name.
+    /// </summary>
+    public async Task<Result> HardDeleteCalendarAsync(Guid id, CalendarHardDeleteRequest request, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var cal = await db.Calendars.FirstOrDefaultAsync(c => c.Id == id, ct).ConfigureAwait(false);
+        if (cal is null || !await CanManageCalendarAsync(cal, ct).ConfigureAwait(false))
+        {
+            return Result.Failure(CalendarNotFound);
+        }
+
+        if (cal.ArchivedAt is null)
+        {
+            return Result.Failure(NotArchived);
+        }
+
+        if (!string.Equals(cal.Name, (request.ConfirmName ?? string.Empty).Trim(), StringComparison.Ordinal))
+        {
+            return Result.Failure(ConfirmMismatch);
+        }
+
+        var events = await db.CalendarEvents.Where(e => e.CalendarId == cal.Id).ToListAsync(ct).ConfigureAwait(false);
+        db.CalendarEvents.RemoveRange(events);
+        var grants = await db.CalendarAccessGrants.Where(p => p.CalendarId == cal.Id).ToListAsync(ct).ConfigureAwait(false);
+        db.CalendarAccessGrants.RemoveRange(grants);
+        db.Calendars.Remove(cal);
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
+        return Result.Success();
+    }
+
+    private async Task<bool> CanManageCalendarAsync(WikiCalendar cal, CancellationToken ct)
+    {
+        if (cal.Scope == CalendarScope.Personal)
+        {
+            return cal.OwnerUserId == current.UserId;
+        }
+
+        if (cal.Scope == CalendarScope.Organization)
+        {
+            return (await authz.PrincipalAsync(ct).ConfigureAwait(false)).IsTenantAdministrator;
+        }
+
+        if (cal.SpaceId is not { } sid)
+        {
+            return false;
+        }
+
+        var space = await db.Spaces.AsNoTracking().FirstOrDefaultAsync(s => s.Id == sid, ct).ConfigureAwait(false);
+        if (space is null)
+        {
+            return false;
+        }
+
+        var rights = await authz.GetSpaceRightsAsync(space, ct).ConfigureAwait(false);
+        return rights.CanWrite(PermissionAction.Edit);
+    }
+
+    private static CalendarDto ToCalendarDto(WikiCalendar c) =>
+        new(c.Id, c.Scope.ToString(), c.SpaceId, c.OwnerUserId, c.Name, c.Description, c.Color, c.Icon, c.IsDefault, c.ArchivedAt, c.Revision);
+
     private async Task<Result<(CalendarEvent Event, SpaceRights Space)>> LoadAsync(Guid id, bool track, CancellationToken ct)
     {
         var ev = await (track ? db.CalendarEvents : db.CalendarEvents.AsNoTracking()).FirstOrDefaultAsync(e => e.Id == id, ct).ConfigureAwait(false);
-        var space = ev is null ? null : await db.Spaces.AsNoTracking().FirstOrDefaultAsync(s => s.Id == ev.SpaceId, ct).ConfigureAwait(false);
-        if (ev is null || space is null)
+        if (ev?.SpaceId is not { } spaceId)
+        {
+            return Result<(CalendarEvent, SpaceRights)>.Failure(NotFound);
+        }
+
+        var space = await db.Spaces.AsNoTracking().FirstOrDefaultAsync(s => s.Id == spaceId, ct).ConfigureAwait(false);
+        if (space is null)
         {
             return Result<(CalendarEvent, SpaceRights)>.Failure(NotFound);
         }

@@ -59,6 +59,10 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
 
     public DbSet<WorkTask> WorkTasks => Set<WorkTask>();
 
+    public DbSet<Calendar> Calendars => Set<Calendar>();
+
+    public DbSet<CalendarAccessGrant> CalendarAccessGrants => Set<CalendarAccessGrant>();
+
     public DbSet<CalendarEvent> CalendarEvents => Set<CalendarEvent>();
 
     public DbSet<SpaceDatabase> SpaceDatabases => Set<SpaceDatabase>();
@@ -68,6 +72,16 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
     public DbSet<SlideDeck> SlideDecks => Set<SlideDeck>();
 
     public DbSet<Whiteboard> Whiteboards => Set<Whiteboard>();
+
+    public DbSet<WhiteboardAttachment> WhiteboardAttachments => Set<WhiteboardAttachment>();
+
+    public DbSet<WhiteboardFavorite> WhiteboardFavorites => Set<WhiteboardFavorite>();
+
+    public DbSet<WhiteboardRevision> WhiteboardRevisions => Set<WhiteboardRevision>();
+
+    public DbSet<WhiteboardTemplate> WhiteboardTemplates => Set<WhiteboardTemplate>();
+
+    public DbSet<WhiteboardComment> WhiteboardComments => Set<WhiteboardComment>();
 
     public DbSet<Workflow> Workflows => Set<Workflow>();
 
@@ -318,6 +332,31 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
             b.HasOne<Space>().WithMany().HasForeignKey(x => new { x.TenantId, x.SpaceId }).HasPrincipalKey(s => new { s.TenantId, s.Id }).OnDelete(DeleteBehavior.Restrict);
         });
 
+        modelBuilder.Entity<Calendar>(b =>
+        {
+            b.ToTable("Calendars", "content");
+            Keys(b);
+            b.Property(x => x.Scope).HasConversion<string>().HasMaxLength(32).IsUnicode(false);
+            b.Property(x => x.Name).HasMaxLength(Calendar.MaxNameLength);
+            b.Property(x => x.Description).HasMaxLength(Calendar.MaxDescriptionLength);
+            b.Property(x => x.Color).HasMaxLength(Calendar.MaxColorLength).IsUnicode(false);
+            b.Property(x => x.Icon).HasMaxLength(Calendar.MaxIconLength).IsUnicode(false);
+            b.Property(x => x.Revision).IsConcurrencyToken();
+            b.HasIndex(x => new { x.TenantId, x.Scope, x.SpaceId, x.OwnerUserId });
+            b.HasIndex(x => new { x.TenantId, x.SpaceId, x.IsDefault });
+            b.HasOne<Space>().WithMany().HasForeignKey(x => new { x.TenantId, x.SpaceId }).HasPrincipalKey(s => new { s.TenantId, s.Id }).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<CalendarAccessGrant>(b =>
+        {
+            b.ToTable("CalendarAccessGrants", "content");
+            Keys(b);
+            b.Property(x => x.SubjectType).HasConversion<string>().HasMaxLength(16).IsUnicode(false);
+            b.Property(x => x.Grant).HasConversion<string>().HasMaxLength(16).IsUnicode(false);
+            b.HasIndex(x => new { x.TenantId, x.CalendarId, x.SubjectType, x.SubjectId, x.Grant }).IsUnique();
+            b.HasOne<Calendar>().WithMany().HasForeignKey(x => new { x.TenantId, x.CalendarId }).HasPrincipalKey(c => new { c.TenantId, c.Id }).OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<CalendarEvent>(b =>
         {
             b.ToTable("CalendarEvents", "content");
@@ -325,6 +364,11 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
             b.Property(x => x.Title).HasMaxLength(CalendarEvent.MaxTitleLength);
             b.Property(x => x.Description).HasMaxLength(CalendarEvent.MaxDescriptionLength);
             b.Property(x => x.Location).HasMaxLength(CalendarEvent.MaxLocationLength);
+            b.Property(x => x.OnlineUrl).HasMaxLength(2000);
+            b.Property(x => x.Color).HasMaxLength(32).IsUnicode(false);
+            b.Property(x => x.Type).HasConversion<string>().HasMaxLength(32).IsUnicode(false);
+            b.Property(x => x.Status).HasConversion<string>().HasMaxLength(32).IsUnicode(false);
+            b.Property(x => x.Priority).HasConversion<string>().HasMaxLength(16).IsUnicode(false);
             b.Property(x => x.StartDate).HasColumnType("date");
             b.Property(x => x.EndDate).HasColumnType("date");
             b.Property(x => x.RecurUntil).HasColumnType("date");
@@ -338,8 +382,10 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
             b.Ignore(x => x.Rule);
             b.Ignore(x => x.SpanDays);
             b.Ignore(x => x.ExcludedDates);
+            b.HasIndex(x => new { x.TenantId, x.CalendarId, x.StartDate });
             b.HasIndex(x => new { x.TenantId, x.SpaceId, x.StartDate });
-            b.HasOne<Space>().WithMany().HasForeignKey(x => new { x.TenantId, x.SpaceId }).HasPrincipalKey(s => new { s.TenantId, s.Id }).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Calendar>().WithMany().HasForeignKey(x => new { x.TenantId, x.CalendarId }).HasPrincipalKey(c => new { c.TenantId, c.Id }).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Space>().WithMany().HasForeignKey(x => new { x.TenantId, x.SpaceId }).HasPrincipalKey(s => new { s.TenantId, s.Id }).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<SpaceDatabase>(b =>
@@ -384,12 +430,72 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
             b.ToTable("Whiteboards", "content");
             Keys(b);
             b.Property(x => x.Title).HasMaxLength(Whiteboard.MaxTitleLength);
+            b.Property(x => x.Description).HasMaxLength(Whiteboard.MaxDescriptionLength);
+            b.Property(x => x.Background).HasMaxLength(32).IsUnicode(false);
+            b.Property(x => x.GridStyle).HasConversion<string>().HasMaxLength(16).IsUnicode(false);
             b.Property(x => x.ElementsJson).HasColumnType("nvarchar(max)");
             b.Property(x => x.YjsState).HasColumnType("varbinary(max)");
             b.Property(x => x.Revision).IsConcurrencyToken();
             b.Ignore(x => x.Elements);
             b.HasIndex(x => new { x.TenantId, x.SpaceId, x.Title });
+            b.HasIndex(x => new { x.TenantId, x.SpaceId, x.ArchivedAt });
             b.HasOne<Space>().WithMany().HasForeignKey(x => new { x.TenantId, x.SpaceId }).HasPrincipalKey(s => new { s.TenantId, s.Id }).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<WhiteboardAttachment>(b =>
+        {
+            b.ToTable("WhiteboardAttachments", "content");
+            Keys(b);
+            b.Property(x => x.FileName).HasMaxLength(WhiteboardAttachment.MaxFileNameLength);
+            b.Property(x => x.MediaType).HasMaxLength(100).IsUnicode(false);
+            b.Property(x => x.Sha256).HasMaxLength(64).IsUnicode(false);
+            b.Property(x => x.Data).HasColumnType("varbinary(max)");
+            b.HasIndex(x => new { x.TenantId, x.WhiteboardId });
+            b.HasOne<Whiteboard>().WithMany().HasForeignKey(x => new { x.TenantId, x.WhiteboardId }).HasPrincipalKey(w => new { w.TenantId, w.Id }).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<WhiteboardFavorite>(b =>
+        {
+            b.ToTable("WhiteboardFavorites", "content");
+            Keys(b);
+            b.HasIndex(x => new { x.TenantId, x.UserId, x.WhiteboardId }).IsUnique();
+            b.HasOne<Whiteboard>().WithMany().HasForeignKey(x => new { x.TenantId, x.WhiteboardId }).HasPrincipalKey(w => new { w.TenantId, w.Id }).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<WhiteboardRevision>(b =>
+        {
+            b.ToTable("WhiteboardRevisions", "content");
+            Keys(b);
+            b.Property(x => x.Title).HasMaxLength(Whiteboard.MaxTitleLength);
+            b.Property(x => x.Description).HasMaxLength(Whiteboard.MaxDescriptionLength);
+            b.Property(x => x.Background).HasMaxLength(32).IsUnicode(false);
+            b.Property(x => x.GridStyle).HasConversion<string>().HasMaxLength(16).IsUnicode(false);
+            b.Property(x => x.ElementsJson).HasColumnType("nvarchar(max)");
+            b.HasIndex(x => new { x.TenantId, x.WhiteboardId, x.CreatedAt });
+            b.HasOne<Whiteboard>().WithMany().HasForeignKey(x => new { x.TenantId, x.WhiteboardId }).HasPrincipalKey(w => new { w.TenantId, w.Id }).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<WhiteboardTemplate>(b =>
+        {
+            b.ToTable("WhiteboardTemplates", "content");
+            Keys(b);
+            b.Property(x => x.Name).HasMaxLength(WhiteboardTemplate.MaxNameLength);
+            b.Property(x => x.Description).HasMaxLength(Whiteboard.MaxDescriptionLength);
+            b.Property(x => x.Background).HasMaxLength(32).IsUnicode(false);
+            b.Property(x => x.GridStyle).HasConversion<string>().HasMaxLength(16).IsUnicode(false);
+            b.Property(x => x.ElementsJson).HasColumnType("nvarchar(max)");
+            b.Ignore(x => x.Elements);
+            b.HasIndex(x => new { x.TenantId, x.SpaceId, x.Name });
+        });
+
+        modelBuilder.Entity<WhiteboardComment>(b =>
+        {
+            b.ToTable("WhiteboardComments", "content");
+            Keys(b);
+            b.Property(x => x.ObjectId).HasMaxLength(40).IsUnicode(false);
+            b.Property(x => x.Body).HasMaxLength(WhiteboardComment.MaxBodyLength);
+            b.HasIndex(x => new { x.TenantId, x.WhiteboardId, x.CreatedAt });
+            b.HasOne<Whiteboard>().WithMany().HasForeignKey(x => new { x.TenantId, x.WhiteboardId }).HasPrincipalKey(w => new { w.TenantId, w.Id }).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Workflow>(b =>

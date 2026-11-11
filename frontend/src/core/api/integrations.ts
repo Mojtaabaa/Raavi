@@ -82,6 +82,56 @@ const enc = encodeURIComponent
 const base = '/integrations/webhooks'
 const connectorBase = '/integrations/connectors'
 
+export interface JiraLinkContext {
+  id: string
+  exact: string
+  prefix: string | null
+  suffix: string | null
+  createdAt: string
+}
+
+export interface PageJiraLink {
+  id: string
+  contentId: string
+  connectorId: string
+  connectorName: string
+  issueId: string
+  issueKey: string
+  summary: string | null
+  status: string | null
+  issueType: string | null
+  priority: string | null
+  assignee: string | null
+  projectKey: string | null
+  issueUrl: string | null
+  source: string
+  syncState: string
+  createdAt: string
+  createdByName: string | null
+  lastSyncedAt: string | null
+  lastSyncError: string | null
+  contexts: JiraLinkContext[]
+}
+
+export interface JiraProject {
+  id: string
+  key: string
+  name: string
+}
+
+export interface JiraIssueType {
+  id: string
+  name: string
+  subtask: boolean
+}
+
+export interface TextQuoteInput {
+  exact: string
+  prefix?: string | null
+  suffix?: string | null
+  anchorJson?: string | null
+}
+
 export const connectorsApi = {
   catalog: () => api<{ kinds: ConnectorKind[]; hostPolicyConfigured: boolean }>('GET', `${connectorBase}/catalog`),
   list: () => api<Connector[]>('GET', connectorBase),
@@ -91,6 +141,25 @@ export const connectorsApi = {
   /** Enabled connectors, names only (any member). */
   available: () => api<{ id: string; name: string; kind: ConnectorKind }[]>('GET', '/integrations/issues/connectors'),
   lookup: (connector: string, reference: string) => api<IssueInfo>('GET', `/integrations/issues/lookup?connector=${enc(connector)}&reference=${enc(reference)}`),
+}
+
+export const jiraLinksApi = {
+  jiraConnectors: () => api<{ id: string; name: string }[]>('GET', '/integrations/jira/connectors'),
+  projects: (connectorId: string) => api<JiraProject[]>('GET', `/integrations/jira/connectors/${enc(connectorId)}/projects`),
+  issueTypes: (connectorId: string, project: string) =>
+    api<JiraIssueType[]>('GET', `/integrations/jira/connectors/${enc(connectorId)}/issuetypes?project=${enc(project)}`),
+  search: (connectorId: string, q: string) =>
+    api<{ id: string; key: string; summary: string; status: string; issueType: string; priority: string | null; assignee: string | null; projectKey: string; url: string }[]>(
+      'GET',
+      `/integrations/jira/connectors/${enc(connectorId)}/search?q=${enc(q)}`,
+    ),
+  list: (contentId: string) => api<PageJiraLink[]>('GET', `/pages/${enc(contentId)}/jira-links`),
+  create: (contentId: string, body: { connectorId: string; projectKey: string; issueTypeId: string; summary: string; description?: string; quote?: TextQuoteInput }) =>
+    api<PageJiraLink>('POST', `/pages/${enc(contentId)}/jira-links/create`, body),
+  link: (contentId: string, body: { connectorId: string; issueKeyOrId: string; quote?: TextQuoteInput }) =>
+    api<PageJiraLink>('POST', `/pages/${enc(contentId)}/jira-links`, body),
+  refresh: (contentId: string, linkId: string) => api<PageJiraLink>('POST', `/pages/${enc(contentId)}/jira-links/${enc(linkId)}/refresh`, {}),
+  unlink: (contentId: string, linkId: string) => api<void>('DELETE', `/pages/${enc(contentId)}/jira-links/${enc(linkId)}`),
 }
 
 export const webhooksApi = {

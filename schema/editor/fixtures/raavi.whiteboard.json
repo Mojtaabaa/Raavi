@@ -1,0 +1,28 @@
+{
+  "schema": "raavi.doc",
+  "schemaVersion": 4,
+  "doc": {
+    "type": "doc",
+    "content": [
+      {
+        "type": "whiteboard",
+        "attrs": {
+          "whiteboardId": "0b9f6a3c-1d2e-4f50-8a71-92b3c4d5e6f7"
+        }
+      },
+      {
+        "type": "paragraph",
+        "attrs": {
+          "textAlign": null,
+          "dir": null
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "end"
+          }
+        ]
+      }
+    ]
+  }
+}

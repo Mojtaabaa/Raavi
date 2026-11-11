@@ -27,7 +27,7 @@ builder.Services.AddIdentityCore(builder.Configuration);
 builder.Services.AddWikiModule(builder.Configuration, runOutboxPoller: true);
 builder.Services.AddScoped<TenantFanOut<StaleSweepJob, StaleSweepArgs>>();
 builder.Services.AddMigrationModule(builder.Configuration);
-builder.Services.AddIntegrationsModule(builder.Configuration);
+builder.Services.AddIntegrationsModule(builder.Configuration, runOutboxPoller: true);
 builder.Services.AddScoped<DatabaseMaintenanceJob>();
 builder.Services.AddAiModule(builder.Configuration);
 builder.Services.AddScoped<TenantFanOut<Raavi.AI.AiIndexJob, Raavi.AI.AiIndexArgs>>();

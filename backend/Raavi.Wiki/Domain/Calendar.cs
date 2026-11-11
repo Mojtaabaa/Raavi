@@ -49,13 +49,32 @@ public sealed class CalendarEvent : Entity, ITenantOwned
 
     public Guid TenantId { get; private set; }
 
-    public Guid SpaceId { get; private set; }
+    /// <summary>Owning calendar (Personal / Space / Organization).</summary>
+    public Guid CalendarId { get; private set; }
+
+    /// <summary>Denormalised space for Space-scoped calendars (null for Personal/Org).</summary>
+    public Guid? SpaceId { get; private set; }
 
     public string Title { get; private set; } = string.Empty;
 
     public string? Description { get; private set; }
 
     public string? Location { get; private set; }
+
+    public string? OnlineUrl { get; private set; }
+
+    public CalendarEventType Type { get; private set; }
+
+    public CalendarEventStatus Status { get; private set; }
+
+    public CalendarEventPriority Priority { get; private set; }
+
+    public string? Color { get; private set; }
+
+    /// <summary>When true, Full-share viewers without Manage still see Free/Busy only for this event.</summary>
+    public bool IsPrivate { get; private set; }
+
+    public Guid OrganizerId { get; private set; }
 
     public bool IsAllDay { get; private set; }
 
@@ -89,6 +108,8 @@ public sealed class CalendarEvent : Entity, ITenantOwned
 
     public Guid CreatedBy { get; private set; }
 
+    public Guid UpdatedBy { get; private set; }
+
     public DateTimeOffset CreatedAt { get; private set; }
 
     public DateTimeOffset UpdatedAt { get; private set; }
@@ -104,16 +125,26 @@ public sealed class CalendarEvent : Entity, ITenantOwned
             ? new HashSet<DateOnly>()
             : ExcludedDatesRaw.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => DateOnly.ParseExact(s, "yyyy-MM-dd", CultureInfo.InvariantCulture)).ToHashSet();
 
-    public static CalendarEvent Create(Guid spaceId, EventDetails details, Guid userId, DateTimeOffset now)
+    public static CalendarEvent Create(Guid calendarId, Guid? spaceId, EventDetails details, Guid userId, DateTimeOffset now)
     {
-        var e = new CalendarEvent { SpaceId = spaceId, CreatedBy = userId, CreatedAt = now, UpdatedAt = now };
+        var e = new CalendarEvent
+        {
+            CalendarId = calendarId,
+            SpaceId = spaceId,
+            CreatedBy = userId,
+            UpdatedBy = userId,
+            OrganizerId = userId,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
         e.Apply(details);
         return e;
     }
 
-    public void Update(EventDetails details, DateTimeOffset now)
+    public void Update(EventDetails details, Guid userId, DateTimeOffset now)
     {
         Apply(details);
+        UpdatedBy = userId;
         Touch(now);
     }
 
@@ -204,9 +235,43 @@ public sealed class CalendarEvent : Entity, ITenantOwned
 
         var rule = Normalise(d.Recurrence ?? RecurrenceRule.None, d.StartDate);
 
+        if (!Enum.IsDefined(d.Type) || !Enum.IsDefined(d.Status) || !Enum.IsDefined(d.Priority))
+        {
+            throw new DomainException("calendar.event_meta_invalid", "The event type, status or priority is not valid.");
+        }
+
+        var online = string.IsNullOrWhiteSpace(d.OnlineUrl) ? null : d.OnlineUrl.Trim();
+        if (online is { Length: > 2000 })
+        {
+            throw new DomainException("calendar.url_invalid", "The online meeting URL is too long.");
+        }
+
+        string? eventColor = null;
+        if (!string.IsNullOrWhiteSpace(d.Color))
+        {
+            var c = d.Color.Trim().ToLowerInvariant();
+            if (!System.Text.RegularExpressions.Regex.IsMatch(c, "^#[0-9a-f]{6}$"))
+            {
+                throw new DomainException("calendar.color_invalid", "Colour must look like #rrggbb.");
+            }
+
+            eventColor = c;
+        }
+
         Title = title;
         Description = description;
         Location = location;
+        OnlineUrl = online;
+        Type = d.Type;
+        Status = d.Status;
+        Priority = d.Priority;
+        Color = eventColor;
+        IsPrivate = d.IsPrivate;
+        if (d.OrganizerId is { } org && org != Guid.Empty)
+        {
+            OrganizerId = org;
+        }
+
         IsAllDay = d.AllDay;
         StartDate = d.StartDate;
         EndDate = d.EndDate;
@@ -274,7 +339,23 @@ public sealed class CalendarEvent : Entity, ITenantOwned
 
 /// <summary>Validated-on-apply input of an event (wall-clock values in <see cref="TimeZone"/>).</summary>
 public sealed record EventDetails(
-    string? Title, string? Description, string? Location, bool AllDay, DateOnly StartDate, TimeOnly? StartTime, DateOnly EndDate, TimeOnly? EndTime, string? TimeZone, RecurrenceRule? Recurrence);
+    string? Title,
+    string? Description,
+    string? Location,
+    bool AllDay,
+    DateOnly StartDate,
+    TimeOnly? StartTime,
+    DateOnly EndDate,
+    TimeOnly? EndTime,
+    string? TimeZone,
+    RecurrenceRule? Recurrence,
+    CalendarEventType Type = CalendarEventType.Event,
+    CalendarEventStatus Status = CalendarEventStatus.Scheduled,
+    CalendarEventPriority Priority = CalendarEventPriority.Normal,
+    string? Color = null,
+    string? OnlineUrl = null,
+    bool IsPrivate = false,
+    Guid? OrganizerId = null);
 
 /// <summary>
 /// Expands repeat rules into start dates. Pure and deterministic: no clock, no I/O. Monthly and yearly rules skip months that do not contain

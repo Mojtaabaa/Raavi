@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Self-test of New-ReleasePackage.ps1 and Update-Raavi.ps1 in a throw-away folder (Phase 12d, ADR-041). Exit code 0 = all checks passed.
+  Self-test of New-ReleasePackage.ps1 and ConfigSync.ps1 in a throw-away folder (Phase 12d, ADR-041). Exit code 0 = all checks passed.
   Builds the backend for real (dotnet publish), skips the frontend build (use -WithFrontend to include it).
 #>
 [CmdletBinding()]
@@ -32,16 +32,22 @@ try {
     Check 'no sandbox / secrets / key ring in package' (-not (Get-ChildItem $pkg -Recurse -Force -Directory | Where-Object { $_.Name -in @('sandbox', 'secrets') }))
     if ($WithFrontend) { Check 'IIS web.config (SPA fallback + API proxy) shipped inside web/' (Test-Path (Join-Path $pkg 'web/web.config')) }
     Check 'package refuses to overwrite itself' (Throws { & (Join-Path $PSScriptRoot 'New-ReleasePackage.ps1') @args1 })
+    Check 'ConfigSync.ps1 shipped' (Test-Path (Join-Path $pkg 'scripts/release/ConfigSync.ps1'))
 
-    Write-Host '== first install'
+    Write-Host '== first install (operator copies folders; ConfigSync only)'
     $install = Join-Path $work 'install'
-    & (Join-Path $PSScriptRoot 'Update-Raavi.ps1') -PackageDirectory $pkg -InstallDirectory $install -SkipNpm | Out-Null
+    New-Item -ItemType Directory -Path $install | Out-Null
+    foreach ($d in @('api', 'workers', 'migrator', 'web', 'collaboration', 'schema', 'sandbox-defaults', 'docs', 'scripts')) {
+        $src = Join-Path $pkg $d
+        if (Test-Path -LiteralPath $src) { Copy-Item -Recurse -LiteralPath $src -Destination (Join-Path $install $d) }
+    }
+    Copy-Item -Force (Join-Path $pkg 'release.json') (Join-Path $install 'release.json')
+    & (Join-Path $PSScriptRoot 'ConfigSync.ps1') -InstallDirectory $install -SkipMigrator | Out-Null
     $cfg = Join-Path $install 'sandbox/config'
     Check 'sandbox/config initialised from defaults' ((Test-Path (Join-Path $cfg 'appsettings.json')) -and (Test-Path (Join-Path $cfg 'security.json')))
     Check 'sandbox/data and sandbox/secrets created' ((Test-Path (Join-Path $install 'sandbox/data')) -and (Test-Path (Join-Path $install 'sandbox/secrets')))
-    Check 'no rollback folder on first install' (-not (Test-Path (Join-Path $install 'previous')))
 
-    Write-Host '== simulate an installation that has been customised and an older version'
+    Write-Host '== customise config then sync again'
     $app = Join-Path $cfg 'appsettings.json'
     $json = Get-Content $app -Raw | ConvertFrom-Json
     $json.Raavi.Database.CompatibilityLevel = 130
@@ -54,10 +60,8 @@ try {
     Set-Content (Join-Path $install 'sandbox/secrets/collaboration.env') 'RAAVI_COLLAB_SERVICE_KEY=secret'
     $keyHash = (Get-FileHash (Join-Path $keys 'key-1.xml')).Hash
     $envHash = (Get-FileHash (Join-Path $install 'sandbox/secrets/collaboration.env')).Hash
-    Set-Content (Join-Path $install 'api/OLD-MARKER.txt') 'old'
 
-    Write-Host '== upgrade'
-    & (Join-Path $PSScriptRoot 'Update-Raavi.ps1') -PackageDirectory $pkg -InstallDirectory $install -SkipNpm | Out-Null
+    & (Join-Path $PSScriptRoot 'ConfigSync.ps1') -InstallDirectory $install -SkipMigrator | Out-Null
     $after = Get-Content $app -Raw | ConvertFrom-Json
     Check 'administrator value kept' ($after.Raavi.Database.CompatibilityLevel -eq 130)
     Check 'missing setting added by sync' ($after.Raavi.Database.CommandTimeoutSeconds -eq 30)
@@ -65,24 +69,9 @@ try {
     Check 'originals saved in sandbox/backups' (@(Get-ChildItem (Join-Path $install 'sandbox/backups') -Recurse -Filter 'appsettings.json').Count -ge 1)
     Check 'key ring untouched' ((Get-FileHash (Join-Path $keys 'key-1.xml')).Hash -eq $keyHash)
     Check 'secrets untouched' ((Get-FileHash (Join-Path $install 'sandbox/secrets/collaboration.env')).Hash -eq $envHash)
-    Check 'application folder replaced' (-not (Test-Path (Join-Path $install 'api/OLD-MARKER.txt')))
-    $prev = @(Get-ChildItem (Join-Path $install 'previous') -Directory)
-    Check 'rollback copy holds the old application' (($prev.Count -eq 1) -and (Test-Path (Join-Path $prev[0].FullName 'api/OLD-MARKER.txt')))
-    Check 'rollback copy does not contain the sandbox' (-not (Test-Path (Join-Path $prev[0].FullName 'sandbox')))
 
     Write-Host '== refusals'
-    $damaged = Join-Path $work 'damaged'
-    Copy-Item -Recurse $pkg $damaged
-    Add-Content (Join-Path $damaged 'sandbox-defaults/config/appsettings.json') ' '
-    Check 'damaged package rejected' (Throws { & (Join-Path $PSScriptRoot 'Update-Raavi.ps1') -PackageDirectory $damaged -InstallDirectory $install -SkipNpm })
-    $withSandbox = Join-Path $work 'withsandbox'
-    Copy-Item -Recurse $pkg $withSandbox
-    New-Item -ItemType Directory (Join-Path $withSandbox 'sandbox') | Out-Null
-    Check 'package containing sandbox rejected' (Throws { & (Join-Path $PSScriptRoot 'Update-Raavi.ps1') -PackageDirectory $withSandbox -InstallDirectory $install -SkipNpm })
-    Check 'install same as package rejected' (Throws { & (Join-Path $PSScriptRoot 'Update-Raavi.ps1') -PackageDirectory $pkg -InstallDirectory $pkg -SkipNpm })
-    Check 'unknown Windows service name rejected before anything changes' (Throws { & (Join-Path $PSScriptRoot 'Update-Raavi.ps1') -PackageDirectory $pkg -InstallDirectory $install -SkipNpm -Service 'RaaviNoSuchService' })
-    Check 'unknown IIS application pool rejected before anything changes' (Throws { & (Join-Path $PSScriptRoot 'Update-Raavi.ps1') -PackageDirectory $pkg -InstallDirectory $install -SkipNpm -AppPool 'RaaviNoSuchPool' })
-    Check 'rollback folders unchanged by those refusals' (@(Get-ChildItem (Join-Path $install 'previous') -Directory).Count -eq 1)
+    Check 'missing migrator rejected' (Throws { & (Join-Path $PSScriptRoot 'ConfigSync.ps1') -InstallDirectory $work -SkipMigrator })
     Check 'sandbox still intact after refusals' ((Get-FileHash (Join-Path $keys 'key-1.xml')).Hash -eq $keyHash)
 }
 finally {

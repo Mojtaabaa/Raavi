@@ -39,7 +39,7 @@ docker compose run --rm migrator
 
 ## 6. Upgrades
 
-Scripted path (Windows PowerShell, ADR-041): build once with `deployment/scripts/release/New-ReleasePackage.ps1 -Version 1.2.0`; on the server stop API, workers and collaboration server, then run `Update-Raavi.ps1 -PackageDirectory <package> -InstallDirectory <install> [-RunMigrator]`. It verifies the package, keeps a rollback copy in `<install>/previous/<time>`, replaces only the application folders, keeps `sandbox/`, runs `sandbox sync` and (optionally) the database migrator. Start the services afterwards. Manual steps:
+Scripted path (Windows PowerShell, ADR-041): build once with `deployment/scripts/release/New-ReleasePackage.ps1 -Version 1.2.0`; on the server stop API, workers and collaboration, replace application folders yourself (keep `sandbox/`), then run `ConfigSync.ps1 -InstallDirectory <install>` (sandbox sync + database migrator; `-SkipMigrator` to sync only). Start the services afterwards. Manual steps:
 
 1. Back up (BACKUP_AND_RESTORE) — including `sandbox/`.
 2. Pull new images / replace the application folders **but not `sandbox/`** (it holds your settings, key ring and secrets).

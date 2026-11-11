@@ -37,8 +37,37 @@ public sealed class WhiteboardDomainTests
         Assert.Equal((0d, 0d, "", false), (arrow.W, arrow.H, arrow.Text, arrow.Rtl));
         Assert.Equal("#112233", arrow.Fill);
 
-        board.Update("Plan 2", [Rect("r2")], Now);
+        board.Update("Plan 2", [Rect("r2")], Guid.NewGuid(), Now);
         Assert.Equal((2, 1), (board.Revision, board.Elements.Count));
+    }
+
+    [Fact]
+    public void RoundRect_Star_and_Image_follow_sized_shape_rules()
+    {
+        var board = Make(
+            new BoardElementInput("rr", BoardShape.RoundRect, 0, 0, 100, 60, null, null, "#fde68a", null, null, null, null, null, 12),
+            new BoardElementInput("st", BoardShape.Star, 10, 10, 80, 80, null, null, null, null, null, null, null, null));
+        Assert.Equal(12d, board.Elements[0].CornerRadius);
+        Assert.Equal(BoardShape.Star, board.Elements[1].Type);
+        Assert.Equal("board.element_invalid", Code(() => Make(new BoardElementInput("img", BoardShape.Image, 0, 0, 100, 80, null, null, null, null, null, null, null, null))));
+        var aid = Guid.NewGuid();
+        var withImage = Make(new BoardElementInput("img", BoardShape.Image, 0, 0, 100, 80, null, null, null, null, null, null, null, null, null, aid, "logo"));
+        Assert.Equal((aid, "logo"), (withImage.Elements[0].AttachmentId, withImage.Elements[0].Alt));
+    }
+
+    [Fact]
+    public void Archive_duplicate_and_description_work_on_the_domain()
+    {
+        var user = Guid.NewGuid();
+        var board = Whiteboard.Create(Guid.NewGuid(), "Plan", [Rect()], user, Now, "notes");
+        Assert.Equal("notes", board.Description);
+        board.Archive(Now.AddMinutes(1), user);
+        Assert.NotNull(board.ArchivedAt);
+        board.Restore(user, Now.AddMinutes(2));
+        Assert.Null(board.ArchivedAt);
+        var copy = board.Duplicate(null, user, Now.AddMinutes(3));
+        Assert.Equal("Plan (copy)", copy.Title);
+        Assert.Equal(board.Elements.Count, copy.Elements.Count);
     }
 
     [Fact]
@@ -201,8 +230,70 @@ public sealed class WhiteboardTests(SqlServerFixture fx)
     }
 
     [Fact]
+    public async Task Duplicate_archive_favorite_and_attachments_work()
+    {
+        var (_, admin, _) = await _kit.Identity.TenantWithAdminAsync();
+        var key = (await CreateSpaceAsync(admin)).GetProperty("key").GetString()!;
+        var id = (await CreateAsync(admin, key, new { title = "Board", description = "notes", elements = Sample })).GetProperty("id").GetGuid();
+
+        using (var fav = await admin.PutAsync($"api/v1/whiteboards/{id}/favorite", new { }))
+        {
+            Assert.True(fav.IsSuccessStatusCode);
+        }
+
+        var listed = await admin.GetJsonAsync($"api/v1/spaces/{key}/whiteboards");
+        Assert.True(listed[0].GetProperty("favorited").GetBoolean());
+        Assert.Equal("notes", listed[0].GetProperty("description").GetString());
+
+        using var dup = await admin.PostAsync($"api/v1/whiteboards/{id}/duplicate", new { });
+        var copy = await ReadAsync(dup);
+        Assert.Equal("Board (copy)", copy.GetProperty("title").GetString());
+
+        using (var arch = await admin.PostAsync($"api/v1/whiteboards/{id}/archive", new { }))
+        {
+            Assert.True(arch.IsSuccessStatusCode);
+        }
+
+        Assert.Equal(1, (await admin.GetJsonAsync($"api/v1/spaces/{key}/whiteboards")).GetArrayLength());
+        Assert.Equal(2, (await admin.GetJsonAsync($"api/v1/spaces/{key}/whiteboards?archived=true")).GetArrayLength());
+
+        // Tiny 1×1 PNG
+        var png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==");
+        using var form = new MultipartFormDataContent();
+        var file = new ByteArrayContent(png);
+        file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+        form.Add(file, "file", "dot.png");
+        using var up = await admin.SendAsync(HttpMethod.Post, $"api/v1/whiteboards/{id}/attachments", form, withXsrf: true);
+        var att = await ReadAsync(up);
+        var attId = att.GetProperty("id").GetGuid();
+
+        using var dl = await admin.GetAsync($"api/v1/whiteboard-attachments/{attId}");
+        Assert.Equal(HttpStatusCode.OK, dl.StatusCode);
+        Assert.Equal("image/png", dl.Content.Headers.ContentType!.MediaType);
+
+        var (current, etag) = await GetWithETagAsync(admin, $"api/v1/whiteboards/{id}");
+        var elements = new object[]
+        {
+            new { id = "img1", type = "Image", x = 0, y = 0, w = 100, h = 80, attachmentId = attId, alt = "dot" },
+            new { id = "rr1", type = "RoundRect", x = 10, y = 10, w = 80, h = 40, cornerRadius = 8, fill = "#bfdbfe" },
+            new { id = "st1", type = "Star", x = 120, y = 10, w = 60, h = 60 },
+        };
+        using (var put = await admin.SendAsync(HttpMethod.Put, $"api/v1/whiteboards/{id}", new { title = "Board", elements }, withXsrf: true, ifMatch: etag))
+        {
+            var updated = await ReadAsync(put);
+            Assert.Equal(["Image", "RoundRect", "Star"], updated.GetProperty("elements").EnumerateArray().Select(e => e.GetProperty("type").GetString()));
+        }
+
+        using var foreign = await admin.SendAsync(HttpMethod.Put, $"api/v1/whiteboards/{copy.GetProperty("id").GetGuid()}",
+            new { title = "Hack", elements = new object[] { new { id = "img1", type = "Image", x = 0, y = 0, w = 10, h = 10, attachmentId = attId } } },
+            withXsrf: true, ifMatch: "\"r1\"");
+        await Browser.AssertStatusAsync(foreign, HttpStatusCode.BadRequest, "board.element_invalid");
+    }
+
+    [Fact]
     public async Task Permissions_follow_the_space_and_other_tenants_see_nothing()
     {
+
         var (tenant, admin, _) = await _kit.Identity.TenantWithAdminAsync();
         var (viewer, _, viewerId) = await _kit.Identity.AddMemberAsync(tenant, admin);
         var (outsider, _, _) = await _kit.Identity.AddMemberAsync(tenant, admin);

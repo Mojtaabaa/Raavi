@@ -3,7 +3,7 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import * as Y from 'yjs'
 import type { BoardElement } from '@/core/api/whiteboards'
-import { LiveBoard, readElement } from '@/modules/whiteboards/liveBoard'
+import { boardPresence, LiveBoard, readElement, syncState } from '@/modules/whiteboards/liveBoard'
 
 const el = (id: string, over: Partial<BoardElement> = {}): BoardElement => ({
   id, type: 'Rect', x: 0, y: 0, w: 100, h: 50, rotation: 0, stroke: '#1f2937', fill: null, strokeWidth: 2, text: '', fontSize: 20, rtl: false, points: [], ...over,
@@ -161,6 +161,27 @@ describe('live board binding', () => {
     expect(els.map((e) => e.id)).toEqual(['a', 'z'])
     expect(els[0]).toMatchObject({ w: 0, stroke: '#1f2937', fill: null, points: [1, 2], rtl: false })
     expect(readElement('x', mk({}))).toBeNull()
+  })
+
+  it('shares cursor and selection on presence, and names the sync state', () => {
+    expect(boardPresence({ name: 'Sara', color: '#123456' }, { x: 3, y: 4 }, ['a'])).toEqual({
+      user: { name: 'Sara', color: '#123456' },
+      cursor: { x: 3, y: 4 },
+      selectedIds: ['a'],
+    })
+    expect(syncState({ live: true, status: 'offline', saving: false, dirty: false, failed: false })).toBe('offline')
+    expect(syncState({ live: true, status: 'connecting', saving: false, dirty: false, failed: false })).toBe('syncing')
+    expect(syncState({ live: false, status: 'live', saving: false, dirty: true, failed: false })).toBe('saving')
+    expect(syncState({ live: true, status: 'live', saving: false, dirty: false, failed: true })).toBe('error')
+    expect(syncState({ live: false, status: 'live', saving: false, dirty: false, failed: false })).toBe('saved')
+  })
+
+  it('round-trips the extra fields of a new shape', () => {
+    const doc = new Y.Doc()
+    const live = new LiveBoard(doc)
+    live.apply([el('img', { type: 'Image', w: 40, h: 30, attachmentId: 'att', alt: 'logo' }), el('rr', { type: 'RoundRect', w: 20, h: 10, cornerRadius: 4 })])
+    expect(live.toElements()[0]).toMatchObject({ type: 'Image', attachmentId: 'att', alt: 'logo' })
+    expect(live.toElements()[1]).toMatchObject({ type: 'RoundRect', cornerRadius: 4 })
   })
 })
 

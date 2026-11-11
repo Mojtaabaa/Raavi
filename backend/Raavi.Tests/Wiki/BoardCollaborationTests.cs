@@ -90,7 +90,8 @@ public sealed class BoardCollaborationTests(SqlServerFixture fx)
 
         using (var readOnly = await viewer.PostAsync("api/v1/collaboration/tickets", new { contentId = board, kind = "board" }))
         {
-            Assert.Equal(HttpStatusCode.Forbidden, readOnly.StatusCode);
+            var ticket = await ReadAsync(readOnly);
+            Assert.Equal("view", ticket.GetProperty("permission").GetString()); // readers may follow live (read-only)
         }
 
         using (var unknown = await admin.PostAsync("api/v1/collaboration/tickets", new { contentId = Guid.NewGuid(), kind = "board" }))

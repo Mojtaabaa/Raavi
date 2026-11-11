@@ -1,6 +1,6 @@
 {
   "schema": "raavi.doc",
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "maxBytes": 5242880,
   "maxDepth": 48,
   "history": [
@@ -15,6 +15,10 @@
     {
       "version": 3,
       "description": "Text style kit (backgroundColor, fontFamily, fontSize, lineHeight), subscript and superscript. v2 documents remain valid after attribute defaults."
+    },
+    {
+      "version": 4,
+      "description": "Whiteboard embed node (raavi.whiteboard). v3 documents remain valid after attribute defaults."
     }
   ]
 }

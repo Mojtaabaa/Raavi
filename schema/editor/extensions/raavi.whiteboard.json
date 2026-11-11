@@ -1,0 +1,18 @@
+{
+  "id": "raavi.whiteboard",
+  "name": "whiteboard",
+  "version": 1,
+  "kind": "node",
+  "group": "block",
+  "atom": true,
+  "attributes": {
+    "whiteboardId": {
+      "type": "string",
+      "nullable": true,
+      "format": "guid",
+      "default": null
+    }
+  },
+  "search": "attr:whiteboardId",
+  "migrations": []
+}

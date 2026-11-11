@@ -15,17 +15,18 @@ internal static class BoardSvgWriter
     private const string Font = "Calibri, 'Segoe UI', Vazirmatn, Tahoma, sans-serif";
     private const string StickyDefault = "#fde68a";
 
-    public static string Write(string title, IReadOnlyList<BoardElement> elements)
+    public static string Write(string title, IReadOnlyList<BoardElement> elements, string? background = null)
     {
         var (minX, minY, maxX, maxY) = Bounds(elements);
         var sb = new StringBuilder();
         var width = Math.Max(1, maxX - minX);
         var height = Math.Max(1, maxY - minY);
+        var bg = string.IsNullOrWhiteSpace(background) || background == "transparent" ? "#ffffff" : background;
         sb.Append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
         sb.Append(CultureInfo.InvariantCulture, $"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{N(width)}\" height=\"{N(height)}\" viewBox=\"{N(minX)} {N(minY)} {N(width)} {N(height)}\">\n");
         sb.Append("<title>").Append(Esc(title)).Append("</title>\n");
-        sb.Append(CultureInfo.InvariantCulture, $"<rect x=\"{N(minX)}\" y=\"{N(minY)}\" width=\"{N(width)}\" height=\"{N(height)}\" fill=\"#ffffff\"/>\n");
-        foreach (var e in elements)
+        sb.Append(CultureInfo.InvariantCulture, $"<rect x=\"{N(minX)}\" y=\"{N(minY)}\" width=\"{N(width)}\" height=\"{N(height)}\" fill=\"{bg}\"/>\n");
+        foreach (var e in elements.Where(x => !x.Hidden))
         {
             sb.Append(CultureInfo.InvariantCulture, $"<g transform=\"translate({N(e.X)} {N(e.Y)}) rotate({N(e.Rotation)})\">");
             Element(sb, e);
@@ -44,6 +45,9 @@ internal static class BoardSvgWriter
             case BoardShape.Rect:
                 sb.Append(CultureInfo.InvariantCulture, $"<rect width=\"{N(e.W)}\" height=\"{N(e.H)}\" fill=\"{e.Fill ?? "none"}\" {stroke}/>");
                 break;
+            case BoardShape.RoundRect:
+                sb.Append(CultureInfo.InvariantCulture, $"<rect width=\"{N(e.W)}\" height=\"{N(e.H)}\" rx=\"{N(e.CornerRadius)}\" ry=\"{N(e.CornerRadius)}\" fill=\"{e.Fill ?? "none"}\" {stroke}/>");
+                break;
             case BoardShape.Ellipse:
                 sb.Append(CultureInfo.InvariantCulture, $"<ellipse cx=\"{N(e.W / 2)}\" cy=\"{N(e.H / 2)}\" rx=\"{N(e.W / 2)}\" ry=\"{N(e.H / 2)}\" fill=\"{e.Fill ?? "none"}\" {stroke}/>");
                 break;
@@ -53,8 +57,42 @@ internal static class BoardSvgWriter
             case BoardShape.Triangle:
                 sb.Append(CultureInfo.InvariantCulture, $"<polygon points=\"{N(e.W / 2)},0 {N(e.W)},{N(e.H)} 0,{N(e.H)}\" fill=\"{e.Fill ?? "none"}\" stroke-linejoin=\"round\" {stroke}/>");
                 break;
+            case BoardShape.Star:
+                sb.Append(CultureInfo.InvariantCulture, $"<polygon points=\"{StarPoints(e.W, e.H)}\" fill=\"{e.Fill ?? "none"}\" stroke-linejoin=\"round\" {stroke}/>");
+                break;
             case BoardShape.Line:
                 sb.Append(CultureInfo.InvariantCulture, $"<line x1=\"{N(e.Points[0])}\" y1=\"{N(e.Points[1])}\" x2=\"{N(e.Points[2])}\" y2=\"{N(e.Points[3])}\" stroke-linecap=\"round\" {stroke}/>");
+                break;
+            case BoardShape.Connector:
+                if (e.Points.Length >= 4)
+                {
+                    sb.Append("<polyline fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\" ").Append(stroke).Append(" points=\"");
+                    for (var i = 0; i + 1 < e.Points.Length; i += 2)
+                    {
+                        sb.Append(CultureInfo.InvariantCulture, $"{(i == 0 ? string.Empty : " ")}{N(e.Points[i])},{N(e.Points[i + 1])}");
+                    }
+
+                    sb.Append("\"/>");
+                    if (!string.IsNullOrEmpty(e.Text))
+                    {
+                        TextBlock(sb, e, e.Points[0], e.Points[1], 0);
+                    }
+                }
+
+                break;
+            case BoardShape.Image:
+                sb.Append(CultureInfo.InvariantCulture, $"<rect width=\"{N(e.W)}\" height=\"{N(e.H)}\" fill=\"#e5e7eb\" {stroke}/>");
+                if (!string.IsNullOrEmpty(e.Alt))
+                {
+                    sb.Append(CultureInfo.InvariantCulture, $"<text x=\"{N(e.W / 2)}\" y=\"{N(e.H / 2)}\" text-anchor=\"middle\" font-family=\"{Font}\" font-size=\"14\" fill=\"#6b7280\">{Esc(e.Alt)}</text>");
+                }
+
+                break;
+            case BoardShape.Table:
+                sb.Append(CultureInfo.InvariantCulture, $"<rect width=\"{N(e.W)}\" height=\"{N(e.H)}\" fill=\"{e.Fill ?? "#ffffff"}\" {stroke}/>");
+                break;
+            case BoardShape.Group:
+                sb.Append(CultureInfo.InvariantCulture, $"<rect width=\"{N(e.W)}\" height=\"{N(e.H)}\" fill=\"none\" stroke-dasharray=\"4 4\" {stroke}/>");
                 break;
             case BoardShape.Sticky:
                 sb.Append(CultureInfo.InvariantCulture, $"<rect width=\"{N(e.W)}\" height=\"{N(e.H)}\" fill=\"{e.Fill ?? StickyDefault}\" stroke=\"none\"/>");
@@ -76,6 +114,31 @@ internal static class BoardSvgWriter
                 sb.Append("\"/>");
                 break;
         }
+    }
+
+    private static string StarPoints(double w, double h)
+    {
+        var cx = w / 2;
+        var cy = h / 2;
+        var outerX = w / 2;
+        var outerY = h / 2;
+        var innerX = outerX * 0.4;
+        var innerY = outerY * 0.4;
+        var pts = new StringBuilder();
+        for (var i = 0; i < 10; i++)
+        {
+            var angle = (-Math.PI / 2) + (i * Math.PI / 5);
+            var rx = i % 2 == 0 ? outerX : innerX;
+            var ry = i % 2 == 0 ? outerY : innerY;
+            if (i > 0)
+            {
+                pts.Append(' ');
+            }
+
+            pts.Append(CultureInfo.InvariantCulture, $"{N(cx + (rx * Math.Cos(angle)))},{N(cy + (ry * Math.Sin(angle)))}");
+        }
+
+        return pts.ToString();
     }
 
     private static void Arrow(StringBuilder sb, BoardElement e, string stroke)

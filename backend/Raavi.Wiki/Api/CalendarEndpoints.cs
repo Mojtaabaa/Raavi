@@ -17,11 +17,32 @@ public static class CalendarEndpoints
         ArgumentNullException.ThrowIfNull(api);
         var g = api.MapGroup("").RequireHostKind(RaaviHostKind.Tenant).RequireAuthorization(RaaviPolicies.AuthenticatedUser);
 
-        g.MapGet("/calendar/occurrences", async (DateOnly from, DateOnly to, CalendarService svc, CancellationToken ct) =>
-            (await svc.OccurrencesAsync(null, from, to, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+        g.MapGet("/calendars", async (string? spaceKey, bool? includeArchived, CalendarService svc, CancellationToken ct) =>
+            (await svc.ListCalendarsAsync(spaceKey, includeArchived == true, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
 
-        g.MapGet("/spaces/{key}/calendar/occurrences", async (string key, DateOnly from, DateOnly to, CalendarService svc, CancellationToken ct) =>
-            (await svc.OccurrencesAsync(key, from, to, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+        g.MapGet("/spaces/{key}/calendars", async (string key, bool? includeArchived, CalendarService svc, CancellationToken ct) =>
+            (await svc.ListCalendarsAsync(key, includeArchived == true, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+
+        g.MapPost("/calendars", async (CalendarRequest body, CalendarService svc, CancellationToken ct) =>
+            (await svc.CreateCalendarAsync(body, ct).ConfigureAwait(false)).ToHttp(c => Results.Created($"/api/v1/calendars/{c.Id}", c)));
+
+        g.MapPut("/calendars/{id:guid}", async (Guid id, CalendarRequest body, CalendarService svc, CancellationToken ct) =>
+            (await svc.UpdateCalendarAsync(id, body, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+
+        g.MapPost("/calendars/{id:guid}/archive", async (Guid id, CalendarService svc, CancellationToken ct) =>
+            (await svc.ArchiveCalendarAsync(id, restore: false, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+
+        g.MapPost("/calendars/{id:guid}/restore", async (Guid id, CalendarService svc, CancellationToken ct) =>
+            (await svc.ArchiveCalendarAsync(id, restore: true, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+
+        g.MapPost("/calendars/{id:guid}/purge", async (Guid id, CalendarHardDeleteRequest body, CalendarService svc, CancellationToken ct) =>
+            (await svc.HardDeleteCalendarAsync(id, body, ct).ConfigureAwait(false)).ToHttp());
+
+        g.MapGet("/calendar/occurrences", async (DateOnly from, DateOnly to, string? calendarIds, CalendarService svc, CancellationToken ct) =>
+            (await svc.OccurrencesAsync(null, from, to, ct, ParseIds(calendarIds)).ConfigureAwait(false)).ToHttp(Results.Ok));
+
+        g.MapGet("/spaces/{key}/calendar/occurrences", async (string key, DateOnly from, DateOnly to, string? calendarIds, CalendarService svc, CancellationToken ct) =>
+            (await svc.OccurrencesAsync(key, from, to, ct, ParseIds(calendarIds)).ConfigureAwait(false)).ToHttp(Results.Ok));
 
         g.MapPost("/spaces/{key}/calendar/events", async (string key, CalendarEventRequest body, CalendarService svc, HttpContext http, CancellationToken ct) =>
             (await svc.CreateAsync(key, body, ct).ConfigureAwait(false)).ToHttp(e =>
@@ -48,5 +69,24 @@ public static class CalendarEndpoints
             (await svc.ExcludeAsync(id, body.Date, ct).ConfigureAwait(false)).ToHttp(e => ETags.OkWithETag(http, e, e.Revision)));
 
         g.MapDelete("/calendar/events/{id:guid}", async (Guid id, CalendarService svc, CancellationToken ct) => (await svc.DeleteAsync(id, ct).ConfigureAwait(false)).ToHttp());
+    }
+
+    private static List<Guid>? ParseIds(string? csv)
+    {
+        if (string.IsNullOrWhiteSpace(csv))
+        {
+            return null;
+        }
+
+        var list = new List<Guid>();
+        foreach (var part in csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (Guid.TryParse(part, out var id))
+            {
+                list.Add(id);
+            }
+        }
+
+        return list.Count == 0 ? null : list;
     }
 }

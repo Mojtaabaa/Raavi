@@ -3,7 +3,7 @@ import * as Y from 'yjs'
 import { HocuspocusProvider } from '@hocuspocus/provider'
 import { api } from '@/core/api/http'
 import { colorFor, type LivePeer, type LiveStatus } from '@/modules/editor/collaboration'
-import { LiveBoard } from './liveBoard'
+import { boardPresence, LiveBoard, type BoardCursor } from './liveBoard'
 
 /** Answer of `POST /collaboration/tickets` for a board. */
 interface BoardTicket {
@@ -12,10 +12,17 @@ interface BoardTicket {
   url: string
 }
 
+export interface BoardPeer extends LivePeer {
+  cursor: BoardCursor | null
+  selectedIds: string[]
+}
+
 export interface BoardSession {
   board: LiveBoard
   status: Ref<LiveStatus>
-  peers: Ref<LivePeer[]>
+  peers: Ref<BoardPeer[]>
+  /** Publishes this user's cursor and selection on the awareness channel. */
+  setPresence(cursor: BoardCursor | null, selectedIds: readonly string[]): void
   destroy(): void
 }
 
@@ -34,7 +41,7 @@ export async function startBoardSession(boardId: string, user: { id: string; nam
   const first = await requestTicket(boardId)
   const doc = new Y.Doc()
   const status = ref<LiveStatus>('connecting')
-  const peers = ref<LivePeer[]>([])
+  const peers = ref<BoardPeer[]>([])
   let stopped = false
   let pending: string | null = first.ticket
 
@@ -77,16 +84,34 @@ export async function startBoardSession(boardId: string, user: { id: string; nam
     onAwarenessChange: ({ states }) => {
       peers.value = states
         .filter((s) => s.clientId !== doc.clientID && s.user)
-        .map((s) => ({ clientId: s.clientId, name: String(s.user.name ?? ''), color: String(s.user.color ?? '#666') }))
+        .map((s) => {
+          const cursor = s.cursor as { x?: unknown; y?: unknown } | null | undefined
+          const selected = s.selectedIds
+          return {
+            clientId: s.clientId,
+            name: String(s.user.name ?? ''),
+            color: String(s.user.color ?? '#666'),
+            cursor: cursor && typeof cursor.x === 'number' && typeof cursor.y === 'number' ? { x: cursor.x, y: cursor.y } : null,
+            selectedIds: Array.isArray(selected) ? selected.filter((id): id is string => typeof id === 'string') : [],
+          }
+        })
     },
   })
-  provider.setAwarenessField('user', { name: user.name, color: colorFor(user.id) })
+  const me = { name: user.name, color: colorFor(user.id) }
+  const setPresence = (cursor: BoardCursor | null, selectedIds: readonly string[]) => {
+    const presence = boardPresence(me, cursor, selectedIds)
+    provider.setAwarenessField('user', presence.user)
+    provider.setAwarenessField('cursor', presence.cursor)
+    provider.setAwarenessField('selectedIds', presence.selectedIds)
+  }
+  setPresence(null, [])
 
   const board = new LiveBoard(doc)
   return {
     board,
     status,
     peers,
+    setPresence,
     destroy() {
       stopped = true
       board.destroy()

@@ -23,6 +23,7 @@ import { useSpaceContext } from '../spaceContext'
 import { useCrumbsStore } from '@/stores/crumbs'
 import { spaceTrail } from '@/core/navigation/trail'
 import CommentsPanel from '../comments/CommentsPanel.vue'
+import LinkedJiraPanel from '../components/LinkedJiraPanel.vue'
 import PageApprovals from '@/modules/approvals/PageApprovals.vue'
 import PageAssistant from '@/modules/ai/PageAssistant.vue'
 import PagePromptsDialog from '@/modules/prompts/PagePromptsDialog.vue'
@@ -63,6 +64,31 @@ function onQuote(q: TextQuote | null) {
   selection.value = q
 }
 const promptsOpen = ref(false)
+const jiraPanel = ref<InstanceType<typeof LinkedJiraPanel> | null>(null)
+
+function jiraQuote() {
+  return selection.value
+    ? { exact: selection.value.exact, prefix: selection.value.prefix, suffix: selection.value.suffix }
+    : pendingQuote.value
+      ? { exact: pendingQuote.value.exact, prefix: pendingQuote.value.prefix, suffix: pendingQuote.value.suffix }
+      : null
+}
+
+function createJiraFromSelection() {
+  pendingQuote.value = selection.value
+  jiraPanel.value?.openCreate()
+}
+
+function linkJiraFromSelection() {
+  pendingQuote.value = selection.value
+  jiraPanel.value?.openLink()
+}
+
+function locateQuote(exact: string, prefix: string | null, suffix: string | null) {
+  toast.add({ severity: 'info', summary: t('jiraLinks.quoteHint'), detail: exact.slice(0, 160), life: 6000 })
+  void prefix
+  void suffix
+}
 /** Adds an AI answer to the page's DRAFT after an explicit confirmation; the published page and existing text are never overwritten. */
 function insertIntoPage(text: string) {
   if (!page.value || !text.trim()) return
@@ -312,8 +338,10 @@ function onMoved(p: Page, newEtag: string | null) {
       @located="(ids) => (located = ids)"
     />
     <PagePromptsDialog v-if="page.contentType === 'page'" v-model:visible="promptsOpen" :page-id="page.id" :space-key="page.spaceKey" :selected-text="selection?.exact ?? null" @insert="insertIntoPage" />
-    <div v-if="selection && page.rights.canComment && discussable" class="selection-bar" role="region" :aria-label="t('comments.selection')">
-      <Button size="small" icon="pi pi-comment" :label="t('comments.commentOnSelection')" data-testid="comment-selection" @click="commentOnSelection" />
+    <div v-if="selection && discussable && (page.rights.canComment || page.rights.canEdit)" class="selection-bar" role="region" :aria-label="t('comments.selection')">
+      <Button v-if="page.rights.canComment" size="small" icon="pi pi-comment" :label="t('comments.commentOnSelection')" data-testid="comment-selection" @click="commentOnSelection" />
+      <Button v-if="page.rights.canEdit" size="small" icon="pi pi-ticket" :label="t('jiraLinks.create')" data-testid="jira-selection-create" @click="createJiraFromSelection" />
+      <Button v-if="page.rights.canEdit" size="small" text icon="pi pi-link" :label="t('jiraLinks.linkExisting')" data-testid="jira-selection-link" @click="linkJiraFromSelection" />
       <span class="muted" dir="auto">“{{ selection.exact.length > 80 ? selection.exact.slice(0, 80) + '…' : selection.exact }}”</span>
     </div>
 
@@ -342,6 +370,16 @@ function onMoved(p: Page, newEtag: string | null) {
     </section>
 
     <PageApprovals v-if="discussable" :content-id="page.id" :can-request="page.rights.canEdit" />
+
+    <LinkedJiraPanel
+      v-if="discussable"
+      ref="jiraPanel"
+      :content-id="page.id"
+      :can-edit="page.rights.canEdit"
+      :pending-quote="jiraQuote()"
+      @locate="locateQuote"
+      @clear-quote="pendingQuote = null; selection = null"
+    />
 
     <CommentsPanel
       v-if="discussable"

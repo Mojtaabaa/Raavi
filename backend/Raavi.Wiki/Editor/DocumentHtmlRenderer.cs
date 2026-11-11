@@ -196,6 +196,10 @@ public sealed class DocumentHtmlRenderer
                 // Server-rendered HTML never calls a tracker (no token, no network); the viewer's browser resolves the reference.
                 sb.Append("<span class=\"raavi-issue\" data-reference=\"").Append(E(Attr(n, "reference"))).Append("\">").Append(E(Attr(n, "reference"))).Append("</span>");
                 break;
+            case "whiteboard":
+                // Permission-aware preview is client-side; static HTML is a safe placeholder card.
+                sb.Append("<div class=\"raavi-whiteboard\" data-whiteboard-id=\"").Append(E(Attr(n, "whiteboardId"))).Append("\"></div>");
+                break;
             case "toc":
                 var max = int.Parse(Attr(n, "maxLevel") ?? "3", CultureInfo.InvariantCulture);
                 sb.Append("<nav class=\"raavi-toc\"><ul>");

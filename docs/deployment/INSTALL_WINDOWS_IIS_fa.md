@@ -27,12 +27,13 @@ D:\Raavi\sandbox\ – تنظیمات، کلیدهای رمزنگاری، راز�
 ## ۲. باز کردن بسته و نصب اول
 
 ```powershell
-Expand-Archive raavi-0.13.2.zip C:\Deploy\raavi-0.13.2
-powershell -ExecutionPolicy Bypass -File C:\Deploy\raavi-0.13.2\scripts\release\Update-Raavi.ps1 `
-  -PackageDirectory C:\Deploy\raavi-0.13.2 -InstallDirectory D:\Raavi -SkipNpm
+Expand-Archive raavi-0.24.0.zip C:\Deploy\raavi-0.24.0
+# پوشه‌های برنامه را خودتان کپی کنید (api، workers، migrator، web، collaboration، schema، sandbox-defaults، docs، scripts، release.json) به D:\Raavi — هرگز sandbox\ موجود را عوض نکنید.
+powershell -ExecutionPolicy Bypass -File C:\Deploy\raavi-0.24.0\scripts\release\ConfigSync.ps1 `
+  -InstallDirectory D:\Raavi -SkipMigrator
 ```
 
-این دستور `D:\Raavi\{api,workers,migrator,web,scripts,...}` و `D:\Raavi\sandbox\{config,data,secrets}` را می‌سازد. پوشهٔ `config` از تنظیمات پیش‌فرض نسخه پر می‌شود. برنامه‌ها `D:\Raavi\sandbox\config` را با نگاه به بالاتر از پوشهٔ خودشان پیدا می‌کنند؛ فقط اگر آن را جای دیگری گذاشتید، متغیر `RAAVI_SANDBOX_PATH` را بگذارید. **از `sandbox\` همراه دیتابیس backup بگیرید.** بدون `data\keys` مقادیر رمزشده (TOTP، کلیدهای AI، رازهای وب‌هوک) خوانا نیستند.
+این دستور در صورت نبودن، `D:\Raavi\sandbox\{config,data,secrets}` را می‌سازد و `config` را از پیش‌فرض‌های نسخه پر می‌کند. برنامه‌ها `D:\Raavi\sandbox\config` را با نگاه به بالاتر از پوشهٔ خودشان پیدا می‌کنند؛ فقط اگر آن را جای دیگری گذاشتید، متغیر `RAAVI_SANDBOX_PATH` را بگذارید. **از `sandbox\` همراه دیتابیس backup بگیرید.** بدون `data\keys` مقادیر رمزشده (TOTP، کلیدهای AI، رازهای وب‌هوک) خوانا نیستند.
 
 ## ۳. تنظیمات (`D:\Raavi\sandbox\config\appsettings.json`)
 
@@ -48,6 +49,13 @@ powershell -ExecutionPolicy Bypass -File C:\Deploy\raavi-0.13.2\scripts\release\
 رازها **در فایل نوشته نمی‌شوند.** آن‌ها متغیر محیطی App Pool مربوط به API و سرویس workers هستند (بخش‌های ۵ و ۶): `RAAVI_ConnectionStrings__System`، `RAAVI_Raavi__Database__CompatibilityLevel` و `ASPNETCORE_ENVIRONMENT=Production`. فقط migrator از `RAAVI_ConnectionStrings__Migrator` استفاده می‌کند.
 
 فهرست‌های مجاز اختیاری (خالی یعنی آن قابلیت خاموش است): `Raavi:Ai:AllowedHosts`، `Raavi:Integrations:AllowedWebhookHosts`، `Raavi:Integrations:AllowedConnectorHosts` و `Raavi:Migration:AllowedSourceHosts`.
+
+### ردیاب‌های کار و پیوند صفحه به جیره
+
+- `Raavi:Integrations:AllowedConnectorHosts` را با نام میزبان جیره / GitHub Enterprise / GitLab پر کنید (مثلاً `jira.example.com` یا `*.example.com`). خالی = هیچ اتصالی ساخته یا فراخوانی نمی‌شود (محافظ SSRF).
+- برای **خواندن** ارجاع در ویرایشگر، توکن اختیاری است (عمومی) یا با دسترسی Browse کافی است.
+- برای **ایجاد/پیوند مسئلهٔ جیره از صفحهٔ ویکی** (Remote Link + رابطه در راوی) اتصال باید نوع Jira باشد، توکن https داشته باشد و در جیره حداقل مجوزهای **Browse Projects**، **Create Issues** و **Link Issues** را بدهد. GitHub/GitLab همچنان فقط‌خواندنی‌اند.
+- پس از ارتقا، migrator جدول‌های `integrations.PageIssueLinks` / `PageIssueLinkContexts` و outbox یکپارچه‌سازی را می‌سازد؛ قبل از ارتقا پشتیبان بگیرید، سرویس‌ها را متوقف کنید، سپس `ConfigSync.ps1` را اجرا کنید.
 
 ## ۳ب. یک آدرس برای همه چیز (بدون DNS و TLS wildcard) — آدرس‌دهی مسیری و فضای پیش‌فرض
 
@@ -178,14 +186,14 @@ S3/MinIO، OpenSearch و Redis برای قابلیت‌های پیاده‌شد�
 
 ```powershell
 Expand-Archive raavi-<نسخهٔ-جدید>.zip C:\Deploy\raavi-<نسخهٔ-جدید>
-powershell -ExecutionPolicy Bypass -File C:\Deploy\raavi-<نسخهٔ-جدید>\scripts\release\Update-Raavi.ps1 `
-  -PackageDirectory C:\Deploy\raavi-<نسخهٔ-جدید> -InstallDirectory D:\Raavi `
-  -AppPool RaaviApi -Service RaaviWorkers -RunMigrator
+# خودتان pool/سرویس را متوقف کنید، از DB و sandbox\ پشتیبان بگیرید، پوشه‌های برنامه را کپی کنید (sandbox\ را نگه دارید)، سپس:
+$env:RAAVI_ConnectionStrings__Migrator = 'Server=...;Database=Raavi;...'
+powershell -ExecutionPolicy Bypass -File C:\Deploy\raavi-<نسخهٔ-جدید>\scripts\release\ConfigSync.ps1 `
+  -InstallDirectory D:\Raavi
+# خودتان pool/سرویس را روشن کنید.
 ```
 
-این اسکریپت pool و سرویس را متوقف می‌کند، بسته را بررسی می‌کند، یک کپی برای بازگشت در `D:\Raavi\previous\<زمان>` نگه می‌دارد، فقط پوشه‌های برنامه را عوض می‌کند (`sandbox\` حفظ می‌شود و تنظیمات تازه با `sandbox sync` اضافه می‌شود)، migrator دیتابیس را اجرا می‌کند و **فقط اگر همه‌چیز موفق بود** pool و سرویس را دوباره روشن می‌کند. (برای `-RunMigrator` قبلش در همان پنجرهٔ PowerShell متغیر `RAAVI_ConnectionStrings__Migrator` را بگذارید؛ یا `-RunMigrator` را نگذارید و migrator را دستی اجرا کنید.)
-
-اگر خطایی رخ دهد، pool و سرویس خاموش می‌مانند: پیام را بخوانید، رفع کنید و دوباره اجرا کنید. اگر مایگریشن وسط کار شکست خورد، دیتابیس را از backup برگردانید (کپی بازگشت فقط فایل‌های برنامه را برمی‌گرداند). پیش از هر ارتقا از دیتابیس و پوشهٔ `sandbox\` backup بگیرید. بخش `-AppPool` و `-Service` به ابزار مدیریت IIS و PowerShell با دسترسی ادمین نیاز دارد و روی IIS واقعی آزموده نشده است.
+`ConfigSync.ps1` فقط `sandbox sync` (تنظیمات تازهٔ نسخه را بدون تغییر مقادیر شما اضافه می‌کند) و migrator دیتابیس را اجرا می‌کند. کپی فایل و توقف/روشن‌کردن سرویس‌ها با شماست. اگر migrator را دستی می‌زنید `-SkipMigrator` بگذارید. اگر مایگریشن وسط کار شکست خورد، دیتابیس را از backup برگردانید. پیش از هر ارتقا از دیتابیس و `sandbox\` پشتیبان بگیرید.
 
 ## ۱۱. مشکلات رایج
 

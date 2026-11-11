@@ -10,7 +10,7 @@ import type { BoardElement, BoardShape } from '@/core/api/whiteboards'
  * changes from other people as a fresh element list (`onRemote`), and provides undo/redo of the user's *own* changes only — never someone else's.
  */
 const LOCAL = Symbol('local-edit')
-const TYPES: readonly BoardShape[] = ['Rect', 'Ellipse', 'Text', 'Sticky', 'Arrow', 'Pen', 'Diamond', 'Triangle', 'Line']
+const TYPES: readonly BoardShape[] = ['Rect', 'Ellipse', 'Text', 'Sticky', 'Arrow', 'Pen', 'Diamond', 'Triangle', 'Line', 'RoundRect', 'Star', 'Image', 'Connector', 'Group', 'Table']
 
 const DEFAULTS = { x: 0, y: 0, w: 0, h: 0, rotation: 0, stroke: '#1f2937', fill: null, strokeWidth: 2, text: '', fontSize: 20, rtl: false } as const
 
@@ -19,7 +19,7 @@ export function readElement(id: string, inner: Y.Map<unknown>): BoardElement | n
   const raw = inner.toJSON() as Record<string, unknown>
   if (!TYPES.includes(raw.type as BoardShape)) return null
   const num = (k: keyof typeof DEFAULTS) => (typeof raw[k] === 'number' && Number.isFinite(raw[k] as number) ? (raw[k] as number) : (DEFAULTS[k] as number))
-  return {
+  const el: BoardElement = {
     id,
     type: raw.type as BoardShape,
     x: num('x'),
@@ -35,9 +35,55 @@ export function readElement(id: string, inner: Y.Map<unknown>): BoardElement | n
     rtl: raw.rtl === true,
     points: Array.isArray(raw.points) ? (raw.points as unknown[]).filter((p): p is number => typeof p === 'number') : [],
   }
+  // Optional fields are copied only when the map actually stores them, so older documents stay byte-identical.
+  const finite = (k: string) => (typeof raw[k] === 'number' && Number.isFinite(raw[k] as number) ? (raw[k] as number) : undefined)
+  const textOf = (k: string) => (typeof raw[k] === 'string' ? (raw[k] as string) : undefined)
+  const flag = (k: string) => (typeof raw[k] === 'boolean' ? (raw[k] as boolean) : undefined)
+  const nums = (k: string) => (Array.isArray(raw[k]) ? (raw[k] as unknown[]).filter((n): n is number => typeof n === 'number') : undefined)
+  const texts = (k: string) => (Array.isArray(raw[k]) ? (raw[k] as unknown[]).filter((n): n is string => typeof n === 'string') : undefined)
+  const corner = finite('cornerRadius')
+  if (corner !== undefined) el.cornerRadius = corner
+  const attachment = textOf('attachmentId')
+  if (attachment !== undefined) el.attachmentId = attachment
+  const alt = textOf('alt')
+  if (alt !== undefined) el.alt = alt
+  const locked = flag('locked')
+  if (locked !== undefined) el.locked = locked
+  const hidden = flag('hidden')
+  if (hidden !== undefined) el.hidden = hidden
+  const parentId = textOf('parentId')
+  if (parentId !== undefined) el.parentId = parentId
+  const fromId = textOf('fromId')
+  if (fromId !== undefined) el.fromId = fromId
+  const toId = textOf('toId')
+  if (toId !== undefined) el.toId = toId
+  const fromPort = textOf('fromPort')
+  if (fromPort !== undefined) el.fromPort = fromPort as BoardElement['fromPort']
+  const toPort = textOf('toPort')
+  if (toPort !== undefined) el.toPort = toPort as BoardElement['toPort']
+  const route = textOf('route')
+  if (route !== undefined) el.route = route as BoardElement['route']
+  const startArrow = flag('startArrow')
+  if (startArrow !== undefined) el.startArrow = startArrow
+  const endArrow = flag('endArrow')
+  if (endArrow !== undefined) el.endArrow = endArrow
+  const children = texts('children')
+  if (children !== undefined) el.children = children
+  const rows = finite('rows')
+  if (rows !== undefined) el.rows = rows
+  const cols = finite('cols')
+  if (cols !== undefined) el.cols = cols
+  const cells = texts('cells')
+  if (cells !== undefined) el.cells = cells
+  const colWidths = nums('colWidths')
+  if (colWidths !== undefined) el.colWidths = colWidths
+  return el
 }
 
-const FIELDS: (keyof BoardElement)[] = ['type', 'x', 'y', 'w', 'h', 'rotation', 'stroke', 'fill', 'strokeWidth', 'text', 'fontSize', 'rtl', 'points']
+const FIELDS: (keyof BoardElement)[] = [
+  'type', 'x', 'y', 'w', 'h', 'rotation', 'stroke', 'fill', 'strokeWidth', 'text', 'fontSize', 'rtl', 'points',
+  'cornerRadius', 'attachmentId', 'alt', 'locked', 'hidden', 'parentId', 'fromId', 'toId', 'fromPort', 'toPort', 'route', 'startArrow', 'endArrow', 'children', 'rows', 'cols', 'cells', 'colWidths',
+]
 const same = (a: unknown, b: unknown) => (Array.isArray(a) || Array.isArray(b) ? JSON.stringify(a) === JSON.stringify(b) : a === b)
 
 export class LiveBoard {
@@ -99,7 +145,12 @@ export class LiveBoard {
         }
         const before = current.get(e.id)
         for (const f of FIELDS) {
-          if (!before || !same(before[f], e[f])) inner.set(f, e[f])
+          const value = e[f]
+          if (value === undefined) {
+            if (before && before[f] !== undefined) inner.delete(f)
+            continue
+          }
+          if (!before || !same(before[f], value)) inner.set(f, value)
         }
       }
       // Stacking order: appended elements go to the end, deleted ones leave; a real reorder rewrites the array.
@@ -154,4 +205,34 @@ export class LiveBoard {
     this.remoteCallbacks = []
     this.historyCallbacks = []
   }
+}
+
+/** Cursor and selection shared through the Yjs awareness channel (not the document). */
+export interface BoardCursor {
+  x: number
+  y: number
+}
+
+export interface BoardPresence {
+  user: { name: string; color: string }
+  cursor: BoardCursor | null
+  selectedIds: string[]
+}
+
+export function boardPresence(user: { name: string; color: string }, cursor: BoardCursor | null, selectedIds: readonly string[]): BoardPresence {
+  return { user: { name: user.name, color: user.color }, cursor, selectedIds: [...selectedIds] }
+}
+
+export type BoardSyncState = 'saved' | 'saving' | 'syncing' | 'offline' | 'error'
+
+/** What the board header shows: live connection first, otherwise the local save. */
+export function syncState(input: { live: boolean; status: string; saving: boolean; dirty: boolean; failed: boolean }): BoardSyncState {
+  if (input.failed) return 'error'
+  if (input.live) {
+    if (input.status === 'offline') return 'offline'
+    if (input.status === 'connecting' || input.status === 'syncing') return 'syncing'
+    return 'saved'
+  }
+  if (input.saving || input.dirty) return 'saving'
+  return 'saved'
 }

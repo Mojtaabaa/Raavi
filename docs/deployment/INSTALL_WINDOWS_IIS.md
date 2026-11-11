@@ -27,12 +27,13 @@ Why two IIS sites: the SPA and the API must be reached by the **same host name**
 ## 2. Unpack and first install
 
 ```powershell
-Expand-Archive raavi-0.13.2.zip C:\Deploy\raavi-0.13.2
-powershell -ExecutionPolicy Bypass -File C:\Deploy\raavi-0.13.2\scripts\release\Update-Raavi.ps1 `
-  -PackageDirectory C:\Deploy\raavi-0.13.2 -InstallDirectory D:\Raavi -SkipNpm
+Expand-Archive raavi-0.24.0.zip C:\Deploy\raavi-0.24.0
+# Copy application folders yourself (api, workers, migrator, web, collaboration, schema, sandbox-defaults, docs, scripts, release.json) into D:\Raavi — never replace an existing sandbox\.
+powershell -ExecutionPolicy Bypass -File C:\Deploy\raavi-0.24.0\scripts\release\ConfigSync.ps1 `
+  -InstallDirectory D:\Raavi -SkipMigrator
 ```
 
-Creates `D:\Raavi\{api,workers,migrator,web,scripts,...}` and `D:\Raavi\sandbox\{config,data,secrets}` (`config` is initialised from the shipped defaults). The applications find `D:\Raavi\sandbox\config` by looking upwards from their own folder; set `RAAVI_SANDBOX_PATH` only if you put it elsewhere. **Back up `sandbox\` together with the database** (without `data\keys` the encrypted values — TOTP, AI keys, webhook secrets — cannot be read).
+Creates `D:\Raavi\sandbox\{config,data,secrets}` when missing (`config` is initialised from the shipped defaults). The applications find `D:\Raavi\sandbox\config` by looking upwards from their own folder; set `RAAVI_SANDBOX_PATH` only if you put it elsewhere. **Back up `sandbox\` together with the database** (without `data\keys` the encrypted values — TOTP, AI keys, webhook secrets — cannot be read).
 
 ## 3. Settings (`D:\Raavi\sandbox\config\appsettings.json`)
 
@@ -48,6 +49,13 @@ Creates `D:\Raavi\{api,workers,migrator,web,scripts,...}` and `D:\Raavi\sandbox\
 Secrets are **not** written in files. They are environment variables of the API application pool and of the workers service (sections 5 and 6): `RAAVI_ConnectionStrings__System`, `RAAVI_Raavi__Database__CompatibilityLevel`, `ASPNETCORE_ENVIRONMENT=Production`. Only the migrator uses `RAAVI_ConnectionStrings__Migrator`.
 
 Optional allow-lists (empty = feature off): `Raavi:Ai:AllowedHosts`, `Raavi:Integrations:AllowedWebhookHosts`, `Raavi:Integrations:AllowedConnectorHosts`, `Raavi:Migration:AllowedSourceHosts`.
+
+### Issue trackers and Wiki ↔ Jira page links
+
+- Set `Raavi:Integrations:AllowedConnectorHosts` to the Jira / GitHub Enterprise / GitLab host names (e.g. `jira.example.com` or `*.example.com`). Empty = connectors cannot be created or called (SSRF guard).
+- **Lookup** in the editor (issue chip) works with an optional token (public data) or Browse access.
+- **Create / link Jira issues from a wiki page** (Remote Link + Raavi-owned relationship) needs a **Jira** connector with an https token that can **Browse Projects**, **Create Issues** and **Link Issues**. GitHub/GitLab stay read-only.
+- After upgrade the migrator creates `integrations.PageIssueLinks` / `PageIssueLinkContexts` and the integrations outbox; take a backup and stop services first, then run `ConfigSync.ps1`.
 
 ## 3b. One address for everything (no wildcard DNS/TLS) — path addressing and a default workspace
 
@@ -161,11 +169,14 @@ S3/MinIO, OpenSearch and Redis are not required for the implemented features (Re
 
 ```powershell
 Expand-Archive raavi-<new>.zip C:\Deploy\raavi-<new>
-powershell -ExecutionPolicy Bypass -File C:\Deploy\raavi-<new>\scripts\release\Update-Raavi.ps1 `
-  -PackageDirectory C:\Deploy\raavi-<new> -InstallDirectory D:\Raavi `
-  -AppPool RaaviApi -Service RaaviWorkers -RunMigrator
+# Stop pool/services yourself, back up DB + sandbox\, copy application folders (keep sandbox\), then:
+$env:RAAVI_ConnectionStrings__Migrator = 'Server=...;Database=Raavi;...'
+powershell -ExecutionPolicy Bypass -File C:\Deploy\raavi-<new>\scripts\release\ConfigSync.ps1 `
+  -InstallDirectory D:\Raavi
+# Start pool/services yourself.
 ```
-It stops the pool and the service, verifies the package, keeps a rollback copy in `D:\Raavi\previous\<time>`, replaces only the program folders (`sandbox\` is kept, new settings are added by `sandbox sync`), runs the database migrator (set `RAAVI_ConnectionStrings__Migrator` in that PowerShell window first; omit `-RunMigrator` to do it by hand) and **starts the pool and service again only if everything succeeded**. After a failure they stay stopped: read the message, fix, rerun; if a migration failed half-way restore the database from backup (the rollback copy only restores program files). Take a database backup and a copy of `sandbox\` before every upgrade. The `-AppPool`/`-Service` handling needs IIS administration tools and an elevated PowerShell and was not exercised against a real IIS.
+
+`ConfigSync.ps1` only runs `sandbox sync` (adds settings new in this version without changing yours) and the database migrator. File copy and service stop/start are your responsibility. Use `-SkipMigrator` if you will run the migrator by hand. If a migration failed half-way, restore the database from backup. Take a database backup and a copy of `sandbox\` before every upgrade.
 
 ## 11. Common problems
 

@@ -6,6 +6,13 @@ export type TemplateId = 'flowchart' | 'kanban' | 'swot' | 'mindmap'
 
 export const TEMPLATE_IDS: TemplateId[] = ['flowchart', 'kanban', 'swot', 'mindmap']
 
+export const TEMPLATE_WORD_KEYS = ['start', 'step', 'step2', 'decision', 'yes', 'no', 'end', 'todo', 'doing', 'done', 'task', 'strengths', 'weaknesses', 'opportunities', 'threats', 'topic', 'idea'] as const
+
+/** Words of the current language, keyed the way `buildTemplate` reads them. */
+export function templateLabels(translate: (key: string) => string): Record<string, string> {
+  return Object.fromEntries(TEMPLATE_WORD_KEYS.map((k) => [k, translate(`whiteboards.templateWords.${k}`)]))
+}
+
 type Labels = Record<string, string>
 
 const el = (type: BoardShape, x: number, y: number, w: number, h: number, extra: Partial<BoardElement> = {}): BoardElement => ({

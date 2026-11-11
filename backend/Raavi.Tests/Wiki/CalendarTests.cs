@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using Raavi.Domain.Common;
 using Raavi.Tests.Identity;
 using Raavi.Tests.Infrastructure;
@@ -110,21 +111,21 @@ public sealed class CalendarRecurrenceTests
     {
         static string Code(Action a) => Assert.Throws<DomainException>(a).Code;
         var now = DateTimeOffset.UtcNow;
-        Assert.Equal("calendar.title_invalid", Code(() => CalendarEvent.Create(Guid.NewGuid(), Details() with { Title = "  " }, Guid.NewGuid(), now)));
-        Assert.Equal("calendar.range_invalid", Code(() => CalendarEvent.Create(Guid.NewGuid(), Details(end: "2026-06-30"), Guid.NewGuid(), now)));
-        Assert.Equal("calendar.range_invalid", Code(() => CalendarEvent.Create(Guid.NewGuid(), Details(startTime: "11:00", endTime: "10:00"), Guid.NewGuid(), now)));
-        Assert.Equal("calendar.range_invalid", Code(() => CalendarEvent.Create(Guid.NewGuid(), Details() with { StartTime = null }, Guid.NewGuid(), now)));
-        Assert.Equal("calendar.range_too_long", Code(() => CalendarEvent.Create(Guid.NewGuid(), Details(allDay: true, end: "2028-01-01"), Guid.NewGuid(), now)));
-        Assert.Equal("calendar.time_zone_invalid", Code(() => CalendarEvent.Create(Guid.NewGuid(), Details(zone: "Mars/Olympus"), Guid.NewGuid(), now)));
-        Assert.Equal("calendar.recurrence_invalid", Code(() => CalendarEvent.Create(Guid.NewGuid(), Details(rule: Rule(RecurrenceFrequency.Daily, until: "2026-08-01", count: 3)), Guid.NewGuid(), now)));
-        Assert.Equal("calendar.recurrence_invalid", Code(() => CalendarEvent.Create(Guid.NewGuid(), Details(rule: Rule(RecurrenceFrequency.Daily, 0)), Guid.NewGuid(), now)));
-        Assert.Equal("calendar.recurrence_invalid", Code(() => CalendarEvent.Create(Guid.NewGuid(), Details(rule: Rule(RecurrenceFrequency.Daily, until: "2026-06-01")), Guid.NewGuid(), now)));
+        Assert.Equal("calendar.title_invalid", Code(() => CalendarEvent.Create(Guid.NewGuid(), Guid.NewGuid(), Details() with { Title = "  " }, Guid.NewGuid(), now)));
+        Assert.Equal("calendar.range_invalid", Code(() => CalendarEvent.Create(Guid.NewGuid(), Guid.NewGuid(), Details(end: "2026-06-30"), Guid.NewGuid(), now)));
+        Assert.Equal("calendar.range_invalid", Code(() => CalendarEvent.Create(Guid.NewGuid(), Guid.NewGuid(), Details(startTime: "11:00", endTime: "10:00"), Guid.NewGuid(), now)));
+        Assert.Equal("calendar.range_invalid", Code(() => CalendarEvent.Create(Guid.NewGuid(), Guid.NewGuid(), Details() with { StartTime = null }, Guid.NewGuid(), now)));
+        Assert.Equal("calendar.range_too_long", Code(() => CalendarEvent.Create(Guid.NewGuid(), Guid.NewGuid(), Details(allDay: true, end: "2028-01-01"), Guid.NewGuid(), now)));
+        Assert.Equal("calendar.time_zone_invalid", Code(() => CalendarEvent.Create(Guid.NewGuid(), Guid.NewGuid(), Details(zone: "Mars/Olympus"), Guid.NewGuid(), now)));
+        Assert.Equal("calendar.recurrence_invalid", Code(() => CalendarEvent.Create(Guid.NewGuid(), Guid.NewGuid(), Details(rule: Rule(RecurrenceFrequency.Daily, until: "2026-08-01", count: 3)), Guid.NewGuid(), now)));
+        Assert.Equal("calendar.recurrence_invalid", Code(() => CalendarEvent.Create(Guid.NewGuid(), Guid.NewGuid(), Details(rule: Rule(RecurrenceFrequency.Daily, 0)), Guid.NewGuid(), now)));
+        Assert.Equal("calendar.recurrence_invalid", Code(() => CalendarEvent.Create(Guid.NewGuid(), Guid.NewGuid(), Details(rule: Rule(RecurrenceFrequency.Daily, until: "2026-06-01")), Guid.NewGuid(), now)));
 
         // A weekly rule must include the weekday of its start (2026-07-01 is a Wednesday), as iCalendar always treats the start as an occurrence.
-        Assert.Equal("calendar.recurrence_invalid", Code(() => CalendarEvent.Create(Guid.NewGuid(), Details(rule: Rule(RecurrenceFrequency.Weekly, 1, 1 << (int)DayOfWeek.Saturday)), Guid.NewGuid(), now)));
+        Assert.Equal("calendar.recurrence_invalid", Code(() => CalendarEvent.Create(Guid.NewGuid(), Guid.NewGuid(), Details(rule: Rule(RecurrenceFrequency.Weekly, 1, 1 << (int)DayOfWeek.Saturday)), Guid.NewGuid(), now)));
 
         // A weekly rule without weekdays repeats on the weekday of the start.
-        var weekly = CalendarEvent.Create(Guid.NewGuid(), Details(rule: Rule(RecurrenceFrequency.Weekly)), Guid.NewGuid(), now);
+        var weekly = CalendarEvent.Create(Guid.NewGuid(), Guid.NewGuid(), Details(rule: Rule(RecurrenceFrequency.Weekly)), Guid.NewGuid(), now);
         Assert.Equal(1 << (int)DayOfWeek.Wednesday, weekly.RecurWeekDays); // 2026-07-01 is a Wednesday
     }
 
@@ -132,7 +133,7 @@ public sealed class CalendarRecurrenceTests
     public void Cancelling_occurrences_and_changing_the_series_keep_exclusions_consistent()
     {
         var now = DateTimeOffset.UtcNow;
-        var e = CalendarEvent.Create(Guid.NewGuid(), Details(rule: Rule(RecurrenceFrequency.Daily)), Guid.NewGuid(), now);
+        var e = CalendarEvent.Create(Guid.NewGuid(), Guid.NewGuid(), Details(rule: Rule(RecurrenceFrequency.Daily)), Guid.NewGuid(), now);
         e.Exclude(D("2026-07-03"), now);
         e.Exclude(D("2026-07-03"), now); // idempotent
         e.Exclude(D("2026-07-06"), now);
@@ -141,9 +142,9 @@ public sealed class CalendarRecurrenceTests
         Assert.Equal("calendar.occurrence_invalid", Assert.Throws<DomainException>(() => e.Exclude(D("2026-06-30"), now)).Code);
 
         // Moving to every second day (1st, 3rd, 5th…): the cancelled 3rd stays valid, the cancelled 6th is no longer an occurrence and is dropped.
-        e.Update(Details(rule: Rule(RecurrenceFrequency.Daily, 2)), now);
+        e.Update(Details(rule: Rule(RecurrenceFrequency.Daily, 2)), Guid.NewGuid(), now);
         Assert.Equal([D("2026-07-03")], e.ExcludedDates.ToArray());
-        var single = CalendarEvent.Create(Guid.NewGuid(), Details(), Guid.NewGuid(), now);
+        var single = CalendarEvent.Create(Guid.NewGuid(), Guid.NewGuid(), Details(), Guid.NewGuid(), now);
         Assert.Equal("calendar.occurrence_invalid", Assert.Throws<DomainException>(() => single.Exclude(D("2026-07-01"), now)).Code);
     }
 
@@ -160,11 +161,14 @@ public sealed class CalendarRecurrenceTests
     public void Ics_output_is_escaped_folded_and_expresses_persian_rules_as_explicit_dates()
     {
         var now = DateTimeOffset.Parse("2026-06-01T00:00:00Z", CultureInfo.InvariantCulture);
-        var weekly = CalendarEvent.Create(Guid.NewGuid(),
+        var weekly = CalendarEvent.Create(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
             Details(start: "2026-07-04", end: "2026-07-04", zone: "Asia/Tehran", rule: Rule(RecurrenceFrequency.Weekly, 1, 1 << (int)DayOfWeek.Saturday, RecurrenceCalendar.Persian, count: 4)) with { Title = "Plan; review, \"Q3\"", Description = "line1\nline2 \\ end", Location = new string('ن', 80) },
-            Guid.NewGuid(), now);
+            Guid.NewGuid(),
+            now);
         weekly.Exclude(D("2026-07-11"), now);
-        var monthly = CalendarEvent.Create(Guid.NewGuid(), Details(allDay: true, start: "2026-03-21", end: "2026-03-21", rule: Rule(RecurrenceFrequency.Monthly, cal: RecurrenceCalendar.Persian)), Guid.NewGuid(), now);
+        var monthly = CalendarEvent.Create(Guid.NewGuid(), Guid.NewGuid(), Details(allDay: true, start: "2026-03-21", end: "2026-03-21", rule: Rule(RecurrenceFrequency.Monthly, cal: RecurrenceCalendar.Persian)), Guid.NewGuid(), now);
 
         var ics = IcsWriter.Write([weekly, monthly], "Team; calendar", now);
         Assert.StartsWith("BEGIN:VCALENDAR\r\nVERSION:2.0\r\n", ics, StringComparison.Ordinal);
@@ -389,5 +393,70 @@ public sealed class CalendarTests(SqlServerFixture fx)
         }
 
         Assert.Empty((await admin.GetJsonAsync($"api/v1/spaces/{key}/calendar/occurrences?from=2026-10-01&to=2026-10-31")).EnumerateArray());
+    }
+
+    [Fact]
+    public async Task Space_events_land_on_a_default_calendar_that_archives_restores_and_hard_deletes_with_confirm()
+    {
+        var (tenant, owner, _) = await _kit.Identity.TenantWithAdminAsync();
+        var (viewer, _, _) = await _kit.Identity.AddMemberAsync(tenant, owner);
+        var key = (await CreateSpaceAsync(owner)).GetProperty("key").GetString()!;
+        await CreateEventAsync(owner, key, new { title = "Keep", allDay = true, startDate = "2026-11-01" });
+
+        var calendars = (await owner.GetJsonAsync($"api/v1/spaces/{key}/calendars")).EnumerateArray().ToList();
+        Assert.Single(calendars);
+        Assert.True(calendars[0].GetProperty("isDefault").GetBoolean());
+        Assert.Equal("Space", calendars[0].GetProperty("scope").GetString());
+        var calendarId = calendars[0].GetProperty("id").GetGuid();
+
+        var personal = await ReadAsync(await owner.PostAsync("api/v1/calendars", new { scope = "Personal", name = "Mine", color = "#10b981" }));
+        Assert.Equal("Personal", personal.GetProperty("scope").GetString());
+
+        using (var forbidden = await viewer.PostAsync("api/v1/calendars", new { scope = "Organization", name = "Org holidays" }))
+        {
+            Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+        }
+
+        var org = await ReadAsync(await owner.PostAsync("api/v1/calendars", new { scope = "Organization", name = "Org holidays", color = "#8b5cf6" }));
+        Assert.Equal("Organization", org.GetProperty("scope").GetString());
+
+        using (var archive = await owner.PostAsync($"api/v1/calendars/{calendarId}/archive", new { }))
+        {
+            Assert.NotNull((await ReadAsync(archive)).GetProperty("archivedAt").GetString());
+        }
+
+        Assert.Empty((await owner.GetJsonAsync($"api/v1/spaces/{key}/calendars")).EnumerateArray());
+        Assert.Single((await owner.GetJsonAsync($"api/v1/spaces/{key}/calendars?includeArchived=true")).EnumerateArray());
+
+        using (var restore = await owner.PostAsync($"api/v1/calendars/{calendarId}/restore", new { }))
+        {
+            Assert.Equal(JsonValueKind.Null, (await ReadAsync(restore)).GetProperty("archivedAt").ValueKind);
+        }
+
+        Assert.Equal(["2026-11-01 Keep"], await TitlesAsync(owner, $"api/v1/spaces/{key}/calendar/occurrences?from=2026-11-01&to=2026-11-01&calendarIds={calendarId}"));
+
+        using (var archiveAgain = await owner.PostAsync($"api/v1/calendars/{calendarId}/archive", new { }))
+        {
+            await ReadAsync(archiveAgain);
+        }
+
+        using (var badName = await owner.PostAsync($"api/v1/calendars/{calendarId}/purge", new { confirmName = "wrong" }))
+        {
+            await Browser.AssertStatusAsync(badName, HttpStatusCode.BadRequest, "calendar.confirm_mismatch");
+        }
+
+        var spaceCalName = calendars[0].GetProperty("name").GetString()!;
+        using (var purge = await owner.PostAsync($"api/v1/calendars/{calendarId}/purge", new { confirmName = spaceCalName }))
+        {
+            await Browser.AssertStatusAsync(purge, HttpStatusCode.NoContent);
+        }
+
+        Assert.Empty((await owner.GetJsonAsync($"api/v1/spaces/{key}/calendars?includeArchived=true")).EnumerateArray());
+        Assert.Empty((await owner.GetJsonAsync($"api/v1/spaces/{key}/calendar/occurrences?from=2026-11-01&to=2026-11-01")).EnumerateArray());
+
+        // Creating another event recreates the default space calendar (no data loss path for new writes).
+        await CreateEventAsync(owner, key, new { title = "Again", allDay = true, startDate = "2026-11-02" });
+        Assert.Single((await owner.GetJsonAsync($"api/v1/spaces/{key}/calendars")).EnumerateArray());
+        Assert.Equal(["2026-11-02 Again"], await TitlesAsync(owner, $"api/v1/spaces/{key}/calendar/occurrences?from=2026-11-01&to=2026-11-30"));
     }
 }

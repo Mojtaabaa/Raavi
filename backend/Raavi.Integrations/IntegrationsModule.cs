@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -15,19 +16,20 @@ using Raavi.Integrations.Webhooks;
 namespace Raavi.Integrations;
 
 /// <summary>
-/// Integrations module (Phase 11, 13): outbound webhooks (ADR-036) and read-only issue connectors for GitHub, GitLab and Jira (ADR-043); Teams, Outlook and Google are later slices.
+/// Integrations module (Phase 11, 13): outbound webhooks (ADR-036), issue connectors (ADR-043) and Jira Page–Issue linking.
 /// Outbound calls go through an SSRF-guarded HTTP client (SECURITY_ARCHITECTURE.md §5).
 /// </summary>
 public static class IntegrationsModule
 {
     public const string Name = "integrations";
 
-    /// <summary>Requires the outbox (Wiki module) and ASP.NET Data Protection. Register in every host that dispatches outbox events (API, workers).</summary>
-    public static IServiceCollection AddIntegrationsModule(this IServiceCollection services, IConfiguration configuration)
+    /// <summary>Requires ASP.NET Data Protection. <paramref name="runOutboxPoller"/> only in the worker host (integrations outbox for Jira relationship events).</summary>
+    public static IServiceCollection AddIntegrationsModule(this IServiceCollection services, IConfiguration configuration, bool runOutboxPoller = false)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
         services.AddRaaviDbContext<IntegrationsDbContext>(configuration, IntegrationsDbContext.HistorySchema);
+        services.AddRaaviOutbox<IntegrationsDbContext>(runOutboxPoller);
         services.AddOptions<IntegrationsOptions>().Bind(configuration.GetSection(IntegrationsOptions.Section));
         services.AddSingleton(sp => new WebhookHostPolicy(sp.GetRequiredService<IOptions<IntegrationsOptions>>().Value.AllowedWebhookHosts));
         services.AddHttpClient(WebhookHttp.ClientName).ConfigurePrimaryHttpMessageHandler(WebhookHostPolicy.CreateHandler).ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(90));
@@ -36,10 +38,14 @@ public static class IntegrationsModule
         services.AddHttpClient(ConnectorHttp.ClientName).ConfigurePrimaryHttpMessageHandler(WebhookHostPolicy.CreateHandler).ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(90));
         services.AddScoped<IssueConnectorService>();
         services.AddScoped<IssueLookupService>();
+        services.AddScoped<JiraIssueClient>();
+        services.AddScoped<PageIssueLinkService>();
+        services.AddScoped<PageIssueRemoteLinkJob>();
         services.AddScoped<Raavi.Application.Abstractions.Ai.IIssueContextReader, IssueContextReader>();
         services.AddScoped<WebhookSender>();
         services.AddScoped<WebhookService>();
         services.AddScoped<IOutboxHandler, WebhookDispatcher>();
+        services.AddScoped<IOutboxHandler, PageIssueLinkOutboxHandler>();
         return services;
     }
 
@@ -94,5 +100,50 @@ public static class IntegrationsModule
         lookup.MapGet("/lookup", async (Guid connector, string reference, IssueLookupService svc, CancellationToken ct) =>
             (await svc.LookupAsync(connector, reference, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
 
+        var jira = api.MapGroup("/integrations/jira").RequireHostKind(RaaviHostKind.Tenant).RequireAuthorization(RaaviPolicies.AuthenticatedUser);
+        jira.MapGet("/connectors", async (IssueConnectorService svc, CancellationToken ct) =>
+            Results.Ok((await svc.ListAsync(ct).ConfigureAwait(false)).Where(c => c.Enabled && c.Kind == "Jira").Select(c => new { c.Id, c.Name })));
+        jira.MapGet("/connectors/{id:guid}/projects", async (Guid id, IssueConnectorService connectors, JiraIssueClient client, IntegrationsDbContext db, CancellationToken ct) =>
+        {
+            var c = await db.IssueConnectors.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct).ConfigureAwait(false);
+            return c is null
+                ? IssueConnectorService.NotFound.ToProblem()
+                : (await client.ProjectsAsync(c, ct).ConfigureAwait(false)).ToHttp(Results.Ok);
+        });
+        jira.MapGet("/connectors/{id:guid}/issuetypes", async (Guid id, string project, JiraIssueClient client, IntegrationsDbContext db, CancellationToken ct) =>
+        {
+            var c = await db.IssueConnectors.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct).ConfigureAwait(false);
+            return c is null
+                ? IssueConnectorService.NotFound.ToProblem()
+                : (await client.IssueTypesAsync(c, project, ct).ConfigureAwait(false)).ToHttp(Results.Ok);
+        });
+        jira.MapGet("/connectors/{id:guid}/createmeta", async (Guid id, string project, string issuetype, JiraIssueClient client, IntegrationsDbContext db, CancellationToken ct) =>
+        {
+            var c = await db.IssueConnectors.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct).ConfigureAwait(false);
+            return c is null
+                ? IssueConnectorService.NotFound.ToProblem()
+                : (await client.CreateMetaAsync(c, project, issuetype, ct).ConfigureAwait(false)).ToHttp(Results.Ok);
+        });
+        jira.MapGet("/connectors/{id:guid}/search", async (Guid id, string q, JiraIssueClient client, IntegrationsDbContext db, CancellationToken ct) =>
+        {
+            var c = await db.IssueConnectors.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct).ConfigureAwait(false);
+            return c is null
+                ? IssueConnectorService.NotFound.ToProblem()
+                : (await client.SearchAsync(c, q, ct).ConfigureAwait(false)).ToHttp(Results.Ok);
+        });
+        jira.MapGet("/issues/{connectorId:guid}/{issueId}/pages", async (Guid connectorId, string issueId, PageIssueLinkService svc, CancellationToken ct) =>
+            (await svc.PagesForIssueAsync(connectorId, issueId, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+
+        var pageLinks = api.MapGroup("/pages/{contentId:guid}/jira-links").RequireHostKind(RaaviHostKind.Tenant).RequireAuthorization(RaaviPolicies.AuthenticatedUser);
+        pageLinks.MapGet(string.Empty, async (Guid contentId, PageIssueLinkService svc, CancellationToken ct) =>
+            (await svc.ListForPageAsync(contentId, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+        pageLinks.MapPost("/create", async (Guid contentId, CreateJiraIssueRequest body, PageIssueLinkService svc, CancellationToken ct) =>
+            (await svc.CreateIssueAsync(contentId, body, ct).ConfigureAwait(false)).ToHttp(d => Results.Created($"/api/v1/pages/{contentId:D}/jira-links/{d.Id:D}", d)));
+        pageLinks.MapPost(string.Empty, async (Guid contentId, LinkJiraIssueRequest body, PageIssueLinkService svc, CancellationToken ct) =>
+            (await svc.LinkExistingAsync(contentId, body, ct).ConfigureAwait(false)).ToHttp(d => Results.Created($"/api/v1/pages/{contentId:D}/jira-links/{d.Id:D}", d)));
+        pageLinks.MapPost("/{linkId:guid}/refresh", async (Guid contentId, Guid linkId, PageIssueLinkService svc, CancellationToken ct) =>
+            (await svc.RefreshAsync(contentId, linkId, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+        pageLinks.MapDelete("/{linkId:guid}", async (Guid contentId, Guid linkId, PageIssueLinkService svc, CancellationToken ct) =>
+            (await svc.UnlinkAsync(contentId, linkId, ct).ConfigureAwait(false)).ToHttp());
     }
 }

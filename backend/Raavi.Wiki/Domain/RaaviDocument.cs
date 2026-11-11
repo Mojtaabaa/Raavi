@@ -34,6 +34,8 @@ public sealed class RaaviDocument
         },
         // v2 → v3: new optional textStyle attrs and sub/sup marks; existing trees stay valid.
         [2] = doc => doc,
+        // v3 → v4: whiteboard embed node; existing trees stay valid.
+        [3] = doc => doc,
     };
 
     private RaaviDocument(JsonObject doc)

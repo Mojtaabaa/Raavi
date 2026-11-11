@@ -57,10 +57,7 @@ public sealed class BoardCollaborationService(
             return Result<TicketDto>.Failure(NotFound);
         }
 
-        if (!rights.CanWrite(PermissionAction.Edit))
-        {
-            return Result<TicketDto>.Failure(WikiErrors.Forbidden);
-        }
+        var permission = rights.CanWrite(PermissionAction.Edit) ? "edit" : "view";
 
         var user = http.HttpContext?.User;
         if (!Guid.TryParse(user?.FindFirstValue("raavi:sid"), out var sessionId))
@@ -72,8 +69,8 @@ public sealed class BoardCollaborationService(
         var now = clock.UtcNow;
         var lifetime = TimeSpan.FromSeconds(Math.Clamp(options.TicketLifetimeSeconds, 10, 60));
         var address = new DocumentAddress(db.CurrentTenantId, boardId, DocumentKind.Board);
-        var ticket = signer.Sign(new TicketClaims(actor.UserId, address.TenantId, address.Name, "edit", sessionId, user!.FindFirstValue(ClaimTypes.Name) ?? string.Empty), lifetime, now);
-        return Result<TicketDto>.Success(new TicketDto(ticket, address.Name, options.PublicUrl!, "edit", now + lifetime));
+        var ticket = signer.Sign(new TicketClaims(actor.UserId, address.TenantId, address.Name, permission, sessionId, user!.FindFirstValue(ClaimTypes.Name) ?? string.Empty), lifetime, now);
+        return Result<TicketDto>.Success(new TicketDto(ticket, address.Name, options.PublicUrl!, permission, now + lifetime));
     }
 
     // ── Internal persistence (collaboration server, tenant scope opened by the endpoint) ─────────
@@ -136,7 +133,17 @@ public sealed class BoardCollaborationService(
             return Result<long>.Failure(NotFound);
         }
 
-        board.SetLiveState(elements, state, clock.UtcNow); // validates like a REST save; a DomainException becomes 400 and the server resets the document
+        // Internal HMAC calls have no interactive user; prefer a contributor from the collab server, else keep the last editor.
+        var actorId = request.Contributors is { Count: > 0 } c ? c[0] : board.UpdatedBy != Guid.Empty ? board.UpdatedBy : board.CreatedBy;
+        try
+        {
+            board.SetLiveState(elements, state, actorId, clock.UtcNow); // validates like a REST save
+        }
+        catch (Raavi.Domain.Common.DomainException)
+        {
+            return Result<long>.Failure(new Error("board.element_invalid", "An element is not valid.", ErrorKind.Validation));
+        }
+
         await db.SaveChangesAsync(ct).ConfigureAwait(false);
         return Result<long>.Success(board.Revision);
     }

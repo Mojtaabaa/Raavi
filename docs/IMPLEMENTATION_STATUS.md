@@ -1,6 +1,22 @@
 # Implementation Status
 
-**Last updated:** 2026-11-11 (editor text/background colour, TipTap open extensions, schema v3)
+**Last updated:** 2026-11-11 (Jira ↔ Wiki page linking)
+
+### Jira ↔ Wiki page linking (2026-11-11)
+
+Bidirectional Page–Issue relationships (Raavi owns links; Jira owns issue fields). Docs: `docs/integrations/JIRA_WIKI_LINKING_*.md`, `TEMPLAR_PAGE_ISSUE_EVENTS.md`. **Backend:** `PageIssueLinks` / `PageIssueLinkContexts` + integrations outbox (migration `PageIssueLinks`, RLS); `JiraIssueClient` (projects/createmeta/create/search/remotelink on DC API v2); `PageIssueLinkService` (create/link/unlink/refresh, Remote Link retry job, authz via `IPermissionEvaluator`); endpoints under `/pages/{id}/jira-links` and `/integrations/jira/*`. **Frontend:** selection-bar create/link, `LinkedJiraPanel` on page view, i18n en/fa. Templar: event contract + outbox types only (no fake Templar host). Tests: `dotnet test --filter "PageIssueLink|IssueConnector|IssueReference"` → **24 passed**; `npx vitest run tests/locales.test.ts` → **6 passed**. **Known limits:** createmeta-driven custom fields partial; TextQuote locate is toast/hint (full ProseMirror re-anchor later); Jira Cloud API v3 not targeted; write needs connector PAT with Create + Link Issues.
+
+### Calendar V1 — Stage A foundation (2026-11-11)
+
+Enterprise calendar assessment + locked decisions in `docs/calendar/` (Templar shell/Blocked live, Jira read-only, sync keep-both, archive-first delete, OAuth secrets, Free/Busy+Full share, recurrence scopes + TTS as V1). **Backend:** `Calendars` / `CalendarAccessGrants`; `CalendarEvent.CalendarId` + meta columns; migration `CalendarBoards` with RLS-off backfill (default Space calendar per space that has events, event-count guard); create-event resolves/creates space default calendar; APIs list/create/update/archive/restore/purge + `calendarIds` on occurrences. Templar contract stub: `docs/calendar/TEMPLAR_API_CONTRACT.md`. Tests: `dotnet test --filter FullyQualifiedName~Calendar` → **17 passed**. **Not done yet in Stage A:** share-grant APIs/UI, multi-view frontend, reminders/TTS, Jira/Templar/OAuth sync.
+
+### Whiteboard roadmap (Phases 1–5)
+
+Extended existing Konva + Yjs boards (no rewrite). **Backend:** `Description`/`ArchivedAt`/`Background`/`GridStyle`/`UpdatedBy`; favorites; board attachments + `Image`; `RoundRect`/`Star`/`Connector`/`Group`/`Table`; duplicate/archive/restore; revisions (cap 50); server templates; comments; JSON export; schema `raavi.whiteboard` embed (editor schema v4); migration `WhiteboardPhase1` with RLS. **Frontend:** list meta/favorites/archive/templates; autosave + viewport prefs; new tools; align/group/clipboard; live cursors; embed card. Tests: whiteboard domain + API (duplicate/archive/favorite/attachment isolation) and vitest whiteboards/locales. **Out of scope kept:** S3/7b, TipTap Pro, Redis multi-node, AI diagram gen.
+
+### Whiteboard frontend phases 1–3 (2026-11-11)
+
+List: description, favourite, archive/restore, duplicate, archived filter, create dialog with a client template. Board: debounced autosave (800 ms) when not live, manual save kept, viewport remembered per board, fit-selection, rounded rectangle, star, image upload, highlighter, eraser, connector, table, background and grid style, sync status, marquee multi-select, group/align, live cursors and selection. `cd frontend && npx vitest run tests/whiteboards.test.ts tests/liveBoard.test.ts tests/whiteboardLive.test.ts tests/locales.test.ts` → 4 files, 27 tests passed. **Not verified in the browser** (no running API in this session).
 
 Statuses: Not Started · Planned · In Progress · Implemented · Tested · Blocked · Deferred. "Tested" requires executed test evidence (listed).
 
@@ -98,7 +114,7 @@ Settings `Raavi:Authentication:Bootstrap:SystemAdministrator` (empty by default)
 
 ### 13e — IIS hosting of the API, Persian install guide (ADR-041 addendum)
 
-`deployment/iis/web.config` (shipped in `web/`), `Update-Raavi.ps1 -AppPool/-Service`, `INSTALL_WINDOWS_IIS.md` rewritten (API = IIS site, workers = NSSM) and `INSTALL_WINDOWS_IIS_fa.md` (Persian). `Test-ReleaseScripts.ps1 -WithFrontend` → 26 checks passed. **Not verified:** a real IIS/ARR/URL Rewrite/NSSM installation, the per-site ARR variant, WebSocket (`/hubs`) through ARR.
+`deployment/iis/web.config` (shipped in `web/`), `ConfigSync.ps1` (sandbox sync + migrator only; operators copy folders and stop/start services), `INSTALL_WINDOWS_IIS.md` / `_fa.md`. **Not verified:** a real IIS/ARR/URL Rewrite/NSSM installation, the per-site ARR variant, WebSocket (`/hubs`) through ARR.
 
 ### 13d — Browser walk-through, second round (2026-11-08)
 
@@ -140,7 +156,7 @@ dotnet test Raavi.Tests                                → all passed (new: Endp
 powershell deployment/scripts/release/Test-ReleaseScripts.ps1   → 22 checks passed, 0 failed (real dotnet publish of api/workers/migrator, first install + upgrade in a temp folder)
 ```
 
-`New-ReleasePackage.ps1` (folder + zip + release.json with SHA-256, refuses sandbox/secrets/local files), `Update-Raavi.ps1` (hash check, refuses while a service runs, rollback copy, replaces only application folders, keeps sandbox, `sandbox sync`, npm ci, optional migrator, `-WhatIf`). **Not done / not verified:** frontend build inside the package (skipped in the self-test), service stop/start, IIS/Windows service/systemd/Docker integration, automatic rollback, package signing, PowerShell 7/Linux, a real server install.
+`New-ReleasePackage.ps1` (folder + zip + release.json with SHA-256, refuses sandbox/secrets/local files), `ConfigSync.ps1` (sandbox init/sync + migrator; `-SkipMigrator`, `-WhatIf`). **Not done / not verified:** automatic folder replace/rollback (operator-owned), package signing, PowerShell 7/Linux, a real server install.
 
 ### Sandbox as home of instance files + upgrade sync (ADR-040)
 
