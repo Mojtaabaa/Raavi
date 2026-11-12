@@ -17,6 +17,7 @@ Rag + governance + relationship suites (see run log).
 
 ## Remaining polish
 
-- Owner / review-owner pickers in smart-search UI (API ready)  
+- ~~Owner / review-owner pickers~~ → **Owned by me / I am review owner** checkboxes (2026-11-12)  
 - Server-side tag facet merge (today still client intersect)  
 - Dedicated sort beyond relevance score  
+- Full directory picker for arbitrary owner (optional)  
