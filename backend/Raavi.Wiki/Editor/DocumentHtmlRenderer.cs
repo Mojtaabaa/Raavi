@@ -212,7 +212,8 @@ public sealed class DocumentHtmlRenderer
                 break;
             case "children":
             case "contentByLabel":
-                // Dynamic lists (child pages, pages by label) depend on who is looking; the static HTML only marks the place.
+            case "include":
+                // Dynamic lists and page includes depend on who is looking; the static HTML only marks the place.
                 sb.Append("<div class=\"raavi-dynamic\" data-kind=\"").Append(E(n["type"]?.GetValue<string>() ?? string.Empty)).Append("\"></div>");
                 break;
             case "mermaid":

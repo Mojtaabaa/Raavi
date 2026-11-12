@@ -105,6 +105,9 @@ namespace Raavi.Wiki.Persistence.Migrations
                     b.Property<Guid>("SpaceId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("TaskId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uniqueidentifier");
 
@@ -125,6 +128,8 @@ namespace Raavi.Wiki.Persistence.Migrations
                     SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "OccurredAt"));
 
                     b.HasIndex("TenantId", "SpaceId", "OccurredAt");
+
+                    b.HasIndex("TenantId", "TaskId", "OccurredAt");
 
                     b.ToTable("Activity", "content");
                 });
@@ -1987,6 +1992,375 @@ namespace Raavi.Wiki.Persistence.Migrations
                     b.ToTable("Databases", "content");
                 });
 
+            modelBuilder.Entity("Raavi.Wiki.Domain.TaskAssignee", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("AssignedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("AssignedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset?>("RemovedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(32)")
+                        .UseCollation("Latin1_General_100_BIN2");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasAlternateKey("TenantId", "Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasAlternateKey("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "TaskId")
+                        .IsUnique()
+                        .HasFilter("[RemovedAt] IS NULL AND [IsPrimary] = CAST(1 AS bit)");
+
+                    b.HasIndex("TenantId", "TaskId", "UserId")
+                        .IsUnique()
+                        .HasFilter("[RemovedAt] IS NULL");
+
+                    b.HasIndex("TenantId", "UserId", "RemovedAt");
+
+                    b.ToTable("TaskAssignees", "content");
+                });
+
+            modelBuilder.Entity("Raavi.Wiki.Domain.TaskAttachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("CommentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("Data")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("MediaType")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)")
+                        .UseCollation("Latin1_General_100_BIN2");
+
+                    b.Property<long>("Size")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasAlternateKey("TenantId", "Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasAlternateKey("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "CommentId");
+
+                    b.HasIndex("TenantId", "TaskId", "DeletedAt");
+
+                    b.ToTable("TaskAttachments", "content");
+                });
+
+            modelBuilder.Entity("Raavi.Wiki.Domain.TaskChecklist", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasAlternateKey("TenantId", "Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasAlternateKey("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "TaskId", "SortOrder");
+
+                    b.ToTable("TaskChecklists", "content");
+                });
+
+            modelBuilder.Entity("Raavi.Wiki.Domain.TaskChecklistItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ChecklistId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("DoneAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("DoneBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDone")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasAlternateKey("TenantId", "Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasAlternateKey("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "ChecklistId", "SortOrder");
+
+                    b.ToTable("TaskChecklistItems", "content");
+                });
+
+            modelBuilder.Entity("Raavi.Wiki.Domain.TaskComment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AuthorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BodyJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("EditedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Excerpt")
+                        .IsRequired()
+                        .HasMaxLength(280)
+                        .HasColumnType("nvarchar(280)");
+
+                    b.Property<Guid?>("ParentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ThreadId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasAlternateKey("TenantId", "Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasAlternateKey("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "ParentId");
+
+                    b.HasIndex("TenantId", "TaskId", "CreatedAt");
+
+                    b.HasIndex("TenantId", "ThreadId", "CreatedAt");
+
+                    b.ToTable("TaskComments", "content");
+                });
+
+            modelBuilder.Entity("Raavi.Wiki.Domain.TaskTimeEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsOpeningBalance")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly>("WorkDate")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasAlternateKey("TenantId", "Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasAlternateKey("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "TaskId")
+                        .HasDatabaseName("IX_TaskTimeEntries_TenantId_TaskId_Active")
+                        .HasFilter("[DeletedAt] IS NULL");
+
+                    b.HasIndex("TenantId", "TaskId", "WorkDate");
+
+                    b.HasIndex("TenantId", "UserId", "WorkDate");
+
+                    b.ToTable("TaskTimeEntries", "content");
+                });
+
+            modelBuilder.Entity("Raavi.Wiki.Domain.TaskWatcher", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("State")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasAlternateKey("TenantId", "Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasAlternateKey("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "TaskId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("TaskWatchers", "content");
+                });
+
             modelBuilder.Entity("Raavi.Wiki.Domain.Template", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2415,8 +2789,24 @@ namespace Raavi.Wiki.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int?>("ActualSpentMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset?>("ArchivedAt")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<Guid?>("AssigneeId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("BlockCompleteWhenMandatoryIncomplete")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("BlockCompleteWhenOpenChildren")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
 
                     b.Property<DateTimeOffset?>("CompletedAt")
                         .HasColumnType("datetimeoffset");
@@ -2440,12 +2830,30 @@ namespace Raavi.Wiki.Persistence.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("nvarchar(4000)");
 
+                    b.Property<int?>("OriginalEstimateMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("ParentTaskId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("int");
+
+                    b.Property<byte?>("ProgressPercent")
+                        .HasColumnType("tinyint");
+
+                    b.Property<int?>("RemainingEstimateMinutes")
+                        .HasColumnType("int");
+
                     b.Property<int>("Revision")
                         .IsConcurrencyToken()
                         .HasColumnType("int");
 
                     b.Property<Guid>("SpaceId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly?>("StartDate")
+                        .HasColumnType("date");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -2469,7 +2877,11 @@ namespace Raavi.Wiki.Persistence.Migrations
 
                     SqlServerKeyBuilderExtensions.IsClustered(b.HasAlternateKey("TenantId", "Id"));
 
+                    b.HasIndex("TenantId", "ParentTaskId");
+
                     b.HasIndex("TenantId", "AssigneeId", "Status");
+
+                    b.HasIndex("TenantId", "SpaceId", "ArchivedAt");
 
                     b.HasIndex("TenantId", "SpaceId", "Status", "DueDate");
 
@@ -2929,6 +3341,88 @@ namespace Raavi.Wiki.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Raavi.Wiki.Domain.TaskAssignee", b =>
+                {
+                    b.HasOne("Raavi.Wiki.Domain.WorkTask", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "TaskId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Raavi.Wiki.Domain.TaskAttachment", b =>
+                {
+                    b.HasOne("Raavi.Wiki.Domain.TaskComment", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CommentId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Raavi.Wiki.Domain.WorkTask", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "TaskId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Raavi.Wiki.Domain.TaskChecklist", b =>
+                {
+                    b.HasOne("Raavi.Wiki.Domain.WorkTask", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "TaskId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Raavi.Wiki.Domain.TaskChecklistItem", b =>
+                {
+                    b.HasOne("Raavi.Wiki.Domain.TaskChecklist", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ChecklistId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Raavi.Wiki.Domain.TaskComment", b =>
+                {
+                    b.HasOne("Raavi.Wiki.Domain.TaskComment", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ParentId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Raavi.Wiki.Domain.WorkTask", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "TaskId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Raavi.Wiki.Domain.TaskTimeEntry", b =>
+                {
+                    b.HasOne("Raavi.Wiki.Domain.WorkTask", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "TaskId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Raavi.Wiki.Domain.TaskWatcher", b =>
+                {
+                    b.HasOne("Raavi.Wiki.Domain.WorkTask", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "TaskId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Raavi.Wiki.Domain.Template", b =>
                 {
                     b.HasOne("Raavi.Wiki.Domain.Space", null)
@@ -3000,6 +3494,12 @@ namespace Raavi.Wiki.Persistence.Migrations
 
             modelBuilder.Entity("Raavi.Wiki.Domain.WorkTask", b =>
                 {
+                    b.HasOne("Raavi.Wiki.Domain.WorkTask", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ParentTaskId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Raavi.Wiki.Domain.Space", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "SpaceId")

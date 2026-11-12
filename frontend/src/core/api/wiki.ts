@@ -121,6 +121,20 @@ export interface LabelAnalytics {
   mostUsed: LabelInfo[]
   recentlyCreated: LabelInfo[]
 }
+/** EKOS-8 maintenance suggestion (tenant admin). */
+export interface KnowledgeMaintenanceSuggestion {
+  kind: string
+  contentId: string
+  title: string
+  spaceKey: string
+  spaceName: string
+  updatedAt: string
+  reviewAt: string | null
+  relatedContentId: string | null
+  relatedTitle: string | null
+  score: number | null
+  reason: string
+}
 export interface KnowledgeRelationship {
   id: string
   relationshipType: string
@@ -389,7 +403,9 @@ export const wikiApi = {
     if (q.take != null) p.set('take', String(q.take))
     return api<LabelPageSearch>('GET', `/labels/search?${p}`)
   },
-  labelSuggestionsForPage: (id: string) => api<LabelInfo[]>('GET', `/content/${enc(id)}/label-suggestions`),
+  /** Heuristic suggestions (EKOS-9); AI suggestions come from `aiApi.labelSuggestions`. */
+  labelSuggestionsForPage: (id: string) =>
+    api<{ slug: string; displayName: string; source: string }[]>('GET', `/content/${enc(id)}/label-suggestions`),
   adminLabels: (q?: { q?: string; archived?: boolean; skip?: number; take?: number }) => {
     const p = new URLSearchParams()
     if (q?.q) p.set('q', q.q)
@@ -409,6 +425,8 @@ export const wikiApi = {
   adminMergeLabels: (sourceId: string, destinationId: string) =>
     api<LabelInfo>('POST', '/admin/labels/merge', { sourceId, destinationId }),
   adminLabelAnalytics: () => api<LabelAnalytics>('GET', '/admin/labels/analytics'),
+  knowledgeMaintenance: (take = 50) =>
+    api<KnowledgeMaintenanceSuggestion[]>('GET', `/admin/knowledge-maintenance?take=${take}`),
   quickFind: (q: string) => api<{ spaces: SpaceSummary[]; content: ContentListItem[] }>('GET', `/quick-find?q=${enc(q)}&limit=10`),
   spaceTemplates: (key: string) => api<Template[]>('GET', `/spaces/${enc(key)}/templates`),
   createSpaceTemplate: (key: string, body: { name: string; description: string | null; body: RaaviDoc }) => api<Template>('POST', `/spaces/${enc(key)}/templates`, body),

@@ -134,6 +134,22 @@ describe('calendar view', () => {
     expect(w.get('[data-testid="month-title"]').text()).not.toBe(before)
   })
 
+  it('opens the create dialog when double-clicking a day cell', async () => {
+    const f = fakeFetch({
+      ...base,
+      'GET /api/v1/spaces/ENG': () => withEtag(space(true)),
+      'GET /api/v1/spaces/ENG/calendar/occurrences': () => json([]),
+    })
+    const w = await open('/spaces/ENG/calendar', f)
+    const day = w.get('[data-testid="calendar-day"]')
+    const iso = day.attributes('data-date')!
+    expect(iso).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    await day.trigger('dblclick')
+    await flushPromises()
+    expect(document.body.querySelector('[data-testid="event-title"]')).not.toBeNull()
+    expect((document.body.querySelector('[data-testid="event-start"]') as HTMLInputElement).value).toBe(iso)
+  })
+
   it('creates a weekly event that always repeats on its own weekday, in the space of the calendar', async () => {
     const f = fakeFetch({
       ...base,

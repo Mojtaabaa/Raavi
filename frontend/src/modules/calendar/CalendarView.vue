@@ -395,6 +395,12 @@ function newEvent(date: string = anchor.value) {
   editing.value = 'new'
 }
 
+/** Double-click an empty day (month / week / timeline) to open the create dialog for that date. */
+function onDayDblClick(date: string) {
+  if (!canCreate.value) return
+  newEvent(date)
+}
+
 function jumpMonth(iso: string) {
   anchor.value = iso
   viewMode.value = 'month'
@@ -1060,14 +1066,16 @@ function timelineHeight(o: Occurrence): string {
           <div
             v-for="day in grid"
             :key="day.iso"
-            :class="['day', { muted: !day.inMonth, today: day.iso === today, drop: !!dragging }]"
+            :class="['day', { muted: !day.inMonth, today: day.iso === today, drop: !!dragging, create: canCreate }]"
             role="gridcell"
             :data-date="day.iso"
+            :data-testid="canCreate ? 'calendar-day' : undefined"
+            :title="canCreate ? t('calendar.dblClickCreate', { date: preview(day.iso) }) : undefined"
             @dragover="onDayDragOver"
             @drop="onDayDrop($event, day.iso)"
+            @dblclick="onDayDblClick(day.iso)"
           >
-            <button v-if="canCreate" type="button" class="num" :aria-label="t('calendar.addOn', { date: preview(day.iso) })" @click="newEvent(day.iso)">{{ num(day.day) }}</button>
-            <span v-else class="num">{{ num(day.day) }}</span>
+            <span class="num" :aria-label="preview(day.iso)">{{ num(day.day) }}</span>
             <ul class="events">
               <li v-for="o in (byDay.get(day.iso) ?? []).slice(0, 3)" :key="occKey(o)">
                 <button
@@ -1078,6 +1086,7 @@ function timelineHeight(o: Occurrence): string {
                   :style="o.color ? { borderInlineStartColor: o.color } : undefined"
                   :title="o.title"
                   @click="openOccurrence(o)"
+                  @dblclick.stop
                   @contextmenu="openContext($event, o)"
                   @dragstart="onDragStart($event, o)"
                   @dragend="onDragEnd"
@@ -1096,7 +1105,15 @@ function timelineHeight(o: Occurrence): string {
           <div class="timeline-hours" aria-hidden="true">
             <span v-for="h in TIMELINE_HOURS" :key="h" class="hour" :style="{ insetBlockStart: `${(h / 24) * 100}%` }">{{ String(h).padStart(2, '0') }}:00</span>
           </div>
-          <div class="timeline-track" @dragover="onDayDragOver" @drop="onDayDrop($event, anchor)">
+          <div
+            class="timeline-track"
+            :class="{ create: canCreate }"
+            :data-testid="canCreate ? 'calendar-day' : undefined"
+            :title="canCreate ? t('calendar.dblClickCreate', { date: preview(anchor) }) : undefined"
+            @dragover="onDayDragOver"
+            @drop="onDayDrop($event, anchor)"
+            @dblclick="onDayDblClick(anchor)"
+          >
             <div v-if="anchor === today" class="now-line" data-testid="now-line" :style="{ insetBlockStart: `${(nowMinutes / (24 * 60)) * 100}%` }" />
             <button
               v-for="o in byDay.get(anchor) ?? []"
@@ -1107,6 +1124,7 @@ function timelineHeight(o: Occurrence): string {
               :draggable="o.canEdit && o.sourceKind === 'Raavi' && !offline"
               :style="{ insetBlockStart: timelineTop(o), blockSize: o.allDay ? '1.5rem' : timelineHeight(o), ...(o.color ? { borderInlineStartColor: o.color } : {}) }"
               @click="openOccurrence(o)"
+              @dblclick.stop
               @contextmenu="openContext($event, o)"
               @dragstart="onDragStart($event, o)"
               @dragend="onDragEnd"
@@ -1131,9 +1149,13 @@ function timelineHeight(o: Occurrence): string {
             v-for="d in dayColumns"
             :key="d"
             class="week-col"
-            :class="{ today: d === today }"
+            :class="{ today: d === today, create: canCreate }"
+            :data-testid="canCreate ? 'calendar-day' : undefined"
+            :data-date="d"
+            :title="canCreate ? t('calendar.dblClickCreate', { date: preview(d) }) : undefined"
             @dragover="onDayDragOver"
             @drop="onDayDrop($event, d)"
+            @dblclick="onDayDblClick(d)"
           >
             <h3>{{ preview(d) }}</h3>
             <div v-if="d === today" class="week-now" data-testid="week-now" :aria-label="t('calendar.now')" />
@@ -1145,6 +1167,7 @@ function timelineHeight(o: Occurrence): string {
               data-testid="occurrence"
               :draggable="o.canEdit && o.sourceKind === 'Raavi' && !offline"
               @click="openOccurrence(o)"
+              @dblclick.stop
               @contextmenu="openContext($event, o)"
               @dragstart="onDragStart($event, o)"
               @dragend="onDragEnd"
@@ -1410,6 +1433,7 @@ h2 { margin: 0 0 var(--raavi-space-2); font-size: 1rem; }
 .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border: 1px solid var(--raavi-border); border-radius: var(--raavi-radius-sm); overflow: hidden; }
 .weekday { padding: var(--raavi-space-2); text-align: center; font-weight: 600; font-size: 0.85rem; background: var(--raavi-surface-muted, transparent); border-block-end: 1px solid var(--raavi-border); }
 .day { min-block-size: 6.5rem; padding: var(--raavi-space-1); border-inline-end: 1px solid var(--raavi-border); border-block-end: 1px solid var(--raavi-border); min-inline-size: 0; }
+.day.create, .week-col.create, .timeline-track.create { cursor: cell; }
 .day.muted { color: var(--raavi-text-muted); background: var(--raavi-surface-muted, transparent); }
 .day.today .num { background: var(--raavi-primary, #2563eb); color: #fff; border-radius: 999px; }
 .num { display: inline-block; min-inline-size: 1.6rem; padding: 0 0.3rem; text-align: center; border: 0; background: none; color: inherit; font: inherit; cursor: default; }

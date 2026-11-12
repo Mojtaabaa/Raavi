@@ -42,7 +42,7 @@ export interface AskAnswer {
   model: string
   promptTokens: number
   completionTokens: number
-  sources: { number: number; contentId: string; title: string; spaceKey: string; snippet: string }[]
+  sources: { number: number; contentId: string; title: string; spaceKey: string; snippet: string; cited?: boolean }[]
 }
 
 export interface IndexStatus {
@@ -114,4 +114,12 @@ export const aiApi = {
   runIndex: () => api<IndexStatus>('POST', '/ai/index/run', {}),
   rebuildIndex: () => api<IndexStatus>('POST', '/ai/index/rebuild', {}),
   ask: (pageId: string, question: string) => api<AiAnswer>('POST', `/ai/pages/${enc(pageId)}/ask`, { question }),
+  /** EKOS Phase 2: selection from the client; requires Edit + confirmed consent. */
+  editorSummarize: (pageId: string, selection: string, confirmed: boolean) =>
+    api<AiAnswer>('POST', `/ai/pages/${enc(pageId)}/editor/summarize`, { selection, confirmed }),
+  editorRewrite: (pageId: string, selection: string, instruction: string | undefined, confirmed: boolean) =>
+    api<AiAnswer>('POST', `/ai/pages/${enc(pageId)}/editor/rewrite`, { selection, instruction: instruction || null, confirmed }),
+  /** EKOS-9: catalog-constrained label suggestions (View). Empty / error → caller keeps heuristic list. */
+  labelSuggestions: (pageId: string) =>
+    api<{ slug: string; displayName: string; source: string }[]>('GET', `/ai/pages/${enc(pageId)}/label-suggestions`),
 }

@@ -706,6 +706,9 @@ public sealed class ActivityEntry : ITenantOwned
 
     public Guid? ContentId { get; private set; }
 
+    /// <summary>When set, the entry belongs to a WorkTask (B4 collaboration / task.* events).</summary>
+    public Guid? TaskId { get; private set; }
+
     public Guid ActorId { get; private set; }
 
     /// <summary>Event type, e.g. <c>page.updated</c>.</summary>
@@ -718,6 +721,6 @@ public sealed class ActivityEntry : ITenantOwned
 
     public DateTimeOffset OccurredAt { get; private set; }
 
-    public static ActivityEntry Create(Guid id, Guid spaceId, Guid? contentId, Guid actorId, string kind, string title, int? version, DateTimeOffset at) =>
-        new() { Id = id, SpaceId = spaceId, ContentId = contentId, ActorId = actorId, Kind = kind, Title = title, VersionNumber = version, OccurredAt = at };
+    public static ActivityEntry Create(Guid id, Guid spaceId, Guid? contentId, Guid actorId, string kind, string title, int? version, DateTimeOffset at, Guid? taskId = null) =>
+        new() { Id = id, SpaceId = spaceId, ContentId = contentId, TaskId = taskId, ActorId = actorId, Kind = kind, Title = title, VersionNumber = version, OccurredAt = at };
 }

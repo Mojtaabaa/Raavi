@@ -43,8 +43,17 @@ const props = withDefaults(
   }>(),
   { editable: false, contentId: null, placeholder: undefined, collaboration: null, compact: false, anchors: null, activeAnchor: null, label: undefined },
 )
-const emit = defineEmits<{ 'update:modelValue': [doc: RaaviDoc]; reset: []; revoked: []; quote: [quote: TextQuote | null]; activate: [id: string]; located: [ids: string[]] }>()
-const { t, te } = useI18n()
+export type EditorTextSelection = { text: string; from: number; to: number }
+const emit = defineEmits<{
+  'update:modelValue': [doc: RaaviDoc]
+  reset: []
+  revoked: []
+  quote: [quote: TextQuote | null]
+  activate: [id: string]
+  located: [ids: string[]]
+  selectionText: [sel: EditorTextSelection | null]
+}>()
+const { t, te, locale } = useI18n()
 const toast = useToast()
 const router = useRouter()
 
@@ -105,6 +114,7 @@ watch(
 
 const registry = createEditorRegistry({
   t: (k) => t(k),
+  locale: String(locale.value),
   collaborative: !!live,
   placeholder: props.placeholder,
   searchUsers: async (q) => (await wikiApi.directory(q).catch(() => [])).filter((d) => d.kind === 'User').map((d) => ({ id: d.id, label: d.displayName, detail: d.detail })),
@@ -126,7 +136,10 @@ onMounted(async () => {
     editable: props.editable,
     editorProps: { attributes: { class: props.compact ? 'raavi-doc compact' : 'raavi-doc', dir: 'auto', ...(props.editable ? { 'aria-label': props.label ?? t('editor.label'), 'aria-multiline': 'true' } : {}) } },
     onUpdate: ({ editor: e }) => emit('update:modelValue', envelope(e.getJSON())),
-    onSelectionUpdate: () => tick.value++,
+    onSelectionUpdate: () => {
+      tick.value++
+      emitEditableSelection()
+    },
     onTransaction: () => tick.value++,
   })
   if (props.editable) {
@@ -193,6 +206,25 @@ function emitQuote() {
   } catch {
     emit('quote', null)
   }
+}
+
+function emitEditableSelection() {
+  const e = editor.value
+  if (!e || !props.editable) return
+  const { from, to, empty } = e.state.selection
+  if (empty || to - from > 8000) {
+    emit('selectionText', null)
+    return
+  }
+  const text = e.state.doc.textBetween(from, to, '\n').trim()
+  emit('selectionText', text.length > 0 ? { text, from, to } : null)
+}
+
+/** Replace a stored range with plain text (editor AI apply → draft autosave). */
+function replaceRange(from: number, to: number, text: string) {
+  const e = editor.value
+  if (!e || !props.editable) return
+  e.chain().focus().insertContentAt({ from, to }, text).run()
 }
 
 onBeforeUnmount(() => {
@@ -265,6 +297,46 @@ function setDirection(dir: 'ltr' | 'rtl' | null) {
       break
     }
   })
+}
+
+const currentDir = computed(() => {
+  void tick.value
+  const e = editor.value
+  if (!e) return null as 'ltr' | 'rtl' | null
+  const type = e.isActive('heading') ? 'heading' : 'paragraph'
+  const dir = e.getAttributes(type).dir as string | null | undefined
+  return dir === 'ltr' || dir === 'rtl' ? dir : null
+})
+
+function toggleList(kind: 'bulletList' | 'orderedList' | 'taskList') {
+  run((e) => {
+    const type = e.isActive('heading') ? 'heading' : 'paragraph'
+    const existing = e.getAttributes(type).dir as string | null | undefined
+    const preferRtl = String(locale.value).toLowerCase().startsWith('fa')
+    const dir = existing === 'ltr' || existing === 'rtl' ? existing : preferRtl ? 'rtl' : null
+    const chain = e.chain().focus()
+    if (kind === 'bulletList') chain.toggleBulletList()
+    else if (kind === 'orderedList') chain.toggleOrderedList()
+    else chain.toggleTaskList()
+    chain.run()
+    if (dir) setDirection(dir)
+  })
+}
+
+function sinkOrLift(sink: boolean) {
+  run((e) => {
+    if (sink) {
+      if (e.can().sinkListItem('listItem')) e.chain().focus().sinkListItem('listItem').run()
+      else if (e.can().sinkListItem('taskItem')) e.chain().focus().sinkListItem('taskItem').run()
+      return
+    }
+    if (e.can().liftListItem('listItem')) e.chain().focus().liftListItem('listItem').run()
+    else if (e.can().liftListItem('taskItem')) e.chain().focus().liftListItem('taskItem').run()
+  })
+}
+
+function insertZwnj() {
+  run((e) => e.chain().focus().insertContent('\u200C').run())
 }
 
 const currentColor = computed(() => {
@@ -389,7 +461,12 @@ async function onFile(e: Event) {
 function insertText(text: string) {
   editor.value?.chain().focus().insertContent(text).run()
 }
-defineExpose({ editor, insertText, refreshVariables: () => editor.value && refreshVariableMarks(editor.value as never) })
+defineExpose({
+  editor,
+  insertText,
+  replaceRange,
+  refreshVariables: () => editor.value && refreshVariableMarks(editor.value as never),
+})
 </script>
 
 <template>
@@ -434,13 +511,18 @@ defineExpose({ editor, insertText, refreshVariables: () => editor.value && refre
         <Button text size="small" icon="pi pi-align-left" class="logical-start" :class="{ on: active('paragraph', { textAlign: 'start' }) }" :aria-label="t('editor.toolbar.alignStart')" @click="run((e) => e.chain().focus().setTextAlign('start').run())" />
         <Button text size="small" icon="pi pi-align-center" :class="{ on: active('paragraph', { textAlign: 'center' }) }" :aria-label="t('editor.toolbar.alignCenter')" @click="run((e) => e.chain().focus().setTextAlign('center').run())" />
         <Button text size="small" icon="pi pi-align-right" class="logical-end" :class="{ on: active('paragraph', { textAlign: 'end' }) }" :aria-label="t('editor.toolbar.alignEnd')" @click="run((e) => e.chain().focus().setTextAlign('end').run())" />
-        <Button text size="small" :aria-label="t('editor.toolbar.ltr')" @click="setDirection('ltr')">LTR</Button>
-        <Button text size="small" :aria-label="t('editor.toolbar.rtl')" @click="setDirection('rtl')">RTL</Button>
+        <Button text size="small" icon="pi pi-align-justify" :class="{ on: active('paragraph', { textAlign: 'justify' }) }" :aria-label="t('editor.toolbar.alignJustify')" @click="run((e) => e.chain().focus().setTextAlign('justify').run())" />
+        <Button text size="small" :class="{ on: currentDir === null }" :aria-pressed="currentDir === null" :aria-label="t('editor.toolbar.auto')" @click="setDirection(null)">{{ t('editor.toolbar.dirAutoShort') }}</Button>
+        <Button text size="small" :class="{ on: currentDir === 'ltr' }" :aria-pressed="currentDir === 'ltr'" :aria-label="t('editor.toolbar.ltr')" @click="setDirection('ltr')">{{ t('editor.toolbar.dirLtrShort') }}</Button>
+        <Button text size="small" :class="{ on: currentDir === 'rtl' }" :aria-pressed="currentDir === 'rtl'" :aria-label="t('editor.toolbar.rtl')" @click="setDirection('rtl')">{{ t('editor.toolbar.dirRtlShort') }}</Button>
+        <Button text size="small" :aria-label="t('editor.toolbar.zwnj')" :title="t('editor.toolbar.zwnjHint')" data-testid="insert-zwnj" @click="insertZwnj">{{ t('editor.toolbar.zwnjShort') }}</Button>
       </div>
       <div class="group">
-        <Button text size="small" icon="pi pi-list" :class="{ on: active('bulletList') }" :aria-label="t('editor.slash.bulletList')" @click="run((e) => e.chain().focus().toggleBulletList().run())" />
-        <Button text size="small" icon="pi pi-sort-numeric-down" :class="{ on: active('orderedList') }" :aria-label="t('editor.slash.orderedList')" @click="run((e) => e.chain().focus().toggleOrderedList().run())" />
-        <Button text size="small" icon="pi pi-check-square" :class="{ on: active('taskList') }" :aria-label="t('editor.slash.taskList')" @click="run((e) => e.chain().focus().toggleTaskList().run())" />
+        <Button text size="small" icon="pi pi-list" :class="{ on: active('bulletList') }" :aria-label="t('editor.slash.bulletList')" @click="toggleList('bulletList')" />
+        <Button text size="small" icon="pi pi-sort-numeric-down" :class="{ on: active('orderedList') }" :aria-label="t('editor.slash.orderedList')" @click="toggleList('orderedList')" />
+        <Button text size="small" icon="pi pi-check-square" :class="{ on: active('taskList') }" :aria-label="t('editor.slash.taskList')" @click="toggleList('taskList')" />
+        <Button text size="small" icon="pi pi-indent" :aria-label="t('editor.toolbar.indent')" @click="sinkOrLift(true)" />
+        <Button text size="small" icon="pi pi-indent" class="outdent" :aria-label="t('editor.toolbar.outdent')" @click="sinkOrLift(false)" />
         <Button text size="small" icon="pi pi-comment" :class="{ on: active('blockquote') }" :aria-label="t('editor.slash.quote')" @click="run((e) => e.chain().focus().toggleBlockquote().run())" />
         <Button text size="small" icon="pi pi-desktop" :class="{ on: active('codeBlock') }" :aria-label="t('editor.slash.codeBlock')" @click="run((e) => e.chain().focus().toggleCodeBlock().run())" />
         <Button text size="small" icon="pi pi-table" :aria-label="t('editor.slash.table')" @click="run((e) => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run())" />
@@ -539,4 +621,5 @@ defineExpose({ editor, insertText, refreshVariables: () => editor.value && refre
 :dir(rtl) .flip :deep(.pi) { transform: scaleX(-1); }
 :dir(rtl) .logical-start :deep(.pi),
 :dir(rtl) .logical-end :deep(.pi) { transform: scaleX(-1); }
+.outdent :deep(.pi) { transform: scaleX(-1); }
 </style>

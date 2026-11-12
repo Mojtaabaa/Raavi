@@ -55,7 +55,8 @@ Complexity: S / M / L / XL. Priority: P0–P2.
 **Objective:** Maintenance suggestions.  
 **Story:** Admin sees near-duplicate candidates.  
 **Requirements:** Job; suggestions only.  
-**Complexity:** L. **Priority:** P1.
+**Complexity:** L. **Priority:** P1.  
+**Status:** Done on-demand (EKOS-8, `P2_MAINTENANCE_SCANNERS_REPORT.md`); Hangfire job still optional later.
 
 ### EKOS-3.1 Decision record type  
 **Objective:** ADR/decision knowledge.  

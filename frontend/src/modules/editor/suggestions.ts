@@ -16,7 +16,14 @@ export function floatingRenderer(labels: () => Labels): SuggestionOptions<Sugges
       const rect = props.clientRect?.()
       if (!host || !rect) return
       host.style.insetBlockStart = `${rect.bottom + window.scrollY + 4}px`
-      host.style.left = document.documentElement.dir === 'rtl' ? `${Math.max(8, rect.right - 240 + window.scrollX)}px` : `${rect.left + window.scrollX}px`
+      host.style.removeProperty('left')
+      host.style.removeProperty('right')
+      // inset-inline-start follows html[dir]: in RTL it is the physical right edge of the viewport.
+      if (document.documentElement.dir === 'rtl') {
+        host.style.insetInlineStart = `${Math.max(8, document.documentElement.clientWidth - rect.right)}px`
+      } else {
+        host.style.insetInlineStart = `${rect.left + window.scrollX}px`
+      }
     }
     return {
       onStart: (props) => {

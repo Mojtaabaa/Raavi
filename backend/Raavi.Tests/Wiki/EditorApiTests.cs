@@ -58,7 +58,7 @@ public sealed class EditorApiTests(SqlServerFixture fx)
         Assert.DoesNotContain("<ac:structured-macro", html, StringComparison.Ordinal); // unsupported source stays escaped text
 
         var schema = await admin.GetJsonAsync("api/v1/editor/schema");
-        Assert.Equal(4, schema.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(5, schema.GetProperty("schemaVersion").GetInt32());
         Assert.Contains(schema.GetProperty("extensions").EnumerateArray(), e => e.GetProperty("id").GetString() == "raavi.panel");
         Assert.Contains(schema.GetProperty("extensions").EnumerateArray(), e => e.GetProperty("id").GetString() == "core.subscript");
     }
@@ -69,7 +69,7 @@ public sealed class EditorApiTests(SqlServerFixture fx)
         var (_, admin, _) = await _kit.Identity.TenantWithAdminAsync();
         var key = (await CreateSpaceAsync(admin)).GetProperty("key").GetString()!;
         var page = await CreatePageAsync(admin, key, "Old", body: Doc("v1 text")); // Doc() builds a schemaVersion 1 document
-        Assert.Equal(4, page.GetProperty("body").GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(5, page.GetProperty("body").GetProperty("schemaVersion").GetInt32());
         Assert.Equal("v1 text", page.GetProperty("body").GetProperty("doc").GetProperty("content")[0].GetProperty("content")[0].GetProperty("text").GetString());
     }
 

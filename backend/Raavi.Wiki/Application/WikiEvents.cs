@@ -6,7 +6,7 @@ using Raavi.Wiki.Persistence;
 namespace Raavi.Wiki.Application;
 
 /// <summary>Outbox payload of every wiki event: ids and a title snapshot only (no bodies, no secrets).</summary>
-public sealed record WikiEvent(Guid SpaceId, Guid? ContentId, Guid ActorId, string Title, int? Version);
+public sealed record WikiEvent(Guid SpaceId, Guid? ContentId, Guid ActorId, string Title, int? Version, Guid? TaskId = null);
 
 public static class WikiEventTypes
 {
@@ -45,11 +45,32 @@ public static class WikiEventTypes
     public const string LabelMoved = "label.moved";
     public const string LabelAliasAdded = "label.alias_added";
     public const string LabelAliasRemoved = "label.alias_removed";
+    public const string TaskCreated = "task.created";
+    public const string TaskUpdated = "task.updated";
+    public const string TaskAssigned = "task.assigned";
+    public const string TaskUnassigned = "task.unassigned";
+    public const string TaskCompleted = "task.completed";
+    public const string TaskReopened = "task.reopened";
+    public const string TaskArchived = "task.archived";
+    public const string TaskCommentCreated = "task.comment.created";
+    public const string TaskCommentUpdated = "task.comment.updated";
+    public const string TaskCommentDeleted = "task.comment.deleted";
+    public const string TaskAttachmentAdded = "task.attachment.added";
+    public const string TaskAttachmentRemoved = "task.attachment.removed";
+    public const string TaskWatched = "task.watched";
+    public const string TaskUnwatched = "task.unwatched";
+    public const string TaskTimeLogged = "task.time.logged";
+    public const string TaskTimeUpdated = "task.time.updated";
+    public const string TaskTimeDeleted = "task.time.deleted";
+    public const string TaskEstimateOriginalChanged = "task.estimate.original_changed";
+    public const string TaskEstimateRemainingChanged = "task.estimate.remaining_changed";
+    public const string TaskProgressChanged = "task.progress.changed";
 
     public static bool IsWiki(string type) =>
         type.StartsWith("space.", StringComparison.Ordinal)
         || type.StartsWith("content.", StringComparison.Ordinal)
-        || type.StartsWith("label.", StringComparison.Ordinal);
+        || type.StartsWith("label.", StringComparison.Ordinal)
+        || type.StartsWith("task.", StringComparison.Ordinal);
 }
 
 public static class WikiOutbox
@@ -84,7 +105,7 @@ public sealed class ActivityProjection(WikiDbContext db) : IOutboxHandler
             return; // Tenant-scoped label governance — not projected into a space activity feed.
         }
 
-        db.Activity.Add(ActivityEntry.Create(outboxEvent.Id, e.SpaceId, e.ContentId, e.ActorId, outboxEvent.Type, e.Title, e.Version, outboxEvent.OccurredAt));
+        db.Activity.Add(ActivityEntry.Create(outboxEvent.Id, e.SpaceId, e.ContentId, e.ActorId, outboxEvent.Type, e.Title, e.Version, outboxEvent.OccurredAt, e.TaskId));
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 }

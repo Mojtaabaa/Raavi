@@ -48,7 +48,7 @@ describe('smart search page', () => {
     expect(w.get('[data-testid="mode-ask"]').attributes('disabled')).toBeDefined() // AI is off: asking is unavailable, searching is not
     await type(w, 'deploy checklist')
     const call = f.calls.find((c) => c.url.startsWith('/api/v1/ai/search'))!
-    expect(call.url).toContain('q=deploy%20checklist')
+    expect(call!.url).toMatch(/q=deploy(%20|\+)checklist/)
     expect(w.get('[data-testid="search-mode"]').text()).toContain('words and by meaning')
     const hits = w.findAll('[data-testid="hit"]')
     expect(hits).toHaveLength(2)
@@ -76,12 +76,21 @@ describe('smart search page', () => {
     expect(w.get('[data-testid="smart-error"]').text()).toContain('Type at least two characters')
   })
 
-  it('asks a question, links [n] to the sources and keeps the machine-generated notice', async () => {
+  it('asks a question, links only valid [n] cites, marks cited sources, and keeps the notice', async () => {
     const { w, f } = await open(
       {
         'GET /api/v1/ai/status': () => json({ available: true }),
         'GET /api/v1/auth/antiforgery': () => json({ token: 'x' }),
-        'POST /api/v1/ai/ask': () => json({ text: 'Run the checklist [1] and tell the on-call engineer [2].', model: 'm', promptTokens: 1, completionTokens: 1, sources: [{ number: 1, contentId: 'p1', title: 'Release runbook', spaceKey: 'OPS', snippet: 'checklist…' }, { number: 2, contentId: 'p2', title: 'On-call', spaceKey: 'OPS', snippet: 'engineer…' }] }),
+        'POST /api/v1/ai/ask': () => json({
+          text: 'Run the checklist [1] and invent [9].',
+          model: 'm',
+          promptTokens: 1,
+          completionTokens: 1,
+          sources: [
+            { number: 1, contentId: 'p1', title: 'Release runbook', spaceKey: 'OPS', snippet: 'checklist…', cited: true },
+            { number: 2, contentId: 'p2', title: 'On-call', spaceKey: 'OPS', snippet: 'engineer…', cited: false },
+          ],
+        }),
       },
       '?mode=ask',
     )
@@ -92,9 +101,11 @@ describe('smart search page', () => {
     await flushPromises()
     expect(f.calls.find((c) => c.method === 'POST')!.body).toEqual({ question: 'How do we deploy?', space: null })
     const answer = w.get('[data-testid="answer"]')
-    expect(answer.findAll('a.cite').map((a) => a.attributes('href'))).toEqual(['#source-1', '#source-2'])
+    expect(answer.findAll('[data-testid="cite"]').map((a) => a.attributes('href'))).toEqual(['#source-1'])
+    expect(answer.text()).toContain('[9]')
     expect(answer.text()).toContain('Machine-generated')
-    expect(answer.findAll('li')).toHaveLength(2)
+    expect(answer.get('[data-testid="cited-badge"]').text()).toMatch(/Cited|ارجاع/)
+    expect(answer.get('[data-testid="source-2"]').classes()).toContain('uncited')
     expect(answer.findAll('ol a').map((a) => a.attributes('href'))).toEqual(['/spaces/OPS/pages/p1', '/spaces/OPS/pages/p2'])
   })
 })

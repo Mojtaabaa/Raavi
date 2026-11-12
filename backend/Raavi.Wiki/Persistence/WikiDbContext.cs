@@ -65,6 +65,20 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
 
     public DbSet<WorkTask> WorkTasks => Set<WorkTask>();
 
+    public DbSet<TaskAssignee> TaskAssignees => Set<TaskAssignee>();
+
+    public DbSet<TaskChecklist> TaskChecklists => Set<TaskChecklist>();
+
+    public DbSet<TaskChecklistItem> TaskChecklistItems => Set<TaskChecklistItem>();
+
+    public DbSet<TaskComment> TaskComments => Set<TaskComment>();
+
+    public DbSet<TaskAttachment> TaskAttachments => Set<TaskAttachment>();
+
+    public DbSet<TaskWatcher> TaskWatchers => Set<TaskWatcher>();
+
+    public DbSet<TaskTimeEntry> TaskTimeEntries => Set<TaskTimeEntry>();
+
     public DbSet<Calendar> Calendars => Set<Calendar>();
 
     public DbSet<CalendarAccessGrant> CalendarAccessGrants => Set<CalendarAccessGrant>();
@@ -267,6 +281,7 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
             b.Property(x => x.Title).HasMaxLength(ContentNode.MaxTitleLength);
             b.HasIndex(x => new { x.TenantId, x.OccurredAt }).IsClustered();
             b.HasIndex(x => new { x.TenantId, x.SpaceId, x.OccurredAt });
+            b.HasIndex(x => new { x.TenantId, x.TaskId, x.OccurredAt });
         });
 
         modelBuilder.Entity<PermissionGrant>(b =>
@@ -392,11 +407,100 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
             b.Property(x => x.Title).HasMaxLength(WorkTask.MaxTitleLength);
             b.Property(x => x.Notes).HasMaxLength(WorkTask.MaxNotesLength);
             b.Property(x => x.Status).HasConversion<int>();
+            b.Property(x => x.Priority).HasConversion<int>();
             b.Property(x => x.DueDate).HasColumnType("date");
+            b.Property(x => x.StartDate).HasColumnType("date");
+            b.Property(x => x.ProgressPercent).HasColumnType("tinyint");
+            b.Property(x => x.BlockCompleteWhenOpenChildren).HasDefaultValue(true);
+            b.Property(x => x.BlockCompleteWhenMandatoryIncomplete).HasDefaultValue(true);
             b.Property(x => x.Revision).IsConcurrencyToken();
             b.HasIndex(x => new { x.TenantId, x.SpaceId, x.Status, x.DueDate });
             b.HasIndex(x => new { x.TenantId, x.AssigneeId, x.Status });
+            b.HasIndex(x => new { x.TenantId, x.ParentTaskId });
+            b.HasIndex(x => new { x.TenantId, x.SpaceId, x.ArchivedAt });
             b.HasOne<Space>().WithMany().HasForeignKey(x => new { x.TenantId, x.SpaceId }).HasPrincipalKey(s => new { s.TenantId, s.Id }).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<WorkTask>().WithMany().HasForeignKey(x => new { x.TenantId, x.ParentTaskId }).HasPrincipalKey(t => new { t.TenantId, t.Id }).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<TaskAssignee>(b =>
+        {
+            b.ToTable("TaskAssignees", "content");
+            Keys(b);
+            b.Property(x => x.Role).HasMaxLength(TaskAssigneeRoles.MaxLength).IsUnicode(false).UseCollation(Bin2);
+            b.HasIndex(x => new { x.TenantId, x.TaskId, x.UserId }).IsUnique().HasFilter("[RemovedAt] IS NULL");
+            b.HasIndex(x => new { x.TenantId, x.TaskId }).IsUnique().HasFilter("[RemovedAt] IS NULL AND [IsPrimary] = CAST(1 AS bit)");
+            b.HasIndex(x => new { x.TenantId, x.UserId, x.RemovedAt });
+            b.HasOne<WorkTask>().WithMany().HasForeignKey(x => new { x.TenantId, x.TaskId }).HasPrincipalKey(t => new { t.TenantId, t.Id }).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TaskChecklist>(b =>
+        {
+            b.ToTable("TaskChecklists", "content");
+            Keys(b);
+            b.Property(x => x.Title).HasMaxLength(TaskChecklist.MaxTitleLength);
+            b.HasIndex(x => new { x.TenantId, x.TaskId, x.SortOrder });
+            b.HasOne<WorkTask>().WithMany().HasForeignKey(x => new { x.TenantId, x.TaskId }).HasPrincipalKey(t => new { t.TenantId, t.Id }).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TaskChecklistItem>(b =>
+        {
+            b.ToTable("TaskChecklistItems", "content");
+            Keys(b);
+            b.Property(x => x.Title).HasMaxLength(TaskChecklistItem.MaxTitleLength);
+            b.HasIndex(x => new { x.TenantId, x.ChecklistId, x.SortOrder });
+            b.HasOne<TaskChecklist>().WithMany().HasForeignKey(x => new { x.TenantId, x.ChecklistId }).HasPrincipalKey(c => new { c.TenantId, c.Id }).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TaskComment>(b =>
+        {
+            b.ToTable("TaskComments", "content");
+            Keys(b);
+            b.Property(x => x.Excerpt).HasMaxLength(TaskComment.MaxExcerptLength);
+            b.Property(x => x.Revision).IsConcurrencyToken();
+            b.Ignore(x => x.IsRoot);
+            b.Ignore(x => x.IsDeleted);
+            b.HasIndex(x => new { x.TenantId, x.TaskId, x.CreatedAt });
+            b.HasIndex(x => new { x.TenantId, x.ThreadId, x.CreatedAt });
+            b.HasOne<WorkTask>().WithMany().HasForeignKey(x => new { x.TenantId, x.TaskId }).HasPrincipalKey(t => new { t.TenantId, t.Id }).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne<TaskComment>().WithMany().HasForeignKey(x => new { x.TenantId, x.ParentId }).HasPrincipalKey(c => new { c.TenantId, c.Id }).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<TaskAttachment>(b =>
+        {
+            b.ToTable("TaskAttachments", "content");
+            Keys(b);
+            b.Property(x => x.FileName).HasMaxLength(TaskAttachment.MaxFileNameLength);
+            b.Property(x => x.MediaType).HasMaxLength(128).IsUnicode(false);
+            b.Property(x => x.Sha256).HasMaxLength(64).IsUnicode(false).UseCollation(Bin2);
+            b.Property(x => x.Data).HasColumnType("varbinary(max)");
+            b.Ignore(x => x.IsImage);
+            b.Ignore(x => x.IsDeleted);
+            b.HasIndex(x => new { x.TenantId, x.TaskId, x.DeletedAt });
+            b.HasOne<WorkTask>().WithMany().HasForeignKey(x => new { x.TenantId, x.TaskId }).HasPrincipalKey(t => new { t.TenantId, t.Id }).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne<TaskComment>().WithMany().HasForeignKey(x => new { x.TenantId, x.CommentId }).HasPrincipalKey(c => new { c.TenantId, c.Id }).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<TaskWatcher>(b =>
+        {
+            b.ToTable("TaskWatchers", "content");
+            Keys(b);
+            b.Property(x => x.State).HasConversion<int>();
+            b.HasIndex(x => new { x.TenantId, x.TaskId, x.UserId }).IsUnique();
+            b.HasOne<WorkTask>().WithMany().HasForeignKey(x => new { x.TenantId, x.TaskId }).HasPrincipalKey(t => new { t.TenantId, t.Id }).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TaskTimeEntry>(b =>
+        {
+            b.ToTable("TaskTimeEntries", "content");
+            Keys(b);
+            b.Property(x => x.Description).HasMaxLength(TaskTimeEntry.MaxDescriptionLength);
+            b.Property(x => x.WorkDate).HasColumnType("date");
+            b.Property(x => x.Revision).IsConcurrencyToken();
+            b.Ignore(x => x.IsDeleted);
+            b.HasIndex(x => new { x.TenantId, x.TaskId, x.WorkDate });
+            b.HasIndex(x => new { x.TenantId, x.UserId, x.WorkDate });
+            b.HasIndex(x => new { x.TenantId, x.TaskId }).HasFilter("[DeletedAt] IS NULL").HasDatabaseName("IX_TaskTimeEntries_TenantId_TaskId_Active");
+            b.HasOne<WorkTask>().WithMany().HasForeignKey(x => new { x.TenantId, x.TaskId }).HasPrincipalKey(t => new { t.TenantId, t.Id }).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Calendar>(b =>

@@ -30,6 +30,7 @@ Format: Context · Decision · Alternatives considered · Consequences. Status v
 | [024](ADR-024-comments-and-notifications.md) | Comments, Watching and Notifications | Accepted |
 | [025](ADR-025-confluence-import.md) | Confluence Import (REST source, idempotent importer, jobs) | Accepted |
 | [026](ADR-026-tasks.md) | Tasks (Phase 9a) | Accepted |
+| [056](ADR-056-enterprise-task-foundation.md) | Enterprise Task foundation (multi-assignee, archive, outbox) — Stage B | Accepted |
 | [027](ADR-027-calendar.md) | Calendar (Phase 9b) | Accepted |
 | [028](ADR-028-databases.md) | Databases (Phase 9c) | Accepted |
 | [029](ADR-029-slides.md) | Slides (Phase 9d) | Accepted |

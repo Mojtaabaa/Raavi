@@ -24,6 +24,7 @@ const LABEL: Record<string, string> = {
   'admin-migrations': 'nav.migrations',
   'admin-activity': 'activityLog.title',
   'admin-labels': 'wiki.labels.adminTitle',
+  'admin-knowledge-maintenance': 'wiki.maintenance.title',
   'system-tenants': 'nav.tenants',
   'system-users': 'systemUsers.title',
   'system-email': 'email.title',

@@ -29,6 +29,7 @@ import RelationshipsPanel from '../components/RelationshipsPanel.vue'
 import PageApprovals from '@/modules/approvals/PageApprovals.vue'
 import PageAssistant from '@/modules/ai/PageAssistant.vue'
 import PagePromptsDialog from '@/modules/prompts/PagePromptsDialog.vue'
+import { aiApi } from '@/core/api/ai'
 import { textToDoc } from '@/core/api/prompts'
 import { commentsApi } from '@/core/api/comments'
 import type { AnchorHighlight, TextQuote } from '@/modules/editor/extensions/commentAnchors'
@@ -50,7 +51,7 @@ const moveOpen = ref(false)
 const restrictOpen = ref(false)
 const newLabel = ref('')
 const labelSuggestions = ref<string[]>([])
-const pageLabelSuggestions = ref<{ slug: string; displayName: string }[]>([])
+const pageLabelSuggestions = ref<{ slug: string; displayName: string; source: string }[]>([])
 const menu = ref<InstanceType<typeof Menu> | null>(null)
 
 // ── Comments and watching (Phase 7a) ───────────────────────────────────────────────
@@ -239,10 +240,24 @@ async function loadPageLabelSuggestions() {
     pageLabelSuggestions.value = []
     return
   }
-  const rows = await wikiApi.labelSuggestionsForPage(page.value.id).catch(() => [])
-  pageLabelSuggestions.value = rows
-    .filter((r) => !page.value!.labels.includes(r.name) && !page.value!.labels.includes(r.slug))
-    .map((r) => ({ slug: r.slug, displayName: r.displayName }))
+  const id = page.value.id
+  const assigned = new Set(page.value.labels.map((l) => l.toLowerCase()))
+  const [heuristic, ai] = await Promise.all([
+    wikiApi.labelSuggestionsForPage(id).catch(() => []),
+    aiApi.labelSuggestions(id).catch(() => []),
+  ])
+  const bySlug = new Map<string, { slug: string; displayName: string; source: string }>()
+  for (const r of heuristic) {
+    if (!assigned.has(r.slug.toLowerCase())) {
+      bySlug.set(r.slug.toLowerCase(), { slug: r.slug, displayName: r.displayName, source: r.source || 'heuristic' })
+    }
+  }
+  for (const r of ai) {
+    if (!assigned.has(r.slug.toLowerCase())) {
+      bySlug.set(r.slug.toLowerCase(), { slug: r.slug, displayName: r.displayName, source: 'ai' })
+    }
+  }
+  pageLabelSuggestions.value = [...bySlug.values()]
 }
 
 async function addLabel(nameOverride?: string) {
@@ -391,10 +406,12 @@ function onMoved(p: Page, newEtag: string | null) {
           :key="s.slug"
           size="small"
           text
-          :label="s.displayName"
-          :aria-label="t('wiki.labels.applySuggestion', { name: s.displayName })"
+          :aria-label="s.source === 'ai' ? t('wiki.labels.aiSuggestion', { name: s.displayName }) : t('wiki.labels.applySuggestion', { name: s.displayName })"
           @click="addLabel(s.slug)"
-        />
+        >
+          {{ s.displayName }}
+          <Tag v-if="s.source === 'ai'" class="ai-badge" severity="info" :value="t('wiki.labels.aiBadge')" />
+        </Button>
       </div>
     </section>
 
@@ -443,6 +460,8 @@ h1 { margin: 0; font-size: 1.8rem; overflow-wrap: anywhere; }
 .labels { display: flex; flex-wrap: wrap; align-items: center; gap: var(--raavi-space-2); border-block-start: 1px solid var(--raavi-border); padding-block-start: var(--raavi-space-3); }
 .label { display: inline-flex; align-items: center; padding-inline: var(--raavi-space-2); border: 1px solid var(--raavi-border); border-radius: 999px; }
 .add-label { display: inline-flex; gap: var(--raavi-space-1); }
+.suggestions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--raavi-space-1); }
+.suggestions :deep(.ai-badge) { margin-inline-start: var(--raavi-space-1); font-size: 0.7rem; }
 .history { padding-inline-start: var(--raavi-space-4); display: grid; gap: var(--raavi-space-2); }
 .history li { display: grid; }
 .selection-bar { position: sticky; inset-block-end: var(--raavi-space-3); z-index: 6; display: flex; gap: var(--raavi-space-2); align-items: center; padding: var(--raavi-space-2); background: var(--raavi-surface, #fff); border: 1px solid var(--raavi-border); border-radius: var(--raavi-radius-sm); box-shadow: 0 4px 16px rgb(0 0 0 / 0.12); overflow: hidden; }

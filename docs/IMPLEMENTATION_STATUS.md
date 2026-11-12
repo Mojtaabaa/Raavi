@@ -1,6 +1,58 @@
 # Implementation Status
 
-**Last updated:** 2026-11-11 (EKOS C1/C2 after B5)
+**Last updated:** 2026-11-12 (Task Management C0)
+
+### Enterprise Task Management — C0 Stage C architecture (2026-11-12)
+
+Design-only package under `docs/task-management/stage-c/` (assessment, target architecture, data/API/UI, C1–C7 roadmap, risks). No code/schema/API changes. Awaiting PO for C1 (+ proposed ADR-057).
+
+### Enterprise Task Management — B6 testing & stabilization (2026-11-12)
+
+Regression suite hardening (cycle/ETag, soft-delete attachment 404, includeDeleted Edit gate, ActualSpent reconcile flag, active time index). Security/API/docs pass for B1–B5. Report: `docs/task-management/B6_STABILIZATION_REPORT.md`. Awaiting PO for Stage C.
+
+### Enterprise Task Management — B5 estimation & time tracking (2026-11-12)
+
+`TaskTimeEntries` + ActualSpent recompute (opening-balance seed for legacy ActualSpentMinutes). Manual Remaining/Progress policies. FE time panel + estimate fields. Report: `docs/task-management/B5_ESTIMATION_TIME_TRACKING_REPORT.md`.
+
+### Enterprise Task Management — B4 task collaboration (2026-11-12)
+
+TaskComments / TaskAttachments / TaskWatchers + Activity.TaskId; reuse RaaviDocument mentions, sniff/limits, outbox; in-app notify only with linked page (ADR-056). FE collaboration panel. Report: `docs/task-management/B4_TASK_COLLABORATION_REPORT.md`. Awaiting PO for B5.
+
+### Enterprise Task Management — B3 subtasks & checklists (2026-11-12)
+
+Parent/child (depth ≤8, promote, delete guard), task checklists (mandatory items block complete), FE tree + checklist UI. Report: `docs/task-management/B3_SUBTASKS_CHECKLISTS_REPORT.md`.
+
+### Enterprise Task Management — B2 multiple assignees (2026-11-12)
+
+Hardening: one Responsible max, role-change history (soft-remove+insert), primary unique index, assignees history API, FE role select, concurrency/conflict mapping. Report: `docs/task-management/B2_MULTIPLE_ASSIGNEES_REPORT.md`. Awaiting PO for B3.
+
+### Enterprise Task Management — B1 data model (2026-11-12)
+
+Approved plan `docs/task-management/B1_DATA_MODEL_AND_MIGRATION_PLAN.md`. M1: `ActualSpentMinutes`, `ProgressPercent`, `BlockCompleteWhenOpenChildren`; assignee unique tightened to one user/task; parent-complete policy; docs/ADR-056 updated.
+
+### EKOS Phase 2 — Ask citations UX (EKOS-10) (2026-11-12)
+
+`CitationRefs` strips invalid `[n]` from Ask answers; sources carry `cited`. Smart-search links only valid cites, highlights on jump, Cited/Not cited badges. Report: `P2_ASK_CITATIONS_REPORT.md`.
+
+### EKOS Phase 2 — Maintenance scanners (EKOS-8) (2026-11-12)
+
+On-demand `GET /admin/knowledge-maintenance` (tenant admin): review-due, stale pages (`Raavi:KnowledgeMaintenance`), near-duplicate titles. UI can create space tasks; no auto-edit. Report: `P2_MAINTENANCE_SCANNERS_REPORT.md`.
+
+### EKOS Phase 2 — Label suggestions (EKOS-9) (2026-11-12)
+
+Heuristic `GET /content/{id}/label-suggestions` via `ILabelSuggestionProvider` / `ILabelCatalog`. AI `GET /ai/pages/{id}/label-suggestions` picks only catalog slugs (`label_suggest`). Page view merges both; AI badge on AI picks. Report: `docs/enterprise-knowledge-operating-system/P2_LABEL_SUGGESTIONS_REPORT.md`.
+
+### EKOS Phase 2 — Editor AI actions (2026-11-12)
+
+Confirm-to-apply summarize/rewrite of the editor selection (`POST /ai/pages/{id}/editor/summarize|rewrite`). Edit via `IPageEditGate`; selection client-only (no draft body to the model). UI on page edit. Report: `docs/enterprise-knowledge-operating-system/P2_EDITOR_AI_REPORT.md`.
+
+### Editor — Persian / RTL polish (2026-11-12)
+
+Tri-state paragraph direction (Auto / LTR / RTL), list markers via `:dir()`, fa UI skips English Typography, ZWNJ via toolbar + `/نیم‌فاصله` + Ctrl+Shift+Space, list indent/outdent, justify align, localized direction labels, slash suggestion positioning with `inset-inline-start`.
+
+### Phase 8 — `raavi.include` (2026-11-12)
+
+Editor schema v5: full-page include node (Confluence `include` macro). Converter + import link pass (`pageId`); view loads published body via existing `GET /content/{id}` (View → unavailable); nesting/cycle depth ≤ 3; slash command; fa/en. Excerpt-include/roadmap still unsupported.
 
 ### EKOS C1/C2 — Decision/Incident templates + Jira graph edges (2026-11-11)
 
@@ -462,9 +514,10 @@ New editor nodes (shared manifests + fixtures, backend renderer, frontend views,
 | Authors and restriction subjects → members (explicit map / verified e-mail on opt-in, suggestions in the dry run); groups by name | Tested | live data has no restrictions and e-mails of another domain, so only the suggestion path ran live |
 | Page restrictions (narrowing only, importer always included, never overwritten) | Tested | not exercised on real data (the test server has none) |
 | `children` / `contentbylabel` as dynamic lists | Tested + live conversion | browser rendering of the lists: see below |
+| `include` → `raavi.include` (full page) | Tested (converter + UI) | published body only; View → unavailable; cycle/depth ≤ 3; link pass sets `pageId`; schema v5 |
 | Space permissions | **Not imported** | REST does not expose them on this server; needs the XML reader |
 
-**Still not done:** space permissions (XML backup reader — needs a real Space/Site XML export to verify; none available), blog posts, attachment versions (latest only), attachments of other pages shown in an image, `include`/`excerpt-include`/`roadmap` and the 40 old-style `ac:macro` elements (kept as unsupported text), user/group *creation* from the source, content-hash/hierarchy validation (page counts only), search reindex after import, S3 storage.
+**Still not done:** space permissions (XML backup reader — needs a real Space/Site XML export to verify; none available), blog posts, attachment versions (latest only), attachments of other pages shown in an image, `excerpt-include`/`excerpt`/`roadmap` and the 40 old-style `ac:macro` elements (kept as unsupported text), user/group *creation* from the source, content-hash/hierarchy validation (page counts only), search reindex after import, S3 storage.
 
 ## Phase 7a — Comments, watching, notifications (Phase 7 is split: 7b media/S3 and 7c OpenSearch follow)
 

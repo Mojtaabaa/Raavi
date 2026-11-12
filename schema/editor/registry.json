@@ -1,6 +1,6 @@
 {
   "schema": "raavi.doc",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "maxBytes": 5242880,
   "maxDepth": 48,
   "history": [
@@ -19,6 +19,11 @@
     {
       "version": 4,
       "description": "Whiteboard embed node (raavi.whiteboard). v3 documents remain valid after attribute defaults."
+    },
+    {
+      "version": 5,
+      "description": "Page include node (raavi.include). v4 documents remain valid after attribute defaults."
     }
   ]
 }
+

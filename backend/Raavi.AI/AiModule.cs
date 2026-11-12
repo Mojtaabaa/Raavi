@@ -65,6 +65,13 @@ public static class AiModule
         members.MapGet("/status", async (AiService svc, CancellationToken ct) => Results.Ok(await svc.StatusAsync(ct).ConfigureAwait(false)));
         members.MapPost("/pages/{id:guid}/summary", async (Guid id, AiService svc, CancellationToken ct) => (await svc.SummarizeAsync(id, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
         members.MapPost("/pages/{id:guid}/ask", async (Guid id, AiAskRequest body, AiService svc, CancellationToken ct) => (await svc.AskAsync(id, body, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+        // EKOS Phase 2: selection from the client only; Edit required (404 if not). Never loads draft body.
+        members.MapPost("/pages/{id:guid}/editor/summarize", async (Guid id, AiEditorActionRequest body, AiService svc, CancellationToken ct) =>
+            (await svc.EditorSummarizeAsync(id, body, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+        members.MapPost("/pages/{id:guid}/editor/rewrite", async (Guid id, AiEditorActionRequest body, AiService svc, CancellationToken ct) =>
+            (await svc.EditorRewriteAsync(id, body, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+        members.MapGet("/pages/{id:guid}/label-suggestions", async (Guid id, AiService svc, CancellationToken ct) =>
+            (await svc.SuggestLabelsAsync(id, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
 
         // Smart search works with keywords alone (no AI needed); with an embedding model it becomes hybrid. Results are filtered by the caller's own View right.
         members.MapGet("/search", async (

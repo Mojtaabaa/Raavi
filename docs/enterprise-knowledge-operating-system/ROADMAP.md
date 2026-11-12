@@ -26,9 +26,9 @@ Assessment, matrix, architecture, backlog, risks. **No code.**
 |------|---------|
 | EKOS-6 Real AI verification | Optional; needs provider |
 | EKOS-7 Editor AI actions | Confirm-to-apply |
-| EKOS-8 Maintenance scanners | Stale/dupe suggestions → tasks |
-| EKOS-9 AI label suggestions | Via `ILabelSuggestionProvider` |
-| EKOS-10 Ask citations UX | Harden sources |
+| EKOS-8 Maintenance scanners | Done — on-demand suggestions → optional tasks (`P2_MAINTENANCE_SCANNERS_REPORT.md`) |
+| EKOS-9 AI label suggestions | Done — heuristic + catalog-constrained AI (`P2_LABEL_SUGGESTIONS_REPORT.md`) |
+| EKOS-10 Ask citations UX | Done — sanitise markers + cited flags (`P2_ASK_CITATIONS_REPORT.md`) |
 
 ## Phase 3 — Organizational Knowledge
 

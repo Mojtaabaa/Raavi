@@ -33,4 +33,5 @@
 
 - `ILabelSuggestionProvider` (deterministic now; AI later)  
 - Prompt Hub context providers  
-- Future: `IEditorAiAction`, `IKnowledgeMaintenanceScanner`
+- `IKnowledgeMaintenanceScanner` (EKOS-8 on-demand)
+- Future: `IEditorAiAction`

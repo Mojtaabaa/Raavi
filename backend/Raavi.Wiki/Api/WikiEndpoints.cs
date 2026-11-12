@@ -145,8 +145,8 @@ public static class WikiEndpoints
             return (await labels.SearchPagesAsync(new LabelSearchRequest(name, tagMode, includeDescendants ?? false, spaceKey, skip ?? 0, take ?? 50), ct).ConfigureAwait(false)).ToHttp(Results.Ok);
         });
 
-        g.MapGet("/content/{id:guid}/label-suggestions", async (Guid id, LabelService svc, CancellationToken ct) =>
-            Results.Ok(await svc.SuggestForPageAsync(id, ct).ConfigureAwait(false)));
+        g.MapGet("/content/{id:guid}/label-suggestions", async (Guid id, Raavi.Application.Abstractions.Content.ILabelSuggestionProvider suggestions, CancellationToken ct) =>
+            Results.Ok(await suggestions.SuggestAsync(id, ct).ConfigureAwait(false)));
 
         g.MapGet("/admin/labels", async (string? q, bool? archived, Guid? parentId, string? sort, int? skip, int? take, LabelService svc, CancellationToken ct) =>
             (await svc.AdminListAsync(q, archived, parentId, sort, skip ?? 0, take ?? 50, ct).ConfigureAwait(false)).ToHttp(Results.Ok))
@@ -186,6 +186,10 @@ public static class WikiEndpoints
 
         g.MapGet("/admin/labels/analytics", async (LabelService svc, CancellationToken ct) =>
             (await svc.AnalyticsAsync(ct).ConfigureAwait(false)).ToHttp(Results.Ok))
+            .RequireAuthorization(RaaviPolicies.TenantAdministrator);
+
+        g.MapGet("/admin/knowledge-maintenance", async (int? take, Raavi.Application.Abstractions.Content.IKnowledgeMaintenanceScanner scanner, CancellationToken ct) =>
+            Results.Ok(await scanner.ScanAsync(take ?? 50, ct).ConfigureAwait(false)))
             .RequireAuthorization(RaaviPolicies.TenantAdministrator);
 
         g.MapGet("/activity", async (int? limit, DiscoveryService svc, CancellationToken ct) =>

@@ -20,7 +20,10 @@ import ErrorHelp from '@/app/ErrorHelp.vue'
 import { formatDate } from '@/core/i18n/locales'
 import { useLocaleStore } from '@/stores/locale'
 import RaaviEditor from '@/modules/editor/components/RaaviEditor.vue'
+import type { EditorTextSelection } from '@/modules/editor/components/RaaviEditor.vue'
 import type { CollaborationTarget } from '@/modules/editor/collaboration'
+import EditorAiDialog from '@/modules/ai/EditorAiDialog.vue'
+import { aiApi } from '@/core/api/ai'
 import { useAuthStore } from '@/stores/auth'
 import { useSpaceContext } from '../spaceContext'
 
@@ -42,6 +45,25 @@ const auth = useAuthStore()
 const live = ref<CollaborationTarget | null>(null)
 const liveRevoked = ref(false)
 const editorKey = ref(0)
+const editorRef = ref<{ replaceRange: (from: number, to: number, text: string) => void } | null>(null)
+const textSel = ref<EditorTextSelection | null>(null)
+const aiAvailable = ref(false)
+const aiAction = ref<'summarize' | 'rewrite' | null>(null)
+
+onMounted(() => {
+  void aiApi.status().then((s) => (aiAvailable.value = s.available)).catch(() => (aiAvailable.value = false))
+})
+
+function onSelectionText(sel: EditorTextSelection | null) {
+  textSel.value = sel
+}
+
+function applyAi(text: string, from: number, to: number) {
+  editorRef.value?.replaceRange(from, to, text)
+  aiAction.value = null
+  textSel.value = null
+  toast.add({ severity: 'success', summary: t('editor.ai.applied'), life: 2500 })
+}
 
 async function joinLive(): Promise<void> {
   const me = auth.me
@@ -416,8 +438,15 @@ function close() {
     </Message>
     <p v-if="draft.contributors.length" class="muted small">{{ t('wiki.draft.contributors', { names: draft.contributors.join('، ') }) }}</p>
 
+    <div v-if="aiAvailable && textSel && page?.rights.canEdit" class="ai-bar" data-testid="editor-ai-bar">
+      <span class="muted">{{ t('editor.ai.selected', { n: textSel.text.length }) }}</span>
+      <Button size="small" text icon="pi pi-align-left" :label="t('editor.ai.summarize')" data-testid="editor-ai-summarize" @click="aiAction = 'summarize'" />
+      <Button size="small" text icon="pi pi-pencil" :label="t('editor.ai.rewrite')" data-testid="editor-ai-rewrite" @click="aiAction = 'rewrite'" />
+    </div>
+
     <RaaviEditor
       :key="editorKey"
+      ref="editorRef"
       v-model="body"
       editable
       :content-id="id"
@@ -425,6 +454,18 @@ function close() {
       :placeholder="t('editor.placeholder')"
       @reset="onLiveReset"
       @revoked="liveRevoked = true"
+      @selection-text="onSelectionText"
+    />
+
+    <EditorAiDialog
+      v-if="textSel && aiAction"
+      :page-id="id"
+      :selection="textSel.text"
+      :from="textSel.from"
+      :to="textSel.to"
+      :action="aiAction"
+      @close="aiAction = null"
+      @apply="applyAi"
     />
 
     <Dialog v-model:visible="publishOpen" modal :header="t('wiki.publish.title')" :style="{ inlineSize: 'min(30rem, 95vw)' }">
@@ -466,4 +507,5 @@ h1 { margin: 0 0 var(--raavi-space-2); font-size: 1.4rem; }
 .muted { color: var(--raavi-text-muted); }
 .small { font-size: 0.85rem; margin: 0; }
 .preview-title { font-size: 1.8rem; }
+.ai-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--raavi-space-2); padding: var(--raavi-space-2); border: 1px solid var(--raavi-border); border-radius: var(--raavi-radius-sm); background: var(--raavi-surface); }
 </style>

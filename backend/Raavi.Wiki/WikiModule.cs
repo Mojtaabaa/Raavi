@@ -37,12 +37,19 @@ public static class WikiModule
         services.AddScoped<KnowledgeRelationshipService>();
         services.AddScoped<Raavi.Application.Abstractions.Content.IKnowledgeRelationshipProjection, KnowledgeRelationshipProjection>();
         services.AddScoped<Raavi.Application.Abstractions.Ai.IPageTextReader, PageTextReader>();
+        services.AddScoped<Raavi.Application.Abstractions.Ai.IPageEditGate, PageEditGate>();
         services.AddScoped<Raavi.Application.Abstractions.Ai.ISpaceInfoReader, SpaceInfoReader>();
         services.AddScoped<Raavi.Application.Abstractions.Ai.IContentIndexSource, ContentIndexSource>();
         services.AddScoped<Raavi.Application.Abstractions.Ai.IViewableContentFilter, ViewableContentFilter>();
         services.AddScoped<Raavi.Application.Abstractions.Ai.IDiscoveryContentFilter, DiscoveryContentFilterService>();
         services.AddScoped<DiscoveryService>();
         services.AddScoped<LabelService>();
+        services.AddScoped<HeuristicLabelSuggestionProvider>();
+        services.AddScoped<Raavi.Application.Abstractions.Content.ILabelSuggestionProvider>(sp => sp.GetRequiredService<HeuristicLabelSuggestionProvider>());
+        services.AddScoped<Raavi.Application.Abstractions.Content.ILabelCatalog>(sp => sp.GetRequiredService<HeuristicLabelSuggestionProvider>());
+        services.AddOptions<KnowledgeMaintenanceOptions>().Bind(configuration.GetSection(KnowledgeMaintenanceOptions.Section));
+        services.AddScoped<KnowledgeMaintenanceService>();
+        services.AddScoped<Raavi.Application.Abstractions.Content.IKnowledgeMaintenanceScanner>(sp => sp.GetRequiredService<KnowledgeMaintenanceService>());
         services.AddScoped<TemplateService>();
         services.AddScoped<AttachmentService>();
         services.AddScoped<EditorService>();
@@ -55,6 +62,9 @@ public static class WikiModule
         // Comments, watching and notifications (Phase 7a). Push delivery (SignalR) is added by the API host: AddWikiRealtime().
         services.AddScoped<CommentService>();
         services.AddScoped<TaskService>();
+        services.AddScoped<TaskChecklistService>();
+        services.AddScoped<TaskCollaborationService>();
+        services.AddScoped<TaskTimeService>();
         services.AddOptions<TemplarCalendarOptions>().Bind(configuration.GetSection(TemplarCalendarOptions.Section));
         services.AddSingleton<ITemplarCalendarProvider, DisabledTemplarCalendarProvider>();
         services.AddScoped<CalendarService>();

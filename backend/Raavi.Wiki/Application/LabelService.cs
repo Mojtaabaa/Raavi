@@ -471,8 +471,13 @@ public sealed class LabelService(
         return Result<LabelAnalyticsDto>.Success(new LabelAnalyticsDto(active.Count, archived, unused, Math.Max(0, currentPages - labeledPages), most, recent));
     }
 
-    public async Task<IReadOnlyList<LabelDto>> SuggestForPageAsync(Guid pageId, CancellationToken ct)
+    public async Task<IReadOnlyList<LabelDto>> SuggestForPageAsync(Guid pageId, CancellationToken ct) =>
+        await ListAssignableForSuggestionsAsync(pageId, 8, ct).ConfigureAwait(false);
+
+    /// <summary>Assignable labels for suggestions / AI catalog (View required; excludes labels already on the page).</summary>
+    public async Task<IReadOnlyList<LabelDto>> ListAssignableForSuggestionsAsync(Guid pageId, int take, CancellationToken ct)
     {
+        take = Math.Clamp(take, 1, 80);
         var node = await db.Nodes.AsNoTracking().FirstOrDefaultAsync(n => n.Id == pageId, ct).ConfigureAwait(false);
         if (node is null)
         {
@@ -494,11 +499,12 @@ public sealed class LabelService(
                                    where n.SpaceId == node.SpaceId && n.Status == ContentStatus.Current
                                    select cl.LabelId).Distinct().Take(200).ToListAsync(ct).ConfigureAwait(false);
 
+        var pool = Math.Min(80, Math.Max(take * 4, take));
         var candidates = await db.Labels.AsNoTracking()
             .Where(l => l.ArchivedAt == null && l.IsActive && !assignedSet.Contains(l.Id)
                 && (spaceLabelIds.Contains(l.Id) || tokens.Any(t => l.NormalizedName.Contains(t))))
-            .OrderBy(l => l.DisplayName).Take(30).ToListAsync(ct).ConfigureAwait(false);
-        return await ToDtosAsync(candidates.Take(8).ToList(), true, ct).ConfigureAwait(false);
+            .OrderBy(l => l.DisplayName).Take(pool).ToListAsync(ct).ConfigureAwait(false);
+        return await ToDtosAsync(candidates.Take(take).ToList(), true, ct).ConfigureAwait(false);
     }
 
     public async Task PublishPageLabelEventAsync(Guid spaceId, Guid contentId, string title, bool added, CancellationToken ct)

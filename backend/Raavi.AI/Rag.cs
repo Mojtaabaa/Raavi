@@ -22,7 +22,7 @@ public sealed record SearchHitDto(Guid ContentId, string Title, string SpaceKey,
 
 public sealed record SearchResultDto(IReadOnlyList<SearchHitDto> Hits, string Mode);
 
-public sealed record AskSourceDto(int Number, Guid ContentId, string Title, string SpaceKey, string Snippet);
+public sealed record AskSourceDto(int Number, Guid ContentId, string Title, string SpaceKey, string Snippet, bool Cited = false);
 
 public sealed record AskAnswerDto(string Text, string Model, int PromptTokens, int CompletionTokens, IReadOnlyList<AskSourceDto> Sources);
 
@@ -587,8 +587,14 @@ public sealed class RagService(
             db.Usage.Add(AiUsage.Record(current.UserId, "rag", settings.Model, result.PromptTokens, result.CompletionTokens, AiOutcome.Succeeded, null, now));
             await db.SaveChangesAsync(ct).ConfigureAwait(false);
             var tokens = Tokens(q);
-            var sources = safePages.Select((p, i) => new AskSourceDto(i + 1, p.ContentId, p.Title, p.SpaceKey, Snippet(p.Text, tokens))).ToList();
-            return Result<AskAnswerDto>.Success(new AskAnswerDto(result.Text, settings.Model, result.PromptTokens, result.CompletionTokens, sources));
+            var text = CitationRefs.StripInvalid(result.Text, safePages.Count);
+            var cited = CitationRefs.CitedIn(text, safePages.Count);
+            var sources = safePages.Select((p, i) =>
+            {
+                var n = i + 1;
+                return new AskSourceDto(n, p.ContentId, p.Title, p.SpaceKey, Snippet(p.Text, tokens), cited.Contains(n));
+            }).ToList();
+            return Result<AskAnswerDto>.Success(new AskAnswerDto(text, settings.Model, result.PromptTokens, result.CompletionTokens, sources));
         }
         catch (AiProviderException ex)
         {

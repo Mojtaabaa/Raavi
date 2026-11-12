@@ -38,6 +38,7 @@ const aiAvailable = ref(false)
 const hits = ref<SearchHit[]>([])
 const searchMode = ref<'keyword' | 'hybrid' | null>(null)
 const answer = ref<AskAnswer | null>(null)
+const activeSource = ref<number | null>(null)
 const busy = ref(false)
 const searched = ref(false)
 const error = ref<unknown>(null)
@@ -119,6 +120,7 @@ async function run() {
       const r = await aiApi.askWiki(text, space.value || undefined)
       if (mine !== seq) return
       answer.value = r
+      activeSource.value = null
       hits.value = []
     }
     searched.value = true
@@ -127,7 +129,10 @@ async function run() {
       error.value = e
       searched.value = true
       if (mode.value === 'search') hits.value = []
-      else answer.value = null
+      else {
+        answer.value = null
+        activeSource.value = null
+      }
     }
   } finally {
     if (mine === seq) busy.value = false
@@ -142,6 +147,7 @@ watch(q, () => {
 })
 watch([mode, space, classification, lifecycleStatus, relationshipType, reviewDue, ownedByMe, reviewOwnerMe], () => {
   answer.value = null
+  activeSource.value = null
   hits.value = []
   searched.value = false
   if (q.value.trim().length >= 2 && mode.value === 'search') void run()
@@ -158,10 +164,30 @@ onMounted(async () => {
 
 const known = computed(() => (error.value instanceof ApiError ? errorMessage(error.value, t, te) : error.value ? t('errors.generic') : ''))
 const pageLink = (h: { contentId: string; spaceKey: string }) => ({ name: 'page', params: { key: h.spaceKey, id: h.contentId } })
+const sourceByNumber = computed(() => {
+  const map = new Map<number, NonNullable<AskAnswer['sources']>[number]>()
+  for (const s of answer.value?.sources ?? []) map.set(s.number, s)
+  return map
+})
+const anyCited = computed(() => (answer.value?.sources ?? []).some((s) => s.cited))
 
-/** [1] [2] in an answer become links to the matching source (text pieces again, not HTML). */
+/** [n] becomes a cite control only when that number exists in the returned sources (EKOS-10). */
 function answerParts(text: string): { text: string; n?: number }[] {
-  return text.split(/(\[\d{1,2}\])/g).filter(Boolean).map((p) => (/^\[\d{1,2}\]$/.test(p) ? { text: p, n: Number(p.slice(1, -1)) } : { text: p }))
+  const max = answer.value?.sources.length ?? 0
+  return text.split(/(\[\d{1,2}\])/g).filter(Boolean).map((p) => {
+    const m = /^\[(\d{1,2})\]$/.exec(p)
+    if (!m) return { text: p }
+    const n = Number(m[1])
+    return n >= 1 && n <= max && sourceByNumber.value.has(n) ? { text: p, n } : { text: p }
+  })
+}
+
+function focusSource(n: number, ev?: Event) {
+  ev?.preventDefault()
+  activeSource.value = n
+  const el = document.getElementById(`source-${n}`)
+  el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  el?.querySelector<HTMLElement>('a')?.focus({ preventScroll: true })
 }
 </script>
 
@@ -228,13 +254,35 @@ function answerParts(text: string): { text: string; n?: number }[] {
 
     <!-- Answer -->
     <article v-if="answer" class="answer" aria-live="polite" data-testid="answer">
-      <p class="text" dir="auto"><template v-for="(p, i) in answerParts(answer.text)" :key="i"><a v-if="p.n" :href="`#source-${p.n}`" class="cite">{{ p.text }}</a><template v-else>{{ p.text }}</template></template></p>
+      <p class="text" dir="auto">
+        <template v-for="(p, i) in answerParts(answer.text)" :key="i">
+          <a
+            v-if="p.n"
+            :href="`#source-${p.n}`"
+            class="cite"
+            :aria-label="t('smartSearch.jumpToSource', { n: p.n })"
+            data-testid="cite"
+            @click="focusSource(p.n!, $event)"
+          >{{ p.text }}</a>
+          <template v-else>{{ p.text }}</template>
+        </template>
+      </p>
       <p class="muted small"><i class="pi pi-info-circle" aria-hidden="true" /> {{ t('smartSearch.check') }}</p>
+      <p v-if="answer.sources.length && !anyCited" class="muted small" data-testid="uncited-note">{{ t('smartSearch.uncitedNote') }}</p>
       <h2>{{ t('smartSearch.sources') }}</h2>
       <ol class="sources">
-        <li v-for="s in answer.sources" :id="`source-${s.number}`" :key="s.contentId">
+        <li
+          v-for="s in answer.sources"
+          :id="`source-${s.number}`"
+          :key="s.contentId"
+          :class="{ active: activeSource === s.number, cited: s.cited, uncited: s.cited === false }"
+          :data-testid="`source-${s.number}`"
+        >
+          <span class="num" aria-hidden="true">[{{ s.number }}]</span>
           <RouterLink :to="pageLink(s)" dir="auto">{{ s.title }}</RouterLink>
           <span class="space"><code dir="ltr">{{ s.spaceKey }}</code></span>
+          <span v-if="s.cited" class="badge" data-testid="cited-badge">{{ t('smartSearch.cited') }}</span>
+          <span v-else class="badge muted-badge">{{ t('smartSearch.notCited') }}</span>
           <p class="snippet" dir="auto">{{ s.snippet }}</p>
         </li>
       </ol>
@@ -278,8 +326,15 @@ h2 { margin: var(--raavi-space-3) 0 var(--raavi-space-1); font-size: 0.95rem; }
 mark { background: color-mix(in srgb, #f5c400 40%, transparent); color: inherit; border-radius: 2px; padding: 0 1px; }
 .answer { padding: var(--raavi-space-4); background: var(--raavi-surface); border: 1px solid var(--p-primary-color); border-radius: var(--raavi-radius-md); }
 .answer .text { margin: 0 0 var(--raavi-space-2); white-space: pre-wrap; line-height: 1.8; }
-.cite { font-weight: 700; color: var(--p-primary-color); text-decoration: none; padding: 0 1px; }
+.cite { font-weight: 700; color: var(--p-primary-color); text-decoration: none; padding: 0 1px; border-radius: 2px; }
+.cite:hover, .cite:focus-visible { outline: 2px solid var(--p-primary-color); outline-offset: 1px; }
 .sources { margin: 0; padding-inline-start: 1.4rem; display: grid; gap: var(--raavi-space-2); }
+.sources li { padding: var(--raavi-space-2); border-radius: var(--raavi-radius-sm); border: 1px solid transparent; }
+.sources li.active { border-color: var(--p-primary-color); background: color-mix(in srgb, var(--p-primary-color) 8%, transparent); }
+.sources li.uncited { opacity: 0.78; }
+.sources .num { margin-inline-end: var(--raavi-space-1); font-weight: 600; color: var(--raavi-text-muted); }
+.sources .badge { margin-inline-start: var(--raavi-space-2); font-size: 0.75rem; padding: 0 0.35rem; border: 1px solid var(--raavi-border); border-radius: 2px; }
+.sources .muted-badge { color: var(--raavi-text-muted); }
 .sources .snippet { margin: 2px 0 0; font-size: 0.88rem; }
 .mode { display: flex; gap: 6px; align-items: center; margin: 0; }
 .muted { color: var(--raavi-text-muted); }

@@ -36,6 +36,8 @@ public sealed class RaaviDocument
         [2] = doc => doc,
         // v3 → v4: whiteboard embed node; existing trees stay valid.
         [3] = doc => doc,
+        // v4 → v5: page include node; existing trees stay valid.
+        [4] = doc => doc,
     };
 
     private RaaviDocument(JsonObject doc)
