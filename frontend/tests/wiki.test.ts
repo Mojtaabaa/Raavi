@@ -33,6 +33,7 @@ const page: Page = {
   body: textToDoc('<script>alert(1)</script>\nSecond line'), version: 3, labels: ['ops'], breadcrumbs: [{ id: 'a', title: 'Operations', contentType: 'page' }],
   isRestricted: true, createdBy: 'u1', createdByName: 'Sara', createdAt: '2026-11-07T08:00:00Z', updatedBy: 'u1', updatedByName: 'Sara', updatedAt: '2026-11-07T08:00:00Z',
   revision: 3, rights, publishedAt: '2026-11-07T08:00:00Z', hasDraft: false, draftUpdatedAt: null, scheduledPublishAt: null, pendingApproval: false, requirePublishApproval: false,
+  governance: null,
 }
 
 function withETag(body: unknown, etag: string): Response {
