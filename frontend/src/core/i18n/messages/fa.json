@@ -2347,7 +2347,9 @@
                         "anyClassification":  "هر طبقه‌بندی",
                         "anyLifecycle":  "هر چرخهٔ عمر",
                         "anyRelationship":  "هر نوع رابطه",
-                        "reviewDueOnly":  "فقط نیازمند بازبینی"
+                        "reviewDueOnly":  "فقط نیازمند بازبینی",
+                        "ownedByMe":  "مالک من هستم",
+                        "reviewOwnerMe":  "مسئول بازبینی من هستم"
                     },
     "notFoundPage":  {
                          "title":  "این صفحه وجود ندارد",

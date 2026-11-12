@@ -2347,7 +2347,9 @@
                         "anyClassification":  "Any classification",
                         "anyLifecycle":  "Any lifecycle",
                         "anyRelationship":  "Any relationship",
-                        "reviewDueOnly":  "Review due only"
+                        "reviewDueOnly":  "Review due only",
+                        "ownedByMe":  "Owned by me",
+                        "reviewOwnerMe":  "I am review owner"
                     },
     "notFoundPage":  {
                          "title":  "This page does not exist",

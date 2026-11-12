@@ -9,6 +9,8 @@ import { ApiError } from '@/core/api/http'
 import { errorMessage } from '@/core/api/errors'
 import { wikiApi, type SpaceSummary } from '@/core/api/wiki'
 import { normalizeSearchText } from '@/core/runtime/textNormalize'
+import { useAuthStore } from '@/stores/auth'
+import { storeToRefs } from 'pinia'
 
 /**
  * Smart search: finds passages by words (and by meaning when the workspace has an embedding model) among the pages the person may read,
@@ -17,6 +19,7 @@ import { normalizeSearchText } from '@/core/runtime/textNormalize'
 const { t, te } = useI18n()
 const route = useRoute()
 const router = useRouter()
+const { me } = storeToRefs(useAuthStore())
 
 const mode = ref<'search' | 'ask'>(route.query.mode === 'ask' ? 'ask' : 'search')
 const q = ref(typeof route.query.q === 'string' ? route.query.q : '')
@@ -28,6 +31,8 @@ const classification = ref(typeof route.query.classification === 'string' ? rout
 const lifecycleStatus = ref(typeof route.query.lifecycle === 'string' ? route.query.lifecycle : '')
 const reviewDue = ref(route.query.reviewDue === 'true')
 const relationshipType = ref(typeof route.query.relationshipType === 'string' ? route.query.relationshipType : '')
+const ownedByMe = ref(route.query.ownedByMe === 'true')
+const reviewOwnerMe = ref(route.query.reviewOwnerMe === 'true')
 const spaces = ref<SpaceSummary[]>([])
 const aiAvailable = ref(false)
 const hits = ref<SearchHit[]>([])
@@ -78,6 +83,8 @@ async function run() {
       ...(lifecycleStatus.value ? { lifecycle: lifecycleStatus.value } : {}),
       ...(reviewDue.value ? { reviewDue: 'true' } : {}),
       ...(relationshipType.value ? { relationshipType: relationshipType.value } : {}),
+      ...(ownedByMe.value ? { ownedByMe: 'true' } : {}),
+      ...(reviewOwnerMe.value ? { reviewOwnerMe: 'true' } : {}),
     },
   })
   try {
@@ -88,6 +95,8 @@ async function run() {
         lifecycleStatus: lifecycleStatus.value || undefined,
         reviewDue: reviewDue.value ? true : undefined,
         relationshipType: relationshipType.value || undefined,
+        ownerUserId: ownedByMe.value && me.value?.id ? me.value.id : undefined,
+        reviewOwnerUserId: reviewOwnerMe.value && me.value?.id ? me.value.id : undefined,
       })
       if (mine !== seq) return
       let next = r.hits
@@ -131,7 +140,7 @@ watch(q, () => {
   clearTimeout(timer)
   timer = setTimeout(run, 350)
 })
-watch([mode, space, classification, lifecycleStatus, relationshipType, reviewDue], () => {
+watch([mode, space, classification, lifecycleStatus, relationshipType, reviewDue, ownedByMe, reviewOwnerMe], () => {
   answer.value = null
   hits.value = []
   searched.value = false
@@ -197,6 +206,14 @@ function answerParts(text: string): { text: string; n?: number }[] {
       <label v-if="mode === 'search'" class="desc">
         <input v-model="reviewDue" type="checkbox" data-testid="smart-review-due" />
         {{ t('smartSearch.reviewDueOnly') }}
+      </label>
+      <label v-if="mode === 'search'" class="desc">
+        <input v-model="ownedByMe" type="checkbox" data-testid="smart-owned-by-me" />
+        {{ t('smartSearch.ownedByMe') }}
+      </label>
+      <label v-if="mode === 'search'" class="desc">
+        <input v-model="reviewOwnerMe" type="checkbox" data-testid="smart-review-owner-me" />
+        {{ t('smartSearch.reviewOwnerMe') }}
       </label>
       <Button v-if="mode === 'ask'" type="submit" icon="pi pi-send" :label="t('smartSearch.send')" :loading="busy" :disabled="q.trim().length < 2" data-testid="smart-send" />
     </form>
