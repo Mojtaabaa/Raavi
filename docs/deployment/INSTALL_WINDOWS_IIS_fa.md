@@ -53,8 +53,10 @@ powershell -ExecutionPolicy Bypass -File C:\Deploy\raavi-0.24.0\scripts\release\
 ### ردیاب‌های کار و پیوند صفحه به جیره
 
 - `Raavi:Integrations:AllowedConnectorHosts` را با نام میزبان جیره / GitHub Enterprise / GitLab پر کنید (مثلاً `jira.example.com` یا `*.example.com`). خالی = هیچ اتصالی ساخته یا فراخوانی نمی‌شود (محافظ SSRF).
+- اگر ردیاب فقط با **http** (بدون TLS) در دسترس است: در `sandbox/config/integrations.json` مقدار `Raavi:Integrations:AllowHttpConnectorTokens` را `true` کنید (پیش‌فرض `false`). توکن روی آن مسیر بدون رمز می‌رود — فقط در شبکهٔ قابل‌اعتماد.
+- Templar تقویم: `sandbox/config/calendar.json` → `Raavi:Calendar:Templar` (`Enabled` + `BaseUrl`); تا قرارداد API زنده، رخداد برنمی‌گردد.
 - برای **خواندن** ارجاع در ویرایشگر، توکن اختیاری است (عمومی) یا با دسترسی Browse کافی است.
-- برای **ایجاد/پیوند مسئلهٔ جیره از صفحهٔ ویکی** (Remote Link + رابطه در راوی) اتصال باید نوع Jira باشد، توکن https داشته باشد و در جیره حداقل مجوزهای **Browse Projects**، **Create Issues** و **Link Issues** را بدهد. GitHub/GitLab همچنان فقط‌خواندنی‌اند.
+- برای **ایجاد/پیوند مسئلهٔ جیره از صفحهٔ ویکی** اتصال باید نوع Jira باشد و توکن حداقل مجوزهای **Browse Projects**، **Create Issues** و **Link Issues** را بدهد. GitHub/GitLab همچنان فقط‌خواندنی‌اند.
 - پس از ارتقا، migrator جدول‌های `integrations.PageIssueLinks` / `PageIssueLinkContexts` و outbox یکپارچه‌سازی را می‌سازد؛ قبل از ارتقا پشتیبان بگیرید، سرویس‌ها را متوقف کنید، سپس `ConfigSync.ps1` را اجرا کنید.
 
 ## ۳ب. یک آدرس برای همه چیز (بدون DNS و TLS wildcard) — آدرس‌دهی مسیری و فضای پیش‌فرض

@@ -9,7 +9,7 @@ import App from '@/app/App.vue'
 import { configureHttp } from '@/core/api/http'
 import { createRaaviI18n } from '@/core/i18n'
 import { createRaaviRouter, resetRouterBootstrap } from '@/router'
-import { addDays, daysInMonth, firstOfMonth, monthGrid, partsOf, shiftMonth, toIso, weekdayOf } from '@/modules/calendar/calendarMath'
+import { addDays, daysInMonth, firstOfMonth, monthGrid, partsOf, shiftMonth, shiftYear, toIso, weekdayOf, yearMonths } from '@/modules/calendar/calendarMath'
 import { fakeFetch, json } from './support/fakeApi'
 
 const tenantCtx = { kind: 'tenant', tenant: { slug: 'acme', displayName: { fa: 'اکمی', en: 'Acme' }, defaultLocale: 'en', timeZone: 'Asia/Tehran', calendar: 'gregorian', branding: { primaryColor: null, secondaryColor: null, welcomeMessageFa: null, welcomeMessageEn: null } } }
@@ -18,13 +18,16 @@ const space = (canCreate: boolean) => ({ id: 's1', key: 'ENG', name: 'Engineerin
 const withEtag = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json', ETag: '"r1"' } })
 
 const occurrence = (over: Record<string, unknown> = {}) => ({
-  eventId: 'e1', spaceKey: 'ENG', spaceName: 'Engineering', title: 'Standup', location: null, allDay: false, startDate: toIso(new Date()), startTime: '09:30', endDate: toIso(new Date()), endTime: '09:45',
-  timeZone: 'Asia/Tehran', startUtc: null, endUtc: null, isRecurring: true, occurrenceDate: toIso(new Date()), canEdit: true, ...over,
+  eventId: 'e1', calendarId: 'c1', spaceKey: 'ENG', spaceName: 'Engineering', title: 'Standup', location: null, allDay: false, startDate: toIso(new Date()), startTime: '09:30', endDate: toIso(new Date()), endTime: '09:45',
+  timeZone: 'Asia/Tehran', startUtc: null, endUtc: null, isRecurring: true, occurrenceDate: toIso(new Date()), canEdit: true, sourceKind: 'Raavi', externalUrl: null, freeBusyOnly: false, type: 'Event', color: '#3b82f6', ...over,
 })
 const fullEvent = (over: Record<string, unknown> = {}) => ({
-  id: 'e1', spaceKey: 'ENG', spaceName: 'Engineering', title: 'Standup', description: null, location: null, allDay: false, startDate: toIso(new Date()), startTime: '09:30', endDate: toIso(new Date()), endTime: '09:45',
-  timeZone: 'Asia/Tehran', recurrence: { frequency: 'Weekly', interval: 1, weekDays: [weekdayOf(toIso(new Date()))], calendar: 'Gregorian', until: null, count: null }, excludedDates: [], createdByName: 'Ali', createdAt: '2026-11-07T08:00:00Z', revision: 3, canEdit: true, ...over,
+  id: 'e1', calendarId: 'c1', spaceKey: 'ENG', spaceName: 'Engineering', title: 'Standup', description: null, location: null, allDay: false, startDate: toIso(new Date()), startTime: '09:30', endDate: toIso(new Date()), endTime: '09:45',
+  timeZone: 'Asia/Tehran', recurrence: { frequency: 'Weekly', interval: 1, weekDays: [weekdayOf(toIso(new Date()))], calendar: 'Gregorian', until: null, count: null }, excludedDates: [],
+  type: 'Event', status: 'Scheduled', priority: 'Normal', color: null, onlineUrl: null, isPrivate: false, reminders: [], attendees: [], linkedPageId: null, linkedWhiteboardId: null, myResponse: null, createdByName: 'Ali', createdAt: '2026-11-07T08:00:00Z', revision: 3, canEdit: true, ...over,
 })
+const board = { id: 'c1', scope: 'Space', spaceId: 's1', ownerUserId: null, name: 'Engineering', description: null, color: '#3b82f6', icon: null, isDefault: true, archivedAt: null, revision: 1 }
+const prefs = { browserAlerts: true, ttsEnabled: false, ttsLocale: 'en', ttsRate: 1, hidePrivateTitlesInTts: true, quietStartMinutes: null, quietEndMinutes: null, timeZone: 'UTC' }
 
 describe('calendar arithmetic', () => {
   it('derives Persian months from Intl, so Jalali dates match the known conversions', () => {
@@ -60,6 +63,14 @@ describe('calendar arithmetic', () => {
     expect(far[34]!.inMonth).toBe(false)
     expect(far.every((d, i) => i === 0 || d.iso === addDays(far[i - 1]!.iso, 1))).toBe(true)
   })
+
+  it('lists twelve months for a year and shifts by calendar year', () => {
+    const months = yearMonths('2026-07-15', 'gregory')
+    expect(months).toHaveLength(12)
+    expect(months[0]).toBe('2026-01-01')
+    expect(months[11]).toBe('2026-12-01')
+    expect(shiftYear('2026-03-21', 'persian', 1)).toBe('2027-03-21') // 1 Farvardin 1406
+  })
 })
 
 describe('calendar view', () => {
@@ -82,6 +93,9 @@ describe('calendar view', () => {
     'GET /api/v1/auth/antiforgery': () => json({ token: 'xsrf' }),
     'GET /api/v1/notifications/unread-count': () => json({ count: 0 }),
     'GET /api/v1/spaces/ENG/tree': () => json([]),
+    'GET /api/v1/calendars': () => json([board]),
+    'GET /api/v1/spaces/ENG/calendars': () => json([board]),
+    'GET /api/v1/calendar/preferences': () => json(prefs),
   }
 
   async function open(path: string, f: ReturnType<typeof fakeFetch>) {
@@ -126,6 +140,7 @@ describe('calendar view', () => {
       'GET /api/v1/spaces/ENG': () => withEtag(space(true)),
       'GET /api/v1/spaces/ENG/calendar/occurrences': () => json([]),
       'POST /api/v1/spaces/ENG/calendar/events': () => json(fullEvent(), 201),
+      'POST /api/v1/calendars/c1/events': () => json(fullEvent(), 201),
     })
     const w = await open('/spaces/ENG/calendar', f)
     expect(w.get('[data-testid="no-events"]').text()).toContain('No events')
@@ -152,7 +167,7 @@ describe('calendar view', () => {
 
     document.body.querySelector<HTMLButtonElement>('[data-testid="save-event"]')!.click()
     for (let i = 0; i < 3; i++) await flushPromises()
-    const post = f.calls.find((c) => c.method === 'POST' && c.url === '/api/v1/spaces/ENG/calendar/events')!
+    const post = f.calls.find((c) => c.method === 'POST' && (c.url === '/api/v1/spaces/ENG/calendar/events' || c.url === '/api/v1/calendars/c1/events'))!
     expect(post.body).toMatchObject({ title: 'Planning', allDay: false, startDate: '2026-07-06', startTime: '09:00', endDate: '2026-07-06', endTime: '10:00', timeZone: 'Asia/Tehran' })
     const rec = (post.body as { recurrence: { frequency: string; weekDays: number[]; until: null; count: null } }).recurrence
     expect(rec.frequency).toBe('Weekly')
@@ -195,5 +210,71 @@ describe('calendar view', () => {
     expect(document.body.querySelector('[data-testid="delete-event"]')).toBeNull()
     expect(document.body.querySelector('[data-testid="cancel-occurrence"]')).toBeNull()
     expect((document.body.querySelector('[data-testid="event-title"]') as HTMLInputElement).disabled).toBe(true)
+  })
+
+  it('switches to year view, searches occurrences, and opens share/import actions', async () => {
+    const f = fakeFetch({
+      ...base,
+      'GET /api/v1/spaces/ENG': () => withEtag(space(true)),
+      'GET /api/v1/spaces/ENG/calendar/occurrences': () => json([occurrence()]),
+      'GET /api/v1/calendars/c1/grants': () => json([{ id: 'g1', subjectType: 'User', subjectId: 'u2', grant: 'View', createdAt: '2026-11-07T08:00:00Z' }]),
+      'GET /api/v1/directory': () => json([]),
+    })
+    const w = await open('/spaces/ENG/calendar', f)
+
+    const yearBtn = w.findAll('[data-testid="calendar-view"] [role="radio"], [data-testid="calendar-view"] .p-togglebutton').find((b) => b.text() === 'Year')!
+    await yearBtn.trigger('click')
+    for (let i = 0; i < 3; i++) await flushPromises()
+    expect(w.find('[data-testid="year-view"]').exists()).toBe(true)
+    expect(w.findAll('[data-testid="year-month"]').length).toBe(12)
+
+    await w.get('[data-testid="calendar-search"]').setValue('Standup')
+    for (let i = 0; i < 5; i++) await flushPromises()
+    await new Promise((r) => setTimeout(r, 350))
+    for (let i = 0; i < 3; i++) await flushPromises()
+    expect(f.calls.some((c) => c.url.includes('/calendar/occurrences') && c.url.includes('q=Standup'))).toBe(true)
+
+    await w.get('[data-testid="share-calendar"]').trigger('click')
+    for (let i = 0; i < 3; i++) await flushPromises()
+    expect(document.body.querySelector('[data-testid="share-dialog"]')).not.toBeNull()
+    expect(document.body.querySelector('[data-testid="grant-list"]')!.textContent).toContain('View')
+
+    await w.get('[data-testid="import-calendar"]').trigger('click')
+    for (let i = 0; i < 3; i++) await flushPromises()
+    expect(document.body.querySelector('[data-testid="import-dialog"]')).not.toBeNull()
+  })
+
+  it('opens timeline view, filters by type, and creates a personal calendar', async () => {
+    const f = fakeFetch({
+      ...base,
+      'GET /api/v1/spaces/ENG': () => withEtag(space(true)),
+      'GET /api/v1/spaces/ENG/calendar/occurrences': () => json([occurrence()]),
+      'POST /api/v1/calendars': () => json({ ...board, id: 'c2', name: 'Desk', scope: 'Personal' }, 201),
+    })
+    const w = await open('/spaces/ENG/calendar', f)
+
+    const timelineBtn = w.findAll('[data-testid="calendar-view"] [role="radio"], [data-testid="calendar-view"] .p-togglebutton').find((b) => b.text() === 'Timeline')!
+    await timelineBtn.trigger('click')
+    for (let i = 0; i < 3; i++) await flushPromises()
+    expect(w.find('[data-testid="timeline-view"]').exists()).toBe(true)
+
+    const typeSelect = w.findComponent('[data-testid="filter-type"]')
+    ;(typeSelect as VueWrapper).vm.$emit('update:modelValue', 'Meeting')
+    for (let i = 0; i < 5; i++) await flushPromises()
+    await new Promise((r) => setTimeout(r, 350))
+    for (let i = 0; i < 3; i++) await flushPromises()
+    expect(f.calls.some((c) => c.url.includes('/calendar/occurrences') && c.url.includes('type=Meeting'))).toBe(true)
+
+    await w.get('[data-testid="new-calendar"]').trigger('click')
+    for (let i = 0; i < 2; i++) await flushPromises()
+    expect(document.body.querySelector('[data-testid="board-dialog"]')).not.toBeNull()
+    const nameInput = w.findAllComponents({ name: 'InputText' }).find((c) => c.attributes('data-testid') === 'board-name')
+      ?? w.findComponent('[data-testid="board-name"]')
+    ;(nameInput as VueWrapper).vm.$emit('update:modelValue', 'Desk')
+    await flushPromises()
+    document.body.querySelector<HTMLButtonElement>('[data-testid="save-board"]')!.click()
+    for (let i = 0; i < 4; i++) await flushPromises()
+    const post = f.calls.find((c) => c.method === 'POST' && c.url === '/api/v1/calendars')
+    expect(post?.body).toMatchObject({ name: 'Desk', scope: 'Space', spaceKey: 'ENG' })
   })
 })

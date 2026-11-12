@@ -53,8 +53,9 @@ Optional allow-lists (empty = feature off): `Raavi:Ai:AllowedHosts`, `Raavi:Inte
 ### Issue trackers and Wiki ↔ Jira page links
 
 - Set `Raavi:Integrations:AllowedConnectorHosts` to the Jira / GitHub Enterprise / GitLab host names (e.g. `jira.example.com` or `*.example.com`). Empty = connectors cannot be created or called (SSRF guard).
+- On-prem trackers that speak only **http** (no TLS): set `Raavi:Integrations:AllowHttpConnectorTokens` to `true` in `sandbox/config/integrations.json` (default `false`). Tokens then travel in cleartext on that path — use only on trusted networks.
 - **Lookup** in the editor (issue chip) works with an optional token (public data) or Browse access.
-- **Create / link Jira issues from a wiki page** (Remote Link + Raavi-owned relationship) needs a **Jira** connector with an https token that can **Browse Projects**, **Create Issues** and **Link Issues**. GitHub/GitLab stay read-only.
+- **Create / link Jira issues from a wiki page** (Remote Link + Raavi-owned relationship) needs a **Jira** connector with a token that can **Browse Projects**, **Create Issues** and **Link Issues**. GitHub/GitLab stay read-only.
 - After upgrade the migrator creates `integrations.PageIssueLinks` / `PageIssueLinkContexts` and the integrations outbox; take a backup and stop services first, then run `ConfigSync.ps1`.
 
 ## 3b. One address for everything (no wildcard DNS/TLS) — path addressing and a default workspace

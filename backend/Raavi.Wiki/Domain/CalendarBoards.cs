@@ -244,4 +244,211 @@ public sealed class CalendarAccessGrant : Entity, ITenantOwned
             CreatedAt = now,
         };
     }
+
+    public void ChangeGrant(CalendarGrant grant)
+    {
+        if (!Enum.IsDefined(grant))
+        {
+            throw new DomainException("calendar.permission_invalid", "The calendar permission is not valid.");
+        }
+
+        Grant = grant;
+    }
+}
+
+public enum RecurrenceEditScope
+{
+    EntireSeries = 0,
+    ThisOccurrence = 1,
+    ThisAndFollowing = 2,
+}
+
+public enum CalendarAttendeeResponse
+{
+    Pending = 0,
+    Accepted = 1,
+    Declined = 2,
+    Tentative = 3,
+}
+
+/// <summary>A invited workspace user on a calendar event (RSVP).</summary>
+public sealed class CalendarEventAttendee : Entity, ITenantOwned
+{
+    public const int MaxPerEvent = 50;
+
+    private CalendarEventAttendee() { }
+
+    public Guid TenantId { get; private set; }
+
+    public Guid EventId { get; private set; }
+
+    public Guid UserId { get; private set; }
+
+    public CalendarAttendeeResponse Response { get; private set; }
+
+    public bool Optional { get; private set; }
+
+    public DateTimeOffset InvitedAt { get; private set; }
+
+    public DateTimeOffset? RespondedAt { get; private set; }
+
+    public static CalendarEventAttendee Invite(Guid eventId, Guid userId, bool optional, DateTimeOffset now) => new()
+    {
+        EventId = eventId,
+        UserId = userId,
+        Optional = optional,
+        Response = CalendarAttendeeResponse.Pending,
+        InvitedAt = now,
+    };
+
+    public void Respond(CalendarAttendeeResponse response, DateTimeOffset now)
+    {
+        if (!Enum.IsDefined(response) || response == CalendarAttendeeResponse.Pending)
+        {
+            throw new DomainException("calendar.rsvp_invalid", "Choose Accepted, Declined or Tentative.");
+        }
+
+        Response = response;
+        RespondedAt = now;
+    }
+}
+
+/// <summary>Reminder offset before an event's start (minutes). Delivered by the calendar reminder job.</summary>
+public sealed class CalendarEventReminder : Entity, ITenantOwned
+{
+    public const int MaxOffsetsPerEvent = 5;
+
+    private CalendarEventReminder() { }
+
+    public Guid TenantId { get; private set; }
+
+    public Guid EventId { get; private set; }
+
+    /// <summary>Minutes before start (0 = at start). Positive values only.</summary>
+    public int MinutesBefore { get; private set; }
+
+    public bool InApp { get; private set; } = true;
+
+    public bool Email { get; private set; }
+
+    /// <summary>Idempotency: last occurrence date for which this reminder fired (yyyy-MM-dd) or empty.</summary>
+    public string? LastDeliveredOccurrence { get; private set; }
+
+    public DateTimeOffset? LastDeliveredAt { get; private set; }
+
+    public static CalendarEventReminder Create(Guid eventId, int minutesBefore, bool inApp, bool email)
+    {
+        if (minutesBefore is < 0 or > 60 * 24 * 30)
+        {
+            throw new DomainException("calendar.reminder_invalid", "Reminder offset must be between 0 and 30 days.");
+        }
+
+        if (!inApp && !email)
+        {
+            throw new DomainException("calendar.reminder_invalid", "Choose in-app and/or e-mail for the reminder.");
+        }
+
+        return new CalendarEventReminder
+        {
+            EventId = eventId,
+            MinutesBefore = minutesBefore,
+            InApp = inApp,
+            Email = email,
+        };
+    }
+
+    public void MarkDelivered(string occurrenceDate, DateTimeOffset now)
+    {
+        LastDeliveredOccurrence = occurrenceDate;
+        LastDeliveredAt = now;
+    }
+}
+
+/// <summary>Per-user calendar notification preferences (Quiet Hours, TTS, privacy).</summary>
+public sealed class CalendarUserPreference : Entity, ITenantOwned
+{
+    private CalendarUserPreference() { }
+
+    public Guid TenantId { get; private set; }
+
+    public Guid UserId { get; private set; }
+
+    public bool BrowserAlerts { get; private set; } = true;
+
+    public bool TtsEnabled { get; private set; }
+
+    public string TtsLocale { get; private set; } = "en";
+
+    public double TtsRate { get; private set; } = 1.0;
+
+    /// <summary>When true, TTS speaks a generic phrase instead of the event title for private events.</summary>
+    public bool HidePrivateTitlesInTts { get; private set; } = true;
+
+    /// <summary>Quiet hours start (inclusive), wall-clock minutes from midnight local; null = off.</summary>
+    public int? QuietStartMinutes { get; private set; }
+
+    public int? QuietEndMinutes { get; private set; }
+
+    public string TimeZone { get; private set; } = "UTC";
+
+    public DateTimeOffset UpdatedAt { get; private set; }
+
+    public static CalendarUserPreference Create(Guid userId, DateTimeOffset now) => new()
+    {
+        UserId = userId,
+        UpdatedAt = now,
+    };
+
+    public void Update(bool browserAlerts, bool ttsEnabled, string? ttsLocale, double ttsRate, bool hidePrivateTitles, int? quietStart, int? quietEnd, string? timeZone, DateTimeOffset now)
+    {
+        if (ttsRate is < 0.5 or > 2.0)
+        {
+            throw new DomainException("calendar.prefs_invalid", "Speech rate must be between 0.5 and 2.");
+        }
+
+        if ((quietStart is null) != (quietEnd is null))
+        {
+            throw new DomainException("calendar.prefs_invalid", "Quiet hours need both a start and an end, or neither.");
+        }
+
+        if (quietStart is { } qs && (qs is < 0 or > 1439 || quietEnd is < 0 or > 1439))
+        {
+            throw new DomainException("calendar.prefs_invalid", "Quiet hours must be minutes from midnight (0–1439).");
+        }
+
+        var zone = string.IsNullOrWhiteSpace(timeZone) ? "UTC" : timeZone.Trim();
+        if (!TimeZoneInfo.TryFindSystemTimeZoneById(zone, out _))
+        {
+            throw new DomainException("calendar.time_zone_invalid", "The time zone is not recognised.");
+        }
+
+        var locale = string.IsNullOrWhiteSpace(ttsLocale) ? "en" : ttsLocale.Trim().ToLowerInvariant();
+        if (locale is not ("en" or "fa"))
+        {
+            throw new DomainException("calendar.prefs_invalid", "TTS locale must be en or fa.");
+        }
+
+        BrowserAlerts = browserAlerts;
+        TtsEnabled = ttsEnabled;
+        TtsLocale = locale;
+        TtsRate = ttsRate;
+        HidePrivateTitlesInTts = hidePrivateTitles;
+        QuietStartMinutes = quietStart;
+        QuietEndMinutes = quietEnd;
+        TimeZone = zone;
+        UpdatedAt = now;
+    }
+
+    public bool IsQuiet(DateTimeOffset utcNow)
+    {
+        if (QuietStartMinutes is not { } start || QuietEndMinutes is not { } end)
+        {
+            return false;
+        }
+
+        var zone = TimeZoneInfo.FindSystemTimeZoneById(TimeZone);
+        var local = TimeZoneInfo.ConvertTime(utcNow, zone);
+        var minutes = local.Hour * 60 + local.Minute;
+        return start <= end ? minutes >= start && minutes < end : minutes >= start || minutes < end;
+    }
 }

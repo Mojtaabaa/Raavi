@@ -107,7 +107,15 @@ const typeOptions = computed(() => [
   { value: 'page', label: t('wiki.page.typePage') },
   { value: 'folder', label: t('wiki.page.typeFolder') },
 ])
-const templateOptions = computed(() => [{ id: null, name: t('wiki.templates.blank') }, ...templates.value])
+function templateLabel(tpl: Template) {
+  if (tpl.systemKey === 'decision-record') return t('wiki.templates.system.decision')
+  if (tpl.systemKey === 'incident-record') return t('wiki.templates.system.incident')
+  return tpl.name
+}
+const templateOptions = computed(() => [
+  { id: null, name: t('wiki.templates.blank') },
+  ...templates.value.map((tpl) => ({ id: tpl.id, name: templateLabel(tpl) })),
+])
 const fmt = (iso: string | null | undefined) => (iso ? formatDate(iso, locale.locale, { dateStyle: 'medium', timeStyle: 'short' }) : '')
 /** The last failure that has guidance (steps): shown inline under the title bar, so the person can read what to do, instead of only a toast that disappears. */
 // The title bar sticks below the app header; the editor toolbar sticks below the bar (otherwise the bar covers it while scrolling a long page).

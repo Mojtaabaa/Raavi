@@ -24,6 +24,12 @@ public sealed class IntegrationsOptions
     /// <summary>Hosts issue connectors (GitHub, GitLab, Jira) may call. Empty = connectors cannot be created or used (SSRF guard).</summary>
     public IList<string> AllowedConnectorHosts { get; } = [];
 
+    /// <summary>
+    /// When true, a connector with an access token may use <c>http://</c> (on-prem trackers without TLS).
+    /// Default false: token-bearing connectors must use https. Host must still be on <see cref="AllowedConnectorHosts"/>.
+    /// </summary>
+    public bool AllowHttpConnectorTokens { get; set; }
+
     public int TimeoutSeconds { get; set; } = 10;
 }
 

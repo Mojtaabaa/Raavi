@@ -29,29 +29,27 @@
 7. Preserve create-event-on-space via `EnsureSpaceDefaultCalendarAsync`. ✅
 8. Docs: locked decisions + [TEMPLAR_API_CONTRACT.md](./TEMPLAR_API_CONTRACT.md). ✅
 
-**Still in Stage A:** grant CRUD/UI; richer event DTO fields on write; frontend calendar picker; Stage A regression evidence in IMPLEMENTATION_STATUS.
+**Stage A remainder (tranche 2) ✅:** grant CRUD + FreeBusy; rich event DTO; create on calendar; frontend picker. Migration `CalendarV1Core`.
 
-**Exit:** Existing CalendarTests green; new calendar CRUD + isolation tests; no data loss.
+## Stage B — UI views & interaction (P0) — tranche 2 partial ✅
 
-## Stage B — UI views & interaction (P0)
+Month / Day / Week / Work week / Agenda / Year / Timeline + multi-calendar toggles + offline last-view cache (edits blocked) + day drag-drop + context menu. **Open:** resize, richer DnD.
 
-Day / Week / Work week / Agenda / Year; DnD; multi-calendar overlay; search; offline view cache; edit disabled offline.
+## Stage C — Meetings, reminders, TTS, availability (P0→P1) — tranche 2 partial ✅
 
-## Stage C — Meetings, reminders, TTS, availability (P0→P1)
+Reminders + Workers; prefs + browser Notification + TTS; Free/Busy share; attendees + RSVP + page/whiteboard links (tranche 4 ✅). **Open:** scheduling assistant, richer meeting notes UX, content-less invite notifications.
 
-Attendees/RSVP; reminders + Workers; in-app/email; browser Notification + TTS prefs; Quiet Hours; Free/Busy; scheduling suggestions; agenda; Wiki meeting notes; tasks.
+## Stage D — Recurrence completion (P0) — ✅
 
-## Stage D — Recurrence completion (P0)
+This / ThisAndFollowing / EntireSeries + exclude; monthly Nth-weekday (`monthWeek`, tranche 4). **Open:** more preset polish.
 
-Relative weekday; this / following / series; moved exceptions; cancel one/all; DST tests.
+## Stage E — External sync (P1) — partial
 
-## Stage E — External sync (P1)
+ICS **import** (sanitized) ✅. **Open:** ICS feeds/subscribe; CalDAV; Google/Outlook OAuth; conflict store + UI; never auto-delete remote without confirm.
 
-ICS import/feeds; CalDAV; Google/Outlook OAuth; conflict store + UI; never auto-delete remote without confirm.
+## Stage F — Jira + Templar (P1) — tranche 2 ✅ shell + overlay
 
-## Stage F — Jira + Templar (P1)
-
-Jira read-only overlay. Templar shell + contract doc; live when contract arrives.
+Jira due-date read-only overlay. Templar provider shell (disabled until contract); live Blocked.
 
 ## Stage G — Wiki / Whiteboard / Search / Audit (P1)
 

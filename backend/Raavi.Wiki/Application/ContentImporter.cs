@@ -91,6 +91,7 @@ public sealed class ContentImporter(WikiDbContext db, IClock clock) : IContentIm
             node = ContentNode.Create(request.SpaceId, parentId, PageContentProvider.Type, first.Title, request.Position, request.ActorId, first.Version.CreatedAt);
             node.MarkImported(request.SourceSystem, request.SourceId, request.SourceUrl, first.Version.CreatedAt, parsed[^1].Version.CreatedAt);
             db.Nodes.Add(node);
+            db.ContentGovernance.Add(ContentGovernance.CreateForNew(node.Id, request.ActorId, node.Status, clock.UtcNow));
             db.Closure.Add(ContentClosure.Link(node.Id, node.Id, 0));
             if (parentId is { } p)
             {

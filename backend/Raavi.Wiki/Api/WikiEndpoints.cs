@@ -75,6 +75,21 @@ public static class WikiEndpoints
         g.MapGet("/content/{id:guid}", async (Guid id, PageService svc, HttpContext http, CancellationToken ct) =>
             (await svc.GetAsync(id, ct).ConfigureAwait(false)).ToHttp(p => ETags.OkWithETag(http, p, p.Revision)));
 
+        g.MapPut("/content/{id:guid}/governance", async (Guid id, UpdateGovernanceRequest body, PageService svc, HttpContext http, CancellationToken ct) =>
+            (await svc.UpdateGovernanceAsync(id, body, ct).ConfigureAwait(false)).ToHttp(e => ETags.OkWithETag(http, e, e.Revision)));
+
+        g.MapGet("/content/review-due", async (Guid? ownerUserId, int? take, PageService svc, CancellationToken ct) =>
+            Results.Ok(await svc.ReviewDueAsync(ownerUserId, take ?? 50, ct).ConfigureAwait(false)));
+
+        g.MapGet("/content/{id:guid}/relationships", async (Guid id, KnowledgeRelationshipService svc, CancellationToken ct) =>
+            (await svc.ListAsync(id, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+
+        g.MapPost("/content/{id:guid}/relationships", async (Guid id, CreateKnowledgeRelationshipRequest body, KnowledgeRelationshipService svc, CancellationToken ct) =>
+            (await svc.CreateAsync(id, body, ct).ConfigureAwait(false)).ToHttp(r => Results.Created($"/api/v1/content/{id}/relationships/{r.Id}", r)));
+
+        g.MapDelete("/content/{id:guid}/relationships/{relationshipId:guid}", async (Guid id, Guid relationshipId, KnowledgeRelationshipService svc, CancellationToken ct) =>
+            (await svc.RemoveAsync(id, relationshipId, ct).ConfigureAwait(false)).ToHttp());
+
         g.MapPut("/content/{id:guid}", async (Guid id, UpdatePageRequest body, PageService svc, HttpContext http, CancellationToken ct) =>
             await Conditional(http, rev => svc.UpdateAsync(id, rev, body, ct), p => p.Revision).ConfigureAwait(false));
 
@@ -114,8 +129,64 @@ public static class WikiEndpoints
         g.MapGet("/labels", async (string? prefix, DiscoveryService svc, CancellationToken ct) =>
             Results.Ok(await svc.SuggestLabelsAsync(prefix ?? string.Empty, ct).ConfigureAwait(false)));
 
-        g.MapGet("/labels/{name}/content", async (string name, DiscoveryService svc, CancellationToken ct) =>
-            Results.Ok(await svc.ContentWithLabelAsync(name, ct).ConfigureAwait(false)));
+        g.MapGet("/labels/search", async (string? tags, string? tagMode, bool? includeDescendants, string? spaceKey, int? skip, int? take, LabelService svc, CancellationToken ct) =>
+            (await svc.SearchPagesAsync(new LabelSearchRequest(tags, tagMode, includeDescendants ?? false, spaceKey, skip ?? 0, take ?? 50), ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+
+        g.MapGet("/labels/{name}", async (string name, LabelService svc, CancellationToken ct) =>
+            (await svc.GetBySlugAsync(name, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+
+        g.MapGet("/labels/{name}/content", async (string name, string? tagMode, bool? includeDescendants, string? spaceKey, int? skip, int? take, LabelService labels, DiscoveryService discovery, CancellationToken ct) =>
+        {
+            if (tagMode is null && includeDescendants is not true && spaceKey is null && skip is null)
+            {
+                return Results.Ok(await discovery.ContentWithLabelAsync(name, ct).ConfigureAwait(false));
+            }
+
+            return (await labels.SearchPagesAsync(new LabelSearchRequest(name, tagMode, includeDescendants ?? false, spaceKey, skip ?? 0, take ?? 50), ct).ConfigureAwait(false)).ToHttp(Results.Ok);
+        });
+
+        g.MapGet("/content/{id:guid}/label-suggestions", async (Guid id, LabelService svc, CancellationToken ct) =>
+            Results.Ok(await svc.SuggestForPageAsync(id, ct).ConfigureAwait(false)));
+
+        g.MapGet("/admin/labels", async (string? q, bool? archived, Guid? parentId, string? sort, int? skip, int? take, LabelService svc, CancellationToken ct) =>
+            (await svc.AdminListAsync(q, archived, parentId, sort, skip ?? 0, take ?? 50, ct).ConfigureAwait(false)).ToHttp(Results.Ok))
+            .RequireAuthorization(RaaviPolicies.TenantAdministrator);
+
+        g.MapPost("/admin/labels", async (LabelWriteRequest body, LabelService svc, CancellationToken ct) =>
+            (await svc.CreateAsync(body, ct).ConfigureAwait(false)).ToHttp(Results.Ok))
+            .RequireAuthorization(RaaviPolicies.TenantAdministrator);
+
+        g.MapPut("/admin/labels/{id:guid}", async (Guid id, LabelWriteRequest body, LabelService svc, CancellationToken ct) =>
+            (await svc.UpdateAsync(id, body, ct).ConfigureAwait(false)).ToHttp(Results.Ok))
+            .RequireAuthorization(RaaviPolicies.TenantAdministrator);
+
+        g.MapPost("/admin/labels/{id:guid}/move", async (Guid id, LabelMoveRequest body, LabelService svc, CancellationToken ct) =>
+            (await svc.MoveAsync(id, body, ct).ConfigureAwait(false)).ToHttp(Results.Ok))
+            .RequireAuthorization(RaaviPolicies.TenantAdministrator);
+
+        g.MapPost("/admin/labels/{id:guid}/archive", async (Guid id, LabelService svc, CancellationToken ct) =>
+            (await svc.ArchiveAsync(id, restore: false, ct).ConfigureAwait(false)).ToHttp(Results.Ok))
+            .RequireAuthorization(RaaviPolicies.TenantAdministrator);
+
+        g.MapPost("/admin/labels/{id:guid}/restore", async (Guid id, LabelService svc, CancellationToken ct) =>
+            (await svc.ArchiveAsync(id, restore: true, ct).ConfigureAwait(false)).ToHttp(Results.Ok))
+            .RequireAuthorization(RaaviPolicies.TenantAdministrator);
+
+        g.MapDelete("/admin/labels/{id:guid}", async (Guid id, LabelService svc, CancellationToken ct) =>
+            (await svc.DeleteAsync(id, ct).ConfigureAwait(false)).ToHttp())
+            .RequireAuthorization(RaaviPolicies.TenantAdministrator);
+
+        g.MapPost("/admin/labels/merge/preview", async (LabelMergeRequest body, LabelService svc, CancellationToken ct) =>
+            (await svc.PreviewMergeAsync(body, ct).ConfigureAwait(false)).ToHttp(Results.Ok))
+            .RequireAuthorization(RaaviPolicies.TenantAdministrator);
+
+        g.MapPost("/admin/labels/merge", async (LabelMergeRequest body, LabelService svc, CancellationToken ct) =>
+            (await svc.MergeAsync(body, ct).ConfigureAwait(false)).ToHttp(Results.Ok))
+            .RequireAuthorization(RaaviPolicies.TenantAdministrator);
+
+        g.MapGet("/admin/labels/analytics", async (LabelService svc, CancellationToken ct) =>
+            (await svc.AnalyticsAsync(ct).ConfigureAwait(false)).ToHttp(Results.Ok))
+            .RequireAuthorization(RaaviPolicies.TenantAdministrator);
 
         g.MapGet("/activity", async (int? limit, DiscoveryService svc, CancellationToken ct) =>
             (await svc.ActivityAsync(null, limit ?? 30, ct).ConfigureAwait(false)).ToHttp(Results.Ok));

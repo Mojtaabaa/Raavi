@@ -25,6 +25,7 @@ public sealed class TemplateService(WikiDbContext db, WikiAuthorizer authz, Spac
             return Result<IReadOnlyList<TemplateDto>>.Failure(WikiErrors.SpaceNotFound);
         }
 
+        await KnowledgeSystemTemplates.EnsureAsync(db, current.UserId, clock.UtcNow, ct).ConfigureAwait(false);
         var principal = await authz.PrincipalAsync(ct).ConfigureAwait(false);
         var rows = await db.Templates.AsNoTracking().Where(t => t.SpaceId == space.Space.Id || t.SpaceId == null).OrderBy(t => t.SpaceId == null).ThenBy(t => t.Name).ToListAsync(ct).ConfigureAwait(false);
         return Result<IReadOnlyList<TemplateDto>>.Success(rows.Select(t => ToDto(t, t.SpaceId is null ? principal.IsTenantAdministrator : space.CanWrite(PermissionAction.ManageTemplates))).ToList());
@@ -32,6 +33,7 @@ public sealed class TemplateService(WikiDbContext db, WikiAuthorizer authz, Spac
 
     public async Task<IReadOnlyList<TemplateDto>> ListGlobalAsync(CancellationToken ct)
     {
+        await KnowledgeSystemTemplates.EnsureAsync(db, current.UserId, clock.UtcNow, ct).ConfigureAwait(false);
         var principal = await authz.PrincipalAsync(ct).ConfigureAwait(false);
         var rows = await db.Templates.AsNoTracking().Where(t => t.SpaceId == null).OrderBy(t => t.Name).ToListAsync(ct).ConfigureAwait(false);
         return rows.Select(t => ToDto(t, principal.IsTenantAdministrator)).ToList();
@@ -145,6 +147,7 @@ public sealed class TemplateService(WikiDbContext db, WikiAuthorizer authz, Spac
     private static TemplateDto ToDto(Template t, bool canManage)
     {
         using var doc = JsonDocument.Parse(RaaviDocument.Parse(t.ContentJson).Json);
-        return new TemplateDto(t.Id, t.SpaceId, t.Name, t.Description, doc.RootElement.Clone(), t.UpdatedAt, t.Revision, canManage);
+        var systemKey = KnowledgeSystemTemplates.TryParseKey(t.Description);
+        return new TemplateDto(t.Id, t.SpaceId, t.Name, t.Description, doc.RootElement.Clone(), t.UpdatedAt, t.Revision, canManage, systemKey is not null, systemKey);
     }
 }

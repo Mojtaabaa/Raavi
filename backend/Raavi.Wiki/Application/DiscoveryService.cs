@@ -209,6 +209,10 @@ public sealed class DiscoveryService(WikiDbContext db, WikiAuthorizer authz, Spa
         return new ActivityStatsDto(visible.Count, perDay, byKind, top.Select(x => new ActivityActorDto(x.Key, names.GetValueOrDefault(x.Key), x.Count)).ToList(), byHour);
     }
 
+    /// <summary>Permission-filtered content cards (shared with label search).</summary>
+    public Task<IReadOnlyList<ContentListItemDto>> ToListItemsPublicAsync(List<ContentNode> candidates, int limit, CancellationToken ct) =>
+        ToListItemsAsync(candidates, limit, ct);
+
     private async Task<IReadOnlyList<ContentListItemDto>> ToListItemsAsync(List<ContentNode> candidates, int limit, CancellationToken ct)
     {
         var viewable = await authz.FilterViewableAsync(candidates.Select(n => (n.Id, n.SpaceId)).ToList(), ct).ConfigureAwait(false);

@@ -21,6 +21,13 @@ const router = useRouter()
 const mode = ref<'search' | 'ask'>(route.query.mode === 'ask' ? 'ask' : 'search')
 const q = ref(typeof route.query.q === 'string' ? route.query.q : '')
 const space = ref(typeof route.query.space === 'string' ? route.query.space : '')
+const labelFilter = ref(typeof route.query.tags === 'string' ? route.query.tags : '')
+const tagMode = ref<'any' | 'all'>(route.query.tagMode === 'all' ? 'all' : 'any')
+const includeDescendants = ref(route.query.includeDescendants === 'true')
+const classification = ref(typeof route.query.classification === 'string' ? route.query.classification : '')
+const lifecycleStatus = ref(typeof route.query.lifecycle === 'string' ? route.query.lifecycle : '')
+const reviewDue = ref(route.query.reviewDue === 'true')
+const relationshipType = ref(typeof route.query.relationshipType === 'string' ? route.query.relationshipType : '')
 const spaces = ref<SpaceSummary[]>([])
 const aiAvailable = ref(false)
 const hits = ref<SearchHit[]>([])
@@ -61,12 +68,42 @@ async function run() {
   if (text.length < 2) return
   const mine = ++seq
   busy.value = true
-  void router.replace({ query: { q: text, mode: mode.value, ...(space.value ? { space: space.value } : {}) } })
+  void router.replace({
+    query: {
+      q: text,
+      mode: mode.value,
+      ...(space.value ? { space: space.value } : {}),
+      ...(labelFilter.value.trim() ? { tags: labelFilter.value.trim(), tagMode: tagMode.value, ...(includeDescendants.value ? { includeDescendants: 'true' } : {}) } : {}),
+      ...(classification.value ? { classification: classification.value } : {}),
+      ...(lifecycleStatus.value ? { lifecycle: lifecycleStatus.value } : {}),
+      ...(reviewDue.value ? { reviewDue: 'true' } : {}),
+      ...(relationshipType.value ? { relationshipType: relationshipType.value } : {}),
+    },
+  })
   try {
     if (mode.value === 'search') {
-      const r = await aiApi.search(text, space.value || undefined)
+      const r = await aiApi.search(text, {
+        space: space.value || undefined,
+        classification: classification.value || undefined,
+        lifecycleStatus: lifecycleStatus.value || undefined,
+        reviewDue: reviewDue.value ? true : undefined,
+        relationshipType: relationshipType.value || undefined,
+      })
       if (mine !== seq) return
-      hits.value = r.hits
+      let next = r.hits
+      const tags = labelFilter.value.trim()
+      if (tags) {
+        const labeled = await wikiApi.labelSearch({
+          tags,
+          tagMode: tagMode.value,
+          includeDescendants: includeDescendants.value,
+          spaceKey: space.value || undefined,
+          take: 100,
+        }).catch(() => ({ items: [], total: 0 }))
+        const allow = new Set(labeled.items.map((i) => i.id))
+        next = next.filter((h) => allow.has(h.contentId))
+      }
+      hits.value = next
       searchMode.value = r.mode
       answer.value = null
     } else {
@@ -94,7 +131,7 @@ watch(q, () => {
   clearTimeout(timer)
   timer = setTimeout(run, 350)
 })
-watch([mode, space], () => {
+watch([mode, space, classification, lifecycleStatus, relationshipType, reviewDue], () => {
   answer.value = null
   hits.value = []
   searched.value = false
@@ -136,6 +173,31 @@ function answerParts(text: string): { text: string; n?: number }[] {
         <option value="">{{ t('smartSearch.allSpaces') }}</option>
         <option v-for="s in spaces" :key="s.key" :value="s.key">{{ s.name }}</option>
       </select>
+      <input v-if="mode === 'search'" v-model="labelFilter" type="text" class="tags" maxlength="200" :placeholder="t('smartSearch.tagsPlaceholder')" :aria-label="t('smartSearch.tags')" dir="ltr" data-testid="smart-tags" />
+      <select v-if="mode === 'search' && labelFilter.trim()" v-model="tagMode" :aria-label="t('wiki.labels.matchAny')" data-testid="smart-tag-mode">
+        <option value="any">{{ t('wiki.labels.matchAny') }}</option>
+        <option value="all">{{ t('wiki.labels.matchAll') }}</option>
+      </select>
+      <label v-if="mode === 'search' && labelFilter.trim()" class="desc">
+        <input v-model="includeDescendants" type="checkbox" data-testid="smart-descendants" />
+        {{ t('wiki.labels.includeDescendants') }}
+      </label>
+      <select v-if="mode === 'search'" v-model="classification" :aria-label="t('wiki.governance.classification')" data-testid="smart-class">
+        <option value="">{{ t('smartSearch.anyClassification') }}</option>
+        <option v-for="c in ['Public', 'Internal', 'Confidential', 'Restricted']" :key="c" :value="c">{{ t(`wiki.governance.class.${c}`) }}</option>
+      </select>
+      <select v-if="mode === 'search'" v-model="lifecycleStatus" :aria-label="t('wiki.governance.lifecycle')" data-testid="smart-life">
+        <option value="">{{ t('smartSearch.anyLifecycle') }}</option>
+        <option v-for="c in ['Draft', 'Current', 'InReview', 'Approved', 'Archived', 'Expired']" :key="c" :value="c">{{ t(`wiki.governance.life.${c}`) }}</option>
+      </select>
+      <select v-if="mode === 'search'" v-model="relationshipType" :aria-label="t('wiki.relationships.type')" data-testid="smart-rel">
+        <option value="">{{ t('smartSearch.anyRelationship') }}</option>
+        <option v-for="c in ['RelatedTo', 'References', 'DependsOn', 'Documents', 'Implements', 'Supersedes']" :key="c" :value="c">{{ t(`wiki.relationships.types.${c}`) }}</option>
+      </select>
+      <label v-if="mode === 'search'" class="desc">
+        <input v-model="reviewDue" type="checkbox" data-testid="smart-review-due" />
+        {{ t('smartSearch.reviewDueOnly') }}
+      </label>
       <Button v-if="mode === 'ask'" type="submit" icon="pi pi-send" :label="t('smartSearch.send')" :loading="busy" :disabled="q.trim().length < 2" data-testid="smart-send" />
     </form>
 
@@ -186,6 +248,8 @@ h2 { margin: var(--raavi-space-3) 0 var(--raavi-space-1); font-size: 0.95rem; }
 .seg button.on { background: var(--p-primary-color); color: var(--p-primary-contrast-color, #fff); }
 .seg button:disabled { opacity: 0.45; cursor: not-allowed; }
 .q { flex: 1; min-inline-size: 14rem; font: inherit; padding: 0.5rem 0.75rem; border: 1px solid var(--raavi-border); border-radius: var(--raavi-radius-sm); background: var(--raavi-surface); color: inherit; }
+.tags { min-inline-size: 12rem; font: inherit; padding: 0.5rem 0.75rem; border: 1px solid var(--raavi-border); border-radius: var(--raavi-radius-sm); background: var(--raavi-surface); color: inherit; }
+.desc { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.9rem; }
 .bar select { font: inherit; padding: 0.45rem 0.5rem; border: 1px solid var(--raavi-border); border-radius: var(--raavi-radius-sm); background: var(--raavi-surface); color: inherit; max-inline-size: 12rem; }
 .hits { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--raavi-space-3); }
 .hit { padding: var(--raavi-space-3) var(--raavi-space-4); background: var(--raavi-surface); border: 1px solid var(--raavi-border); border-radius: var(--raavi-radius-md); }

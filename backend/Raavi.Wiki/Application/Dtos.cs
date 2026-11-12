@@ -40,12 +40,22 @@ public sealed record BreadcrumbDto(Guid Id, string Title, string ContentType);
 
 public sealed record ContentRightsDto(bool CanEdit, bool CanCreateChild, bool CanMove, bool CanArchive, bool CanDelete, bool CanRestrict, bool CanPublish, bool CanApprove, bool CanComment, bool CanModerateComments);
 
+public sealed record ContentGovernanceDto(
+    Guid OwnerUserId, string? OwnerName, Guid? ReviewOwnerUserId, string? ReviewOwnerName,
+    DateTimeOffset? ReviewAt, DateTimeOffset? LastReviewedAt, string Classification, string LifecycleStatus,
+    bool ReviewDue);
+
+public sealed record UpdateGovernanceRequest(
+    Guid? OwnerUserId, Guid? ReviewOwnerUserId, bool? ClearReviewOwner, DateTimeOffset? ReviewAt, bool? ClearReviewAt,
+    string? Classification, string? LifecycleStatus, bool? MarkReviewed);
+
 public sealed record PageDto(
     Guid Id, Guid SpaceId, string SpaceKey, string SpaceName, Guid? ParentId, string ContentType, string Title, string Slug,
     ContentStatus Status, JsonElement? Body, int Version, IReadOnlyList<string> Labels, IReadOnlyList<BreadcrumbDto> Breadcrumbs,
     bool IsRestricted, Guid CreatedBy, string? CreatedByName, DateTimeOffset CreatedAt, Guid UpdatedBy, string? UpdatedByName,
     DateTimeOffset UpdatedAt, int Revision, ContentRightsDto Rights,
-    DateTimeOffset? PublishedAt = null, bool HasDraft = false, DateTimeOffset? DraftUpdatedAt = null, DateTimeOffset? ScheduledPublishAt = null, bool PendingApproval = false, bool RequirePublishApproval = false);
+    DateTimeOffset? PublishedAt = null, bool HasDraft = false, DateTimeOffset? DraftUpdatedAt = null, DateTimeOffset? ScheduledPublishAt = null, bool PendingApproval = false, bool RequirePublishApproval = false,
+    ContentGovernanceDto? Governance = null);
 
 /// <param name="Publish">false = create an unpublished draft page (visible to its creator only) — the editor's flow. Defaults to true.</param>
 public sealed record CreatePageRequest(string Title, Guid? ParentId, string? ContentType, JsonElement? Body, Guid? TemplateId, bool? Publish = null);
@@ -68,11 +78,20 @@ public sealed record ReplaceRestrictionsRequest(IReadOnlyList<RestrictionSubject
 
 public sealed record LabelRequest(string Name);
 
-public sealed record ContentListItemDto(Guid Id, string ContentType, string Title, string Slug, Guid SpaceId, string SpaceKey, string SpaceName, DateTimeOffset UpdatedAt);
+public sealed record KnowledgeRelationshipDto(
+    Guid Id, string RelationshipType, string Direction, string Origin, string? SourceSystem,
+    string TargetKind, Guid? TargetContentId, string? TargetExternalKey, string? Title, string? SpaceKey, string? Slug,
+    bool CanRemove, DateTimeOffset CreatedAt);
+
+public sealed record CreateKnowledgeRelationshipRequest(string RelationshipType, Guid TargetContentId);
+
+public sealed record ContentListItemDto(
+    Guid Id, string ContentType, string Title, string Slug, Guid SpaceId, string SpaceKey, string SpaceName, DateTimeOffset UpdatedAt,
+    Guid? OwnerUserId = null, string? Classification = null, string? LifecycleStatus = null, DateTimeOffset? ReviewAt = null, bool ReviewDue = false);
 
 public sealed record QuickFindDto(IReadOnlyList<SpaceSummaryDto> Spaces, IReadOnlyList<ContentListItemDto> Content);
 
-public sealed record TemplateDto(Guid Id, Guid? SpaceId, string Name, string? Description, JsonElement Body, DateTimeOffset UpdatedAt, int Revision, bool CanManage);
+public sealed record TemplateDto(Guid Id, Guid? SpaceId, string Name, string? Description, JsonElement Body, DateTimeOffset UpdatedAt, int Revision, bool CanManage, bool IsSystem = false, string? SystemKey = null);
 
 public sealed record TemplateRequest(string Name, string? Description, JsonElement? Body);
 

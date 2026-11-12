@@ -161,7 +161,7 @@ public sealed class WorkflowEngine(
         var label = await db.Labels.FirstOrDefaultAsync(l => l.Name == name, ct).ConfigureAwait(false);
         if (label is null)
         {
-            label = Label.Create(name, now);
+            label = Label.Create(name, w.CreatedBy, now);
             db.Labels.Add(label);
         }
 

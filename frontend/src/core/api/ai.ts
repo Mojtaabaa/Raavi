@@ -81,7 +81,34 @@ export const aiApi = {
     apiRequest<AiSettings>('PUT', '/ai/settings', body, current.revision > 0 ? { ifMatch: `"r${current.revision}"` } : {}).then((r) => r.data),
   usage: () => api<AiUsage>('GET', '/ai/usage'),
   summarize: (pageId: string) => api<AiAnswer>('POST', `/ai/pages/${enc(pageId)}/summary`, {}),
-  search: (q: string, space?: string, take = 15) => api<{ hits: SearchHit[]; mode: 'keyword' | 'hybrid' }>('GET', `/ai/search?q=${enc(q)}${space ? `&space=${enc(space)}` : ''}&take=${take}`),
+  search: (q: string, opts: {
+    space?: string
+    take?: number
+    ownerUserId?: string
+    reviewOwnerUserId?: string
+    classification?: string
+    lifecycleStatus?: string
+    reviewDue?: boolean
+    relationshipType?: string
+    contentType?: string
+    updatedFrom?: string
+    updatedTo?: string
+  } = {}) => {
+    const p = new URLSearchParams()
+    p.set('q', q)
+    p.set('take', String(opts.take ?? 15))
+    if (opts.space) p.set('space', opts.space)
+    if (opts.ownerUserId) p.set('ownerUserId', opts.ownerUserId)
+    if (opts.reviewOwnerUserId) p.set('reviewOwnerUserId', opts.reviewOwnerUserId)
+    if (opts.classification) p.set('classification', opts.classification)
+    if (opts.lifecycleStatus) p.set('lifecycleStatus', opts.lifecycleStatus)
+    if (opts.reviewDue != null) p.set('reviewDue', String(opts.reviewDue))
+    if (opts.relationshipType) p.set('relationshipType', opts.relationshipType)
+    if (opts.contentType) p.set('contentType', opts.contentType)
+    if (opts.updatedFrom) p.set('updatedFrom', opts.updatedFrom)
+    if (opts.updatedTo) p.set('updatedTo', opts.updatedTo)
+    return api<{ hits: SearchHit[]; mode: 'keyword' | 'hybrid' }>('GET', `/ai/search?${p}`)
+  },
   askWiki: (question: string, space?: string) => api<AskAnswer>('POST', '/ai/ask', { question, space: space || null }),
   indexStatus: () => api<IndexStatus>('GET', '/ai/index'),
   runIndex: () => api<IndexStatus>('POST', '/ai/index/run', {}),

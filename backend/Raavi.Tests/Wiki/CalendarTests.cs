@@ -21,8 +21,8 @@ public sealed class CalendarRecurrenceTests
     private static string[] Starts(string start, RecurrenceRule rule, string from, string to) =>
         RecurrenceExpander.StartDates(D(start), rule, D(from), D(to)).Select(d => d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)).ToArray();
 
-    private static RecurrenceRule Rule(RecurrenceFrequency f, int interval = 1, int days = 0, RecurrenceCalendar cal = RecurrenceCalendar.Gregorian, string? until = null, int? count = null) =>
-        new(f, interval, days, cal, until is null ? null : D(until), count);
+    private static RecurrenceRule Rule(RecurrenceFrequency f, int interval = 1, int days = 0, RecurrenceCalendar cal = RecurrenceCalendar.Gregorian, string? until = null, int? count = null, int monthWeek = 0) =>
+        new(f, interval, days, cal, until is null ? null : D(until), count, monthWeek);
 
     private static (int Y, int M, int Day) Persian(DateOnly d)
     {
@@ -101,6 +101,16 @@ public sealed class CalendarRecurrenceTests
 
         // A window far beyond the cap returns without hanging.
         Assert.Empty(Starts("2026-01-01", Rule(RecurrenceFrequency.Daily, count: 5), "2199-01-01", "2199-12-31"));
+    }
+
+    [Fact]
+    public void Nth_weekday_monthly_rules_pick_the_relative_weekday()
+    {
+        // 2026-01-05 is the first Monday of January → second Monday = 12th, last Monday = 26th.
+        var monday = 1 << (int)DayOfWeek.Monday;
+        Assert.Equal(["2026-01-05", "2026-02-02", "2026-03-02"], Starts("2026-01-05", Rule(RecurrenceFrequency.Monthly, days: monday, monthWeek: 1, count: 3), "2026-01-01", "2026-12-31"));
+        Assert.Equal(["2026-01-12", "2026-02-09", "2026-03-09"], Starts("2026-01-12", Rule(RecurrenceFrequency.Monthly, days: monday, monthWeek: 2, count: 3), "2026-01-01", "2026-12-31"));
+        Assert.Equal(["2026-01-26", "2026-02-23", "2026-03-30"], Starts("2026-01-26", Rule(RecurrenceFrequency.Monthly, days: monday, monthWeek: -1, count: 3), "2026-01-01", "2026-12-31"));
     }
 
     private static EventDetails Details(bool allDay = false, string start = "2026-07-01", string end = "2026-07-01", string? startTime = "09:00", string? endTime = "10:00", string? zone = "UTC", RecurrenceRule? rule = null) =>
@@ -194,6 +204,53 @@ public sealed class CalendarRecurrenceTests
 
         Assert.Equal(ics, Encoding.UTF8.GetString(Encoding.UTF8.GetBytes(ics)));
         Assert.Contains("\r\n ", ics, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Monthly_nth_weekday_rules_expand_correctly()
+    {
+        // 2026-01-13 is the 2nd Tuesday of January 2026.
+        var secondTuesday = Rule(RecurrenceFrequency.Monthly, days: 1 << (int)DayOfWeek.Tuesday, monthWeek: 2);
+        Assert.Equal(["2026-01-13", "2026-02-10", "2026-03-10"], Starts("2026-01-13", secondTuesday, "2026-01-01", "2026-03-31"));
+
+        var lastFriday = Rule(RecurrenceFrequency.Monthly, days: 1 << (int)DayOfWeek.Friday, monthWeek: -1);
+        Assert.Equal(["2026-01-30", "2026-02-27", "2026-03-27"], Starts("2026-01-30", lastFriday, "2026-01-01", "2026-03-31"));
+    }
+
+    [Fact]
+    public void Ics_reader_parses_vevents_and_weekly_rrules()
+    {
+        const string ics = """
+            BEGIN:VCALENDAR
+            VERSION:2.0
+            BEGIN:VEVENT
+            UID:a@x
+            SUMMARY:Import me
+            DTSTART;TZID=Asia/Tehran:20260706T093000
+            DTEND;TZID=Asia/Tehran:20260706T094500
+            LOCATION:Room 1
+            RRULE:FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,WE;COUNT=4
+            END:VEVENT
+            BEGIN:VEVENT
+            UID:b@x
+            SUMMARY:All day
+            DTSTART;VALUE=DATE:20260708
+            DTEND;VALUE=DATE:20260709
+            END:VEVENT
+            END:VCALENDAR
+            """;
+        var drafts = IcsReader.Parse(ics);
+        Assert.Equal(2, drafts.Count);
+        Assert.Equal("Import me", drafts[0].Title);
+        Assert.Equal("Asia/Tehran", drafts[0].TimeZone);
+        Assert.False(drafts[0].AllDay);
+        Assert.Equal(new TimeOnly(9, 30), drafts[0].StartTime);
+        Assert.Equal(RecurrenceFrequency.Weekly, drafts[0].Recurrence.Frequency);
+        Assert.Equal((1 << (int)DayOfWeek.Monday) | (1 << (int)DayOfWeek.Wednesday), drafts[0].Recurrence.WeekDays);
+        Assert.Equal(4, drafts[0].Recurrence.Count);
+        Assert.True(drafts[1].AllDay);
+        Assert.Equal(D("2026-07-08"), drafts[1].StartDate);
+        Assert.Equal(D("2026-07-08"), drafts[1].EndDate);
     }
 }
 
@@ -458,5 +515,204 @@ public sealed class CalendarTests(SqlServerFixture fx)
         await CreateEventAsync(owner, key, new { title = "Again", allDay = true, startDate = "2026-11-02" });
         Assert.Single((await owner.GetJsonAsync($"api/v1/spaces/{key}/calendars")).EnumerateArray());
         Assert.Equal(["2026-11-02 Again"], await TitlesAsync(owner, $"api/v1/spaces/{key}/calendar/occurrences?from=2026-11-01&to=2026-11-30"));
+    }
+
+    [Fact]
+    public async Task Personal_events_grants_freebusy_and_recurrence_scopes_work()
+    {
+        var (tenant, owner, _) = await _kit.Identity.TenantWithAdminAsync();
+        var (member, _, _) = await _kit.Identity.AddMemberAsync(tenant, owner);
+        var personal = await ReadAsync(await owner.PostAsync("api/v1/calendars", new { scope = "Personal", name = "Mine", color = "#10b981" }));
+        var calendarId = personal.GetProperty("id").GetGuid();
+
+        using (var created = await owner.PostAsync($"api/v1/calendars/{calendarId}/events", new
+        {
+            title = "Focus", allDay = true, startDate = "2026-12-01", isPrivate = true, type = "FocusTime",
+            reminders = new[] { new { minutesBefore = 10, inApp = true, email = false } },
+        }))
+        {
+            var ev = await ReadAsync(created);
+            Assert.Equal("FocusTime", ev.GetProperty("type").GetString());
+            Assert.True(ev.GetProperty("isPrivate").GetBoolean());
+            Assert.Single(ev.GetProperty("reminders").EnumerateArray());
+        }
+
+        Assert.Equal(["2026-12-01 Focus"], await TitlesAsync(owner, $"api/v1/calendar/occurrences?from=2026-12-01&to=2026-12-01&calendarIds={calendarId}"));
+        Assert.Empty(await TitlesAsync(member, $"api/v1/calendar/occurrences?from=2026-12-01&to=2026-12-01&calendarIds={calendarId}"));
+
+        using (var grant = await owner.PutAsync($"api/v1/calendars/{calendarId}/grants", new { subjectType = "User", subjectId = await MeAsync(member), grant = "FreeBusy" }))
+        {
+            var g = await ReadAsync(grant);
+            Assert.Equal("FreeBusy", g.GetProperty("grant").GetString());
+        }
+
+        var busy = (await member.GetJsonAsync($"api/v1/calendar/occurrences?from=2026-12-01&to=2026-12-01&calendarIds={calendarId}")).EnumerateArray().Single();
+        Assert.Equal("", busy.GetProperty("title").GetString());
+        Assert.True(busy.GetProperty("freeBusyOnly").GetBoolean());
+
+        var series = await ReadAsync(await owner.PostAsync($"api/v1/calendars/{calendarId}/events", new
+        {
+            title = "Standup", allDay = true, startDate = "2026-12-07",
+            recurrence = new { frequency = "Daily", interval = 1, count = 5 },
+        }));
+        var seriesId = series.GetProperty("id").GetGuid();
+        var (current, etag) = await GetWithETagAsync(owner, $"api/v1/calendar/events/{seriesId}");
+        using (var split = await owner.SendAsync(HttpMethod.Put, $"api/v1/calendar/events/{seriesId}", new
+        {
+            title = "Standup PM", allDay = true, startDate = "2026-12-09", endDate = "2026-12-09",
+            editScope = "ThisAndFollowing", occurrenceDate = "2026-12-09",
+        }, withXsrf: true, ifMatch: etag))
+        {
+            var neo = await ReadAsync(split);
+            Assert.Equal("Standup PM", neo.GetProperty("title").GetString());
+            Assert.Equal("2026-12-09", neo.GetProperty("startDate").GetString());
+        }
+
+        var titles = await TitlesAsync(owner, $"api/v1/calendar/occurrences?from=2026-12-07&to=2026-12-12&calendarIds={calendarId}");
+        Assert.Contains("2026-12-07 Standup", titles);
+        Assert.Contains("2026-12-09 Standup PM", titles);
+        Assert.DoesNotContain("2026-12-09 Standup", titles);
+
+        using var prefs = await owner.PutAsync("api/v1/calendar/preferences", new { ttsEnabled = true, ttsLocale = "fa", browserAlerts = true });
+        var savedPrefs = await ReadAsync(prefs);
+        Assert.True(savedPrefs.GetProperty("ttsEnabled").GetBoolean());
+        Assert.Equal("fa", savedPrefs.GetProperty("ttsLocale").GetString());
+    }
+
+    [Fact]
+    public async Task Ics_import_and_occurrence_search_filter_work()
+    {
+        var (_, admin, _) = await _kit.Identity.TenantWithAdminAsync();
+        var key = (await CreateSpaceAsync(admin)).GetProperty("key").GetString()!;
+        await CreateEventAsync(admin, key, new { title = "Alpha meetup", allDay = true, startDate = "2026-08-01", location = "Hall" });
+        await CreateEventAsync(admin, key, new { title = "Beta review", allDay = true, startDate = "2026-08-02" });
+
+        Assert.Equal(
+            ["2026-08-01 Alpha meetup"],
+            await TitlesAsync(admin, $"api/v1/spaces/{key}/calendar/occurrences?from=2026-08-01&to=2026-08-31&q=alpha"));
+        Assert.Equal(
+            ["2026-08-01 Alpha meetup"],
+            await TitlesAsync(admin, $"api/v1/spaces/{key}/calendar/occurrences?from=2026-08-01&to=2026-08-31&q=Hall"));
+
+        var calendarId = (await admin.GetJsonAsync($"api/v1/spaces/{key}/calendars")).EnumerateArray().Single().GetProperty("id").GetGuid();
+        const string ics = """
+            BEGIN:VCALENDAR
+            VERSION:2.0
+            BEGIN:VEVENT
+            SUMMARY:Imported Standup
+            DTSTART;VALUE=DATE:20260810
+            DTEND;VALUE=DATE:20260811
+            RRULE:FREQ=WEEKLY;BYDAY=MO;COUNT=2
+            END:VEVENT
+            END:VCALENDAR
+            """;
+        using (var empty = await admin.PostAsync($"api/v1/calendars/{calendarId}/import", new { ics = "   " }))
+        {
+            await Browser.AssertStatusAsync(empty, HttpStatusCode.BadRequest, "calendar.import_empty");
+        }
+
+        using var import = await admin.PostAsync($"api/v1/calendars/{calendarId}/import", new { ics });
+        var result = await ReadAsync(import);
+        Assert.Equal(1, result.GetProperty("imported").GetInt32());
+        Assert.Equal(0, result.GetProperty("skipped").GetInt32());
+        Assert.Equal(
+            ["2026-08-10 Imported Standup", "2026-08-17 Imported Standup"],
+            await TitlesAsync(admin, $"api/v1/spaces/{key}/calendar/occurrences?from=2026-08-01&to=2026-08-31&q=Imported"));
+    }
+
+    [Fact]
+    public async Task Events_can_be_moved_between_calendars_and_filtered_by_type_and_source()
+    {
+        var (_, admin, _) = await _kit.Identity.TenantWithAdminAsync();
+        var key = (await CreateSpaceAsync(admin)).GetProperty("key").GetString()!;
+        await CreateEventAsync(admin, key, new { title = "Seed", allDay = true, startDate = "2026-08-15" });
+        var spaceCalId = (await admin.GetJsonAsync($"api/v1/spaces/{key}/calendars")).EnumerateArray().Single().GetProperty("id").GetGuid();
+        var personal = await ReadAsync(await admin.PostAsync("api/v1/calendars", new { scope = "Personal", name = "Desk", color = "#111111" }));
+        var personalId = personal.GetProperty("id").GetGuid();
+
+        var created = await ReadAsync(await admin.PostAsync($"api/v1/calendars/{spaceCalId}/events", new
+        {
+            title = "Move me", allDay = true, startDate = "2026-09-01", type = "Meeting",
+        }));
+        var eventId = created.GetProperty("id").GetGuid();
+
+        using (var moved = await admin.PostAsync($"api/v1/calendar/events/{eventId}/move", new { targetCalendarId = personalId }))
+        {
+            var dto = await ReadAsync(moved);
+            Assert.Equal(personalId, dto.GetProperty("calendarId").GetGuid());
+        }
+
+        Assert.Equal(
+            ["2026-09-01 Move me"],
+            await TitlesAsync(admin, $"api/v1/calendar/occurrences?from=2026-09-01&to=2026-09-01&calendarIds={personalId}&type=Meeting"));
+        Assert.Empty(await TitlesAsync(admin, $"api/v1/calendar/occurrences?from=2026-09-01&to=2026-09-01&calendarIds={personalId}&type=Holiday"));
+        Assert.Equal(
+            ["2026-09-01 Move me"],
+            await TitlesAsync(admin, $"api/v1/calendar/occurrences?from=2026-09-01&to=2026-09-01&calendarIds={personalId}&sourceKind=Raavi"));
+        Assert.Empty(await TitlesAsync(admin, $"api/v1/calendar/occurrences?from=2026-09-01&to=2026-09-01&calendarIds={personalId}&sourceKind=Jira"));
+    }
+
+    [Fact]
+    public async Task Attendees_can_be_invited_and_rsvp()
+    {
+        var (tenant, owner, _) = await _kit.Identity.TenantWithAdminAsync();
+        var (member, _, memberId) = await _kit.Identity.AddMemberAsync(tenant, owner);
+        var key = (await CreateSpaceAsync(owner)).GetProperty("key").GetString()!;
+        await CreateEventAsync(owner, key, new { title = "Seed", allDay = true, startDate = "2026-10-01" });
+        var calendarId = (await owner.GetJsonAsync($"api/v1/spaces/{key}/calendars")).EnumerateArray().Single().GetProperty("id").GetGuid();
+
+        var created = await ReadAsync(await owner.PostAsync($"api/v1/calendars/{calendarId}/events", new
+        {
+            title = "Planning", allDay = true, startDate = "2026-10-07",
+            attendees = new[] { new { userId = memberId, optional = false } },
+        }));
+        var eventId = created.GetProperty("id").GetGuid();
+        Assert.Equal("Pending", created.GetProperty("attendees")[0].GetProperty("response").GetString());
+
+        using (var rsvp = await member.PostAsync($"api/v1/calendar/events/{eventId}/rsvp", new { response = "Accepted" }))
+        {
+            var dto = await ReadAsync(rsvp);
+            Assert.Equal("Accepted", dto.GetProperty("myResponse").GetString());
+            Assert.Equal("Accepted", dto.GetProperty("attendees")[0].GetProperty("response").GetString());
+        }
+
+        using (var outsider = await owner.PostAsync($"api/v1/calendar/events/{eventId}/rsvp", new { response = "Accepted" }))
+        {
+            // Owner is not an attendee → not found.
+            Assert.Equal(HttpStatusCode.NotFound, outsider.StatusCode);
+        }
+    }
+
+    [Fact]
+    public async Task Events_can_link_pages_and_boards_and_repeat_on_nth_weekday()
+    {
+        var (_, admin, _) = await _kit.Identity.TenantWithAdminAsync();
+        var key = (await CreateSpaceAsync(admin)).GetProperty("key").GetString()!;
+        var pageId = (await CreatePageAsync(admin, key, "Agenda")).GetProperty("id").GetGuid();
+        var boardId = (await ReadAsync(await admin.PostAsync($"api/v1/spaces/{key}/whiteboards", new { title = "Plan", elements = Array.Empty<object>() }))).GetProperty("id").GetGuid();
+        await CreateEventAsync(admin, key, new { title = "Seed", allDay = true, startDate = "2026-01-01" });
+        var calendarId = (await admin.GetJsonAsync($"api/v1/spaces/{key}/calendars")).EnumerateArray().Single().GetProperty("id").GetGuid();
+
+        using (var bad = await admin.PostAsync($"api/v1/calendars/{calendarId}/events", new
+        {
+            title = "Bad link", allDay = true, startDate = "2026-05-04", linkedPageId = Guid.NewGuid(),
+        }))
+        {
+            await Browser.AssertStatusAsync(bad, HttpStatusCode.BadRequest, "calendar.link_invalid");
+        }
+
+        var created = await ReadAsync(await admin.PostAsync($"api/v1/calendars/{calendarId}/events", new
+        {
+            title = "Standup", allDay = true, startDate = "2026-05-04", // first Monday of May 2026
+            linkedPageId = pageId, linkedWhiteboardId = boardId,
+            recurrence = new { frequency = "Monthly", weekDays = new[] { 1 }, monthWeek = 1, count = 3 },
+        }));
+        Assert.Equal(pageId, created.GetProperty("linkedPageId").GetGuid());
+        Assert.Equal(boardId, created.GetProperty("linkedWhiteboardId").GetGuid());
+        Assert.Equal(1, created.GetProperty("recurrence").GetProperty("monthWeek").GetInt32());
+
+        Assert.Equal(
+            ["2026-05-04 Standup", "2026-06-01 Standup", "2026-07-06 Standup"],
+            await TitlesAsync(admin, $"api/v1/spaces/{key}/calendar/occurrences?from=2026-05-01&to=2026-07-31&calendarIds={calendarId}"));
     }
 }

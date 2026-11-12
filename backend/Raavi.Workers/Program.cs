@@ -26,6 +26,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddIdentityCore(builder.Configuration);
 builder.Services.AddWikiModule(builder.Configuration, runOutboxPoller: true);
 builder.Services.AddScoped<TenantFanOut<StaleSweepJob, StaleSweepArgs>>();
+builder.Services.AddScoped<TenantFanOut<CalendarReminderJob, CalendarReminderSweepArgs>>();
 builder.Services.AddMigrationModule(builder.Configuration);
 builder.Services.AddIntegrationsModule(builder.Configuration, runOutboxPoller: true);
 builder.Services.AddScoped<DatabaseMaintenanceJob>();
@@ -53,6 +54,12 @@ recurring.AddOrUpdate<TenantFanOut<StaleSweepJob, StaleSweepArgs>>(
     "maintenance",
     j => j.RunAsync(new StaleSweepArgs(1), CancellationToken.None),
     Cron.Daily(3));
+
+recurring.AddOrUpdate<TenantFanOut<CalendarReminderJob, CalendarReminderSweepArgs>>(
+    CalendarReminderJob.RecurringJobId,
+    "maintenance",
+    j => j.RunAsync(new CalendarReminderSweepArgs(1), CancellationToken.None),
+    "*/5 * * * *");
 
 // Smart-search index (ADR-049): every 15 minutes each active tenant indexes what changed.
 recurring.AddOrUpdate<TenantFanOut<Raavi.AI.AiIndexJob, Raavi.AI.AiIndexArgs>>(

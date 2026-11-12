@@ -112,6 +112,7 @@ const adminNav = computed<NavItem[]>(() => {
     { to: { name: 'admin-connectors' }, label: t('nav.connectors'), icon: 'pi pi-github' },
     { to: { name: 'admin-webhooks' }, label: t('nav.webhooks'), icon: 'pi pi-link' },
     { to: { name: 'admin-activity' }, label: t('activityLog.title'), icon: 'pi pi-history' },
+    { to: { name: 'admin-labels' }, label: t('wiki.labels.adminTitle'), icon: 'pi pi-tags' },
     { to: { name: 'admin-export' }, label: t('nav.export'), icon: 'pi pi-download' },
     { to: { name: 'admin-migrations' }, label: t('nav.migrations'), icon: 'pi pi-cloud-download' },
   ]

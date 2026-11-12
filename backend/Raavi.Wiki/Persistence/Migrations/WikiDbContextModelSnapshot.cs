@@ -438,6 +438,12 @@ namespace Raavi.Wiki.Persistence.Migrations
                     b.Property<bool>("IsPrivate")
                         .HasColumnType("bit");
 
+                    b.Property<Guid?>("LinkedPageId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("LinkedWhiteboardId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Location")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -465,6 +471,9 @@ namespace Raavi.Wiki.Persistence.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("RecurInterval")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RecurMonthWeek")
                         .HasColumnType("int");
 
                     b.Property<DateOnly?>("RecurUntil")
@@ -526,11 +535,160 @@ namespace Raavi.Wiki.Persistence.Migrations
 
                     SqlServerKeyBuilderExtensions.IsClustered(b.HasAlternateKey("TenantId", "Id"));
 
+                    b.HasIndex("TenantId", "LinkedPageId");
+
+                    b.HasIndex("TenantId", "LinkedWhiteboardId");
+
                     b.HasIndex("TenantId", "CalendarId", "StartDate");
 
                     b.HasIndex("TenantId", "SpaceId", "StartDate");
 
                     b.ToTable("CalendarEvents", "content");
+                });
+
+            modelBuilder.Entity("Raavi.Wiki.Domain.CalendarEventAttendee", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("InvitedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("Optional")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset?>("RespondedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Response")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasAlternateKey("TenantId", "Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasAlternateKey("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "EventId", "UserId")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "UserId", "Response");
+
+                    b.ToTable("CalendarEventAttendees", "content");
+                });
+
+            modelBuilder.Entity("Raavi.Wiki.Domain.CalendarEventReminder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Email")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("InApp")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset?>("LastDeliveredAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LastDeliveredOccurrence")
+                        .HasMaxLength(10)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(10)");
+
+                    b.Property<int>("MinutesBefore")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasAlternateKey("TenantId", "Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasAlternateKey("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "EventId", "MinutesBefore")
+                        .IsUnique();
+
+                    b.ToTable("CalendarEventReminders", "content");
+                });
+
+            modelBuilder.Entity("Raavi.Wiki.Domain.CalendarUserPreference", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("BrowserAlerts")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HidePrivateTitlesInTts")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("QuietEndMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("QuietStartMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("TimeZone")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<bool>("TtsEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("TtsLocale")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(8)");
+
+                    b.Property<double>("TtsRate")
+                        .HasColumnType("float");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasAlternateKey("TenantId", "Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasAlternateKey("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("CalendarUserPreferences", "content");
                 });
 
             modelBuilder.Entity("Raavi.Wiki.Domain.CollaborationDocument", b =>
@@ -786,6 +944,67 @@ namespace Raavi.Wiki.Persistence.Migrations
                     b.ToTable("ContentClosure", "content");
                 });
 
+            modelBuilder.Entity("Raavi.Wiki.Domain.ContentGovernance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Classification")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(32)")
+                        .UseCollation("Latin1_General_100_BIN2");
+
+                    b.Property<DateTimeOffset?>("LastReviewedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LifecycleStatus")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(32)")
+                        .UseCollation("Latin1_General_100_BIN2");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("ReviewAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("ReviewOwnerUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasAlternateKey("TenantId", "Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasAlternateKey("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "Classification");
+
+                    b.HasIndex("TenantId", "LifecycleStatus");
+
+                    b.HasIndex("TenantId", "OwnerUserId");
+
+                    b.HasIndex("TenantId", "ReviewAt");
+
+                    b.HasIndex("TenantId", "ReviewOwnerUserId");
+
+                    b.ToTable("ContentGovernance", "content");
+                });
+
             modelBuilder.Entity("Raavi.Wiki.Domain.ContentLabel", b =>
                 {
                     b.Property<Guid>("TenantId")
@@ -990,7 +1209,7 @@ namespace Raavi.Wiki.Persistence.Migrations
                     b.ToTable("DatabaseRows", "content");
                 });
 
-            modelBuilder.Entity("Raavi.Wiki.Domain.Label", b =>
+            modelBuilder.Entity("Raavi.Wiki.Domain.KnowledgeRelationship", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
@@ -998,13 +1217,145 @@ namespace Raavi.Wiki.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Origin")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(32)")
+                        .UseCollation("Latin1_General_100_BIN2");
+
+                    b.Property<string>("RelationshipType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(32)")
+                        .UseCollation("Latin1_General_100_BIN2");
+
+                    b.Property<Guid>("SourceContentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SourceSystem")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)")
+                        .UseCollation("Latin1_General_100_BIN2");
+
+                    b.Property<Guid?>("TargetContentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("TargetExternalKey")
+                        .HasMaxLength(256)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(256)")
+                        .UseCollation("Latin1_General_100_BIN2");
+
+                    b.Property<string>("TargetKind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(32)")
+                        .UseCollation("Latin1_General_100_BIN2");
+
+                    b.Property<string>("TargetTitle")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasAlternateKey("TenantId", "Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasAlternateKey("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "RelationshipType");
+
+                    b.HasIndex("TenantId", "TargetContentId");
+
+                    b.HasIndex("TenantId", "SourceContentId", "RelationshipType");
+
+                    b.HasIndex("TenantId", "SourceContentId", "RelationshipType", "TargetKind", "TargetContentId")
+                        .IsUnique()
+                        .HasFilter("[TargetContentId] IS NOT NULL");
+
+                    b.HasIndex("TenantId", "SourceContentId", "RelationshipType", "TargetKind", "TargetExternalKey")
+                        .IsUnique()
+                        .HasFilter("[TargetExternalKey] IS NOT NULL");
+
+                    b.ToTable("KnowledgeRelationships", "content");
+                });
+
+            modelBuilder.Entity("Raavi.Wiki.Domain.Label", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("ArchivedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Color")
+                        .HasMaxLength(32)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsSystem")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)")
                         .UseCollation("Latin1_General_100_BIN2");
 
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .UseCollation("Latin1_General_100_BIN2");
+
+                    b.Property<Guid?>("ParentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .UseCollation("Latin1_General_100_BIN2");
+
                     b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("UpdatedBy")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
@@ -1018,7 +1369,59 @@ namespace Raavi.Wiki.Persistence.Migrations
                     b.HasIndex("TenantId", "Name")
                         .IsUnique();
 
+                    b.HasIndex("TenantId", "NormalizedName")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "Slug")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "ParentId", "DisplayOrder");
+
                     b.ToTable("Labels", "content");
+                });
+
+            modelBuilder.Entity("Raavi.Wiki.Domain.LabelAlias", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Alias")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("LabelId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("NormalizedAlias")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .UseCollation("Latin1_General_100_BIN2");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasAlternateKey("TenantId", "Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasAlternateKey("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "LabelId");
+
+                    b.HasIndex("TenantId", "NormalizedAlias")
+                        .IsUnique();
+
+                    b.ToTable("LabelAliases", "content");
                 });
 
             modelBuilder.Entity("Raavi.Wiki.Domain.Notification", b =>
@@ -2256,6 +2659,26 @@ namespace Raavi.Wiki.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 
+            modelBuilder.Entity("Raavi.Wiki.Domain.CalendarEventAttendee", b =>
+                {
+                    b.HasOne("Raavi.Wiki.Domain.CalendarEvent", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Raavi.Wiki.Domain.CalendarEventReminder", b =>
+                {
+                    b.HasOne("Raavi.Wiki.Domain.CalendarEvent", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Raavi.Wiki.Domain.CollaborationDocument", b =>
                 {
                     b.HasOne("Raavi.Wiki.Domain.ContentNode", null)
@@ -2329,6 +2752,16 @@ namespace Raavi.Wiki.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Raavi.Wiki.Domain.ContentGovernance", b =>
+                {
+                    b.HasOne("Raavi.Wiki.Domain.ContentNode", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "Id")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Raavi.Wiki.Domain.ContentLabel", b =>
                 {
                     b.HasOne("Raavi.Wiki.Domain.ContentNode", null)
@@ -2379,6 +2812,41 @@ namespace Raavi.Wiki.Persistence.Migrations
                         .HasForeignKey("TenantId", "DatabaseId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Raavi.Wiki.Domain.KnowledgeRelationship", b =>
+                {
+                    b.HasOne("Raavi.Wiki.Domain.ContentNode", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "SourceContentId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Raavi.Wiki.Domain.ContentNode", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "TargetContentId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Raavi.Wiki.Domain.Label", b =>
+                {
+                    b.HasOne("Raavi.Wiki.Domain.Label", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ParentId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Raavi.Wiki.Domain.LabelAlias", b =>
+                {
+                    b.HasOne("Raavi.Wiki.Domain.Label", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "LabelId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

@@ -351,16 +351,50 @@ public sealed class PageVersion : Entity, ITenantOwned
 public sealed class Label : Entity, ITenantOwned
 {
     public const int MaxLength = 100;
+    public const int MaxDisplayLength = 200;
+    public const int MaxDescriptionLength = 1000;
+    public const int MaxColorLength = 32;
+    public const int MaxDepth = 5;
+    public const int MaxAliases = 20;
 
     private Label() { }
 
     public Guid TenantId { get; private set; }
 
-    /// <summary>Lower-case, no white space (Confluence semantics).</summary>
+    /// <summary>Confluence-safe token (= <see cref="Slug"/>). Kept for import, workflows and contentByLabel.</summary>
     public string Name { get; private set; } = string.Empty;
+
+    public string DisplayName { get; private set; } = string.Empty;
+
+    /// <summary>Folded uniqueness key (Persian/Arabic letter folding via SearchText).</summary>
+    public string NormalizedName { get; private set; } = string.Empty;
+
+    /// <summary>Stable URL key; frozen after create.</summary>
+    public string Slug { get; private set; } = string.Empty;
+
+    public string? Description { get; private set; }
+
+    public string? Color { get; private set; }
+
+    public Guid? ParentId { get; private set; }
+
+    public int DisplayOrder { get; private set; }
+
+    public bool IsSystem { get; private set; }
+
+    public bool IsActive { get; private set; } = true;
+
+    public DateTimeOffset? ArchivedAt { get; private set; }
+
+    public Guid CreatedBy { get; private set; }
 
     public DateTimeOffset CreatedAt { get; private set; }
 
+    public Guid UpdatedBy { get; private set; }
+
+    public DateTimeOffset UpdatedAt { get; private set; }
+
+    /// <summary>Confluence-style token: lower-case, no whitespace or , # / \ ? &amp;.</summary>
     public static string Normalize(string? name)
     {
         var n = (name ?? string.Empty).Trim().ToLowerInvariant();
@@ -372,7 +406,211 @@ public sealed class Label : Entity, ITenantOwned
         return n;
     }
 
-    public static Label Create(string name, DateTimeOffset now) => new() { Name = Normalize(name), CreatedAt = now };
+    public static string FoldDisplay(string? display)
+    {
+        var folded = Raavi.Application.Common.SearchText.Normalize(display).Trim();
+        while (folded.Contains("  ", StringComparison.Ordinal))
+        {
+            folded = folded.Replace("  ", " ", StringComparison.Ordinal);
+        }
+
+        return folded;
+    }
+
+    /// <summary>Legacy create from a Confluence-style name (import, page assign, workflows).</summary>
+    public static Label Create(string name, DateTimeOffset now) => Create(name, Guid.Empty, now);
+
+    public static Label Create(string name, Guid userId, DateTimeOffset now)
+    {
+        var token = Normalize(name);
+        return new()
+        {
+            Name = token,
+            DisplayName = token,
+            NormalizedName = FoldDisplay(token),
+            Slug = token,
+            IsActive = true,
+            CreatedBy = userId,
+            CreatedAt = now,
+            UpdatedBy = userId,
+            UpdatedAt = now,
+        };
+    }
+
+    /// <summary>Admin create with a display name; slug/name derived and frozen.</summary>
+    public static Label CreateFromDisplay(string displayName, string? description, string? color, Guid? parentId, int displayOrder, Guid userId, DateTimeOffset now)
+    {
+        var display = RequireDisplay(displayName);
+        var slug = SlugFromDisplay(display);
+        var label = new Label
+        {
+            Name = slug,
+            DisplayName = display,
+            NormalizedName = FoldDisplay(display),
+            Slug = slug,
+            ParentId = parentId is { } p && p != Guid.Empty ? p : null,
+            DisplayOrder = displayOrder,
+            IsActive = true,
+            CreatedBy = userId,
+            CreatedAt = now,
+            UpdatedBy = userId,
+            UpdatedAt = now,
+        };
+        label.SetDescription(description);
+        label.SetColor(color);
+        return label;
+    }
+
+    public void UpdateMeta(string displayName, string? description, string? color, int displayOrder, Guid userId, DateTimeOffset now)
+    {
+        DisplayName = RequireDisplay(displayName);
+        NormalizedName = FoldDisplay(DisplayName);
+        SetDescription(description);
+        SetColor(color);
+        DisplayOrder = displayOrder;
+        Touch(userId, now);
+    }
+
+    public void Move(Guid? parentId, int displayOrder, Guid userId, DateTimeOffset now)
+    {
+        ParentId = parentId is { } p && p != Guid.Empty ? p : null;
+        DisplayOrder = displayOrder;
+        Touch(userId, now);
+    }
+
+    public void Archive(Guid userId, DateTimeOffset now)
+    {
+        if (ArchivedAt is not null)
+        {
+            return;
+        }
+
+        ArchivedAt = now;
+        IsActive = false;
+        Touch(userId, now);
+    }
+
+    public void Restore(Guid userId, DateTimeOffset now)
+    {
+        ArchivedAt = null;
+        IsActive = true;
+        Touch(userId, now);
+    }
+
+    private void Touch(Guid userId, DateTimeOffset now)
+    {
+        UpdatedBy = userId;
+        UpdatedAt = now;
+    }
+
+    private void SetDescription(string? description)
+    {
+        var d = description?.Trim();
+        if (d is { Length: > MaxDescriptionLength })
+        {
+            throw new DomainException("label.description_too_long", "Description is too long.");
+        }
+
+        Description = string.IsNullOrEmpty(d) ? null : d;
+    }
+
+    private void SetColor(string? color)
+    {
+        var c = color?.Trim();
+        if (c is { Length: > MaxColorLength })
+        {
+            throw new DomainException("label.color_invalid", "Colour is not valid.");
+        }
+
+        Color = string.IsNullOrEmpty(c) ? null : c;
+    }
+
+    private static string RequireDisplay(string? displayName)
+    {
+        var d = (displayName ?? string.Empty).Trim();
+        if (d.Length is 0 or > MaxDisplayLength || d.Any(char.IsControl))
+        {
+            throw new DomainException("label.display_invalid", "Display name is required (max 200 characters).");
+        }
+
+        return d;
+    }
+
+    internal static string SlugFromDisplay(string display)
+    {
+        // Prefer letter/digit slug; if Normalize would fail on dashes, keep dashes (allowed).
+        var sb = new StringBuilder(display.Length);
+        var dash = false;
+        foreach (var ch in display.Normalize(NormalizationForm.FormKC).ToLowerInvariant())
+        {
+            if (char.IsLetterOrDigit(ch))
+            {
+                sb.Append(ch);
+                dash = false;
+            }
+            else if (!dash && sb.Length > 0)
+            {
+                sb.Append('-');
+                dash = true;
+            }
+
+            if (sb.Length >= MaxLength)
+            {
+                break;
+            }
+        }
+
+        var slug = sb.ToString().TrimEnd('-');
+        if (slug.Length == 0 || slug.Any(c => c is ',' or '#' or '/' or '\\' or '?' or '&' || char.IsWhiteSpace(c) || char.IsControl(c)))
+        {
+            throw new DomainException("label.invalid", "Could not derive a URL slug from the display name.");
+        }
+
+        return slug;
+    }
+}
+
+public sealed class LabelAlias : Entity, ITenantOwned
+{
+    public const int MaxAliasLength = 200;
+
+    private LabelAlias() { }
+
+    public Guid TenantId { get; private set; }
+
+    public Guid LabelId { get; private set; }
+
+    public string Alias { get; private set; } = string.Empty;
+
+    public string NormalizedAlias { get; private set; } = string.Empty;
+
+    public Guid CreatedBy { get; private set; }
+
+    public DateTimeOffset CreatedAt { get; private set; }
+
+    public static LabelAlias Create(Guid labelId, string alias, Guid userId, DateTimeOffset now)
+    {
+        var a = (alias ?? string.Empty).Trim();
+        if (a.Length is 0 or > MaxAliasLength || a.Any(char.IsControl))
+        {
+            throw new DomainException("label.alias_invalid", "Alias is required (max 200 characters).");
+        }
+
+        var folded = Label.FoldDisplay(a);
+        if (folded.Length == 0)
+        {
+            throw new DomainException("label.alias_invalid", "Alias is required (max 200 characters).");
+        }
+
+        return new()
+        {
+            LabelId = labelId,
+            Alias = a,
+            NormalizedAlias = folded,
+            CreatedBy = userId,
+            CreatedAt = now,
+        };
+    }
 }
 
 public sealed class ContentLabel : ITenantOwned

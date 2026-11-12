@@ -1,6 +1,36 @@
 # Implementation Status
 
-**Last updated:** 2026-11-11 (Jira ↔ Wiki page linking)
+**Last updated:** 2026-11-11 (EKOS C1/C2 after B5)
+
+### EKOS C1/C2 — Decision/Incident templates + Jira graph edges (2026-11-11)
+
+Global Decision/Incident page templates (structured sections, no entities). Jira PageIssueLinks project to `KnowledgeRelationships` (Origin=Integration). See `docs/enterprise-knowledge-operating-system/C1_C2_REPORT.md`.
+
+### EKOS Stage B4–B5 (2026-11-11)
+
+Outbox coverage for governance/relationship events (`B4_REPORT.md`). Regression: governance, relationships, Rag, SpacePage, LabelTaxonomy, EndpointAuthorization, Calendar — all green in filtered runs (`B5_REPORT.md`).
+
+### EKOS Stage B3 — Unified Discovery Filters (2026-11-11)
+
+`IDiscoveryContentFilter` + `/ai/search` facets (owner, review owner, classification, lifecycle, reviewDue, relationshipType, contentType, updated range). Smart-search UI + URL state for classification/lifecycle/relationship/reviewDue; tags remain AND with LabelService. No new migration. See `B3_REPORT.md`.
+
+### EKOS Stage B2 — Knowledge Relationships (2026-11-11)
+
+Table `content.KnowledgeRelationships` (ADR-055, migration `KnowledgeRelationships`). Content↔Content edges: RelatedTo, References, DependsOn, Documents, Implements, Supersedes; Origin Manual/SystemGenerated/Integration; external target columns reserved. APIs list/create/delete; UI panel on page; outbox `content.relationship_created|removed`. Manual-only delete; View both ends. Tests: `KnowledgeRelationshipTests`.
+
+### EKOS Stage B1 — Knowledge Governance Foundation (2026-11-11)
+
+Additive `content.ContentGovernance` (ADR-054, migration `ContentGovernance`). Page DTO + `PUT /content/{id}/governance` + `GET /content/review-due`; outbox `content.owner_changed|review_scheduled|reviewed|classification_changed|governance_updated`. UI: page governance panel + home “pages needing review”. Restricted classification gated from Ask/RAG model context. Retention/Legal Hold not implemented. Tests: `ContentGovernanceTests`.
+
+### EKOS Stage A — assessment only (2026-11-11)
+
+Product vision and target architecture for Raavi as an Enterprise Knowledge Operating System. Docs under `docs/enterprise-knowledge-operating-system/` (vision, capability matrix, domain/graph/search/AI/governance/integration, roadmap, backlog, risks, final assessment). Stage B implementation started with B1.
+
+### Enterprise Labels / Tags (2026-11-11)
+
+Evolved `content.Labels` + `ContentLabels` (no parallel Tags module). Migration `LabelTaxonomy`: DisplayName, NormalizedName, Slug, hierarchy, archive, `LabelAliases` + RLS. `LabelService` + admin APIs; multi-label AND/OR + descendants search; page suggestions; smart-search tag filter; admin UI `/admin/labels`; outbox `label.*` / `content.label_added|removed`. Docs: `docs/tags/*`. Tests: `dotnet test --filter Label` → **17 passed**.
+
+### Jira ↔ Wiki page linking (2026-11-11)
 
 ### Jira ↔ Wiki page linking (2026-11-11)
 
@@ -8,7 +38,19 @@ Bidirectional Page–Issue relationships (Raavi owns links; Jira owns issue fiel
 
 ### Calendar V1 — Stage A foundation (2026-11-11)
 
-Enterprise calendar assessment + locked decisions in `docs/calendar/` (Templar shell/Blocked live, Jira read-only, sync keep-both, archive-first delete, OAuth secrets, Free/Busy+Full share, recurrence scopes + TTS as V1). **Backend:** `Calendars` / `CalendarAccessGrants`; `CalendarEvent.CalendarId` + meta columns; migration `CalendarBoards` with RLS-off backfill (default Space calendar per space that has events, event-count guard); create-event resolves/creates space default calendar; APIs list/create/update/archive/restore/purge + `calendarIds` on occurrences. Templar contract stub: `docs/calendar/TEMPLAR_API_CONTRACT.md`. Tests: `dotnet test --filter FullyQualifiedName~Calendar` → **17 passed**. **Not done yet in Stage A:** share-grant APIs/UI, multi-view frontend, reminders/TTS, Jira/Templar/OAuth sync.
+Calendar V1 core P0 + overlays (`docs/calendar/`): grants FreeBusy/Full, rich events, personal/org create, recurrence scopes, reminders job + prefs/TTS UI, Day/Week/Agenda + picker, Templar disabled shell (`Raavi:Calendar:Templar`), Jira read-only due overlay. Migrations `CalendarBoards` + `CalendarV1Core`.
+
+### Calendar V1 — continued (2026-11-11)
+
+Year view; recurrence presets (standup/weekdays/biweekly); grants UI + archive/restore/purge; ICS import (`POST /calendars/{id}/import`, max 1 MB / 200 events) + occurrence `q` search; offline last-view cache and edit block.
+
+### Calendar V1 — tranche 3 (2026-11-11)
+
+Timeline view + now line; drag-drop move (ThisOccurrence for series); context menu (open/duplicate/cancel/delete); create/edit calendar + favourites; type/source filters; `POST /calendar/events/{id}/move`; quiet-hours prefs UI. Tests: `dotnet test --filter Calendar` → **21 passed**; `vitest calendar + locales` → **15**.
+
+### Calendar V1 — tranche 4 (2026-11-11)
+
+Attendees + RSVP (`CalendarEventAttendees`, `POST /calendar/events/{id}/rsvp`); linked page/whiteboard ids (validated via view rights); monthly Nth-weekday recurrence (`RecurMonthWeek` / `monthWeek`); migration `CalendarMeetings` + RLS. In-app invite/reminder notifications only when a linked page exists (Notification Content FK). Tests: `dotnet test --filter Calendar` → **25 passed**; `vitest calendar + locales` → **15**. **Still out:** Google/Outlook/CalDAV/OAuth, sync conflict UI, scheduling assistant, resize, content-less calendar notifications.
 
 ### Whiteboard roadmap (Phases 1–5)
 

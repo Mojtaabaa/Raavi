@@ -22,12 +22,15 @@ public enum RecurrenceCalendar
 /// <summary>
 /// A repeat rule: every <see cref="Interval"/> days/weeks/months/years, optionally on weekdays (bit 0 = Sunday … bit 6 = Saturday),
 /// ending after <see cref="Count"/> occurrences or on <see cref="Until"/> (never both, as in RFC 5545).
+/// <see cref="MonthWeek"/> 0 = by day-of-month; 1–4 = Nth weekday; 5 or −1 = last weekday (requires a single weekday bit).
 /// </summary>
-public sealed record RecurrenceRule(RecurrenceFrequency Frequency, int Interval, int WeekDays, RecurrenceCalendar Calendar, DateOnly? Until, int? Count)
+public sealed record RecurrenceRule(RecurrenceFrequency Frequency, int Interval, int WeekDays, RecurrenceCalendar Calendar, DateOnly? Until, int? Count, int MonthWeek = 0)
 {
-    public static readonly RecurrenceRule None = new(RecurrenceFrequency.None, 1, 0, RecurrenceCalendar.Gregorian, null, null);
+    public static readonly RecurrenceRule None = new(RecurrenceFrequency.None, 1, 0, RecurrenceCalendar.Gregorian, null, null, 0);
 
     public bool IsRecurring => Frequency != RecurrenceFrequency.None;
+
+    public bool IsNthWeekday => MonthWeek is not 0;
 }
 
 /// <summary>
@@ -103,6 +106,15 @@ public sealed class CalendarEvent : Entity, ITenantOwned
 
     public int? RecurCount { get; private set; }
 
+    /// <summary>0 = day-of-month; 1–4 = Nth weekday; 5/−1 = last weekday of the month.</summary>
+    public int RecurMonthWeek { get; private set; }
+
+    /// <summary>Optional linked wiki page (meeting notes / agenda).</summary>
+    public Guid? LinkedPageId { get; private set; }
+
+    /// <summary>Optional linked whiteboard.</summary>
+    public Guid? LinkedWhiteboardId { get; private set; }
+
     /// <summary>Cancelled occurrences, as comma-separated yyyy-MM-dd start dates.</summary>
     public string? ExcludedDatesRaw { get; private set; }
 
@@ -116,7 +128,7 @@ public sealed class CalendarEvent : Entity, ITenantOwned
 
     public int Revision { get; private set; } = 1;
 
-    public RecurrenceRule Rule => new(RecurFrequency, RecurInterval, RecurWeekDays, RecurCalendar, RecurUntil, RecurCount);
+    public RecurrenceRule Rule => new(RecurFrequency, RecurInterval, RecurWeekDays, RecurCalendar, RecurUntil, RecurCount, RecurMonthWeek);
 
     public int SpanDays => EndDate.DayNumber - StartDate.DayNumber;
 
@@ -144,6 +156,25 @@ public sealed class CalendarEvent : Entity, ITenantOwned
     public void Update(EventDetails details, Guid userId, DateTimeOffset now)
     {
         Apply(details);
+        UpdatedBy = userId;
+        Touch(now);
+    }
+
+    /// <summary>Moves the event to another calendar in the same tenant (SpaceId denormalised from the target).</summary>
+    public void MoveTo(Guid calendarId, Guid? spaceId, Guid userId, DateTimeOffset now)
+    {
+        if (calendarId == Guid.Empty)
+        {
+            throw new DomainException("calendar.not_found", "Calendar not found.");
+        }
+
+        if (CalendarId == calendarId && SpaceId == spaceId)
+        {
+            return;
+        }
+
+        CalendarId = calendarId;
+        SpaceId = spaceId;
         UpdatedBy = userId;
         Touch(now);
     }
@@ -284,6 +315,9 @@ public sealed class CalendarEvent : Entity, ITenantOwned
         RecurCalendar = rule.Calendar;
         RecurUntil = rule.Until;
         RecurCount = rule.Count;
+        RecurMonthWeek = rule.MonthWeek;
+        LinkedPageId = d.LinkedPageId is { } pid && pid != Guid.Empty ? pid : null;
+        LinkedWhiteboardId = d.LinkedWhiteboardId is { } wid && wid != Guid.Empty ? wid : null;
         // Changing the series invalidates earlier cancellations only if they no longer occur.
         ExcludedDatesRaw = Rule.IsRecurring ? Keep(ExcludedDatesRaw, StartDate, rule) : null;
     }
@@ -325,15 +359,42 @@ public sealed class CalendarEvent : Entity, ITenantOwned
             throw new DomainException("calendar.recurrence_invalid", "The end of the repeat rule is not valid.");
         }
 
-        var days = r.Frequency == RecurrenceFrequency.Weekly
+        if (r.MonthWeek is not (0 or -1 or 1 or 2 or 3 or 4 or 5))
+        {
+            throw new DomainException("calendar.recurrence_invalid", "Month week must be 0, 1–4, 5 or −1.");
+        }
+
+        if (r.IsNthWeekday && r.Frequency is not (RecurrenceFrequency.Monthly or RecurrenceFrequency.Yearly))
+        {
+            throw new DomainException("calendar.recurrence_invalid", "Nth-weekday rules are only for monthly or yearly repeats.");
+        }
+
+        var days = r.Frequency == RecurrenceFrequency.Weekly || r.IsNthWeekday
             ? (r.WeekDays == 0 ? 1 << (int)start.DayOfWeek : r.WeekDays)
             : 0;
-        if (days != 0 && (days & (1 << (int)start.DayOfWeek)) == 0)
+        if (r.Frequency == RecurrenceFrequency.Weekly && days != 0 && (days & (1 << (int)start.DayOfWeek)) == 0)
         {
             throw new DomainException("calendar.recurrence_invalid", "A weekly event must repeat on the weekday it starts on.");
         }
 
-        return r with { WeekDays = days };
+        if (r.IsNthWeekday)
+        {
+            var bitCount = 0;
+            for (var i = 0; i < 7; i++)
+            {
+                if ((days & (1 << i)) != 0)
+                {
+                    bitCount++;
+                }
+            }
+
+            if (bitCount != 1)
+            {
+                throw new DomainException("calendar.recurrence_invalid", "An Nth-weekday rule needs exactly one weekday.");
+            }
+        }
+
+        return r with { WeekDays = days, MonthWeek = r.IsNthWeekday ? (r.MonthWeek == 5 ? -1 : r.MonthWeek) : 0 };
     }
 }
 
@@ -355,7 +416,9 @@ public sealed record EventDetails(
     string? Color = null,
     string? OnlineUrl = null,
     bool IsPrivate = false,
-    Guid? OrganizerId = null);
+    Guid? OrganizerId = null,
+    Guid? LinkedPageId = null,
+    Guid? LinkedWhiteboardId = null);
 
 /// <summary>
 /// Expands repeat rules into start dates. Pure and deterministic: no clock, no I/O. Monthly and yearly rules skip months that do not contain
@@ -440,6 +503,7 @@ public static class RecurrenceExpander
             case RecurrenceFrequency.Yearly:
                 var (y, m, dom) = Parts(start, rule.Calendar);
                 var monthStep = rule.Frequency == RecurrenceFrequency.Monthly ? rule.Interval : rule.Interval * 12;
+                var weekday = WeekdayFromMask(rule.WeekDays) ?? start.DayOfWeek;
                 for (var k = 0; k < MaxCandidates; k++)
                 {
                     var total = (y * 12) + (m - 1) + (k * monthStep);
@@ -450,7 +514,14 @@ public static class RecurrenceExpander
                         yield break;
                     }
 
-                    if (dom <= DaysInMonth(yy, mm, rule.Calendar) && TryDate(yy, mm, dom, rule.Calendar, out var date))
+                    if (rule.IsNthWeekday)
+                    {
+                        if (TryNthWeekday(yy, mm, weekday, rule.MonthWeek, rule.Calendar, out var nth) && nth >= start)
+                        {
+                            yield return nth;
+                        }
+                    }
+                    else if (dom <= DaysInMonth(yy, mm, rule.Calendar) && TryDate(yy, mm, dom, rule.Calendar, out var date))
                     {
                         yield return date;
                     }
@@ -458,6 +529,58 @@ public static class RecurrenceExpander
 
                 break;
         }
+    }
+
+    private static DayOfWeek? WeekdayFromMask(int mask)
+    {
+        for (var i = 0; i < 7; i++)
+        {
+            if ((mask & (1 << i)) != 0)
+            {
+                return (DayOfWeek)i;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>Nth (1–4) or last (−1/5) occurrence of <paramref name="weekday"/> in year/month.</summary>
+    private static bool TryNthWeekday(int year, int month, DayOfWeek weekday, int monthWeek, RecurrenceCalendar cal, out DateOnly date)
+    {
+        date = default;
+        var days = DaysInMonth(year, month, cal);
+        if (!TryDate(year, month, 1, cal, out var first))
+        {
+            return false;
+        }
+
+        if (monthWeek is -1 or 5)
+        {
+            if (!TryDate(year, month, days, cal, out var last))
+            {
+                return false;
+            }
+
+            var back = ((int)last.DayOfWeek - (int)weekday + 7) % 7;
+            date = last.AddDays(-back);
+            return Parts(date, cal).Month == month;
+        }
+
+        if (monthWeek is < 1 or > 4)
+        {
+            return false;
+        }
+
+        var forward = ((int)weekday - (int)first.DayOfWeek + 7) % 7;
+        var candidate = first.AddDays(forward + ((monthWeek - 1) * 7));
+        var p = Parts(candidate, cal);
+        if (p.Year != year || p.Month != month)
+        {
+            return false;
+        }
+
+        date = candidate;
+        return true;
     }
 
     private static (int Year, int Month, int Day) Parts(DateOnly d, RecurrenceCalendar cal)

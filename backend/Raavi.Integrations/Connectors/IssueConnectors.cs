@@ -86,7 +86,7 @@ public static partial class IssueReference
 }
 
 /// <summary>Administration of the tenant's issue connectors (Phase 13a, ADR-043).</summary>
-public sealed class IssueConnectorService(IntegrationsDbContext db, ConnectorHostPolicy policy, IDataProtectionProvider protection, ITenantContext tenant, ICurrentUser current, IClock clock)
+public sealed class IssueConnectorService(IntegrationsDbContext db, ConnectorHostPolicy policy, IOptions<IntegrationsOptions> options, IDataProtectionProvider protection, ITenantContext tenant, ICurrentUser current, IClock clock)
 {
     public const int MaxConnectorsPerTenant = 10;
 
@@ -200,9 +200,9 @@ public sealed class IssueConnectorService(IntegrationsDbContext db, ConnectorHos
             }, ErrorKind.Validation);
         }
 
-        if (!string.IsNullOrWhiteSpace(request.Token) && uri.Scheme != Uri.UriSchemeHttps)
+        if (!string.IsNullOrWhiteSpace(request.Token) && uri.Scheme != Uri.UriSchemeHttps && !options.Value.AllowHttpConnectorTokens)
         {
-            return new Error("connector.https_required", "A connector with an access token must use https.", ErrorKind.Validation);
+            return new Error("connector.https_required", "A connector with an access token must use https (or enable Raavi:Integrations:AllowHttpConnectorTokens for http trackers).", ErrorKind.Validation);
         }
 
         if (!string.IsNullOrEmpty(uri.Query))

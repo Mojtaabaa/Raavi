@@ -39,6 +39,7 @@ public static class IntegrationsModule
         services.AddScoped<IssueConnectorService>();
         services.AddScoped<IssueLookupService>();
         services.AddScoped<JiraIssueClient>();
+        services.AddScoped<Raavi.Application.Abstractions.Calendar.ICalendarOverlaySource, JiraCalendarOverlay>();
         services.AddScoped<PageIssueLinkService>();
         services.AddScoped<PageIssueRemoteLinkJob>();
         services.AddScoped<Raavi.Application.Abstractions.Ai.IIssueContextReader, IssueContextReader>();

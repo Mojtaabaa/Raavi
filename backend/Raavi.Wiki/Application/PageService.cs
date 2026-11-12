@@ -5,6 +5,7 @@ using Raavi.Application.Abstractions.Content;
 using Raavi.Application.Abstractions.Identity;
 using Raavi.Application.Abstractions.Time;
 using Raavi.Application.Common;
+using Raavi.Domain.Common;
 using Raavi.Infrastructure.Http;
 using Raavi.Wiki.ContentTypes;
 using Raavi.Wiki.Domain;
@@ -186,6 +187,7 @@ public sealed class PageService(
             ? ContentNode.CreateDraft(space.Space.Id, request.ParentId, type, request.Title, position, userId, now)
             : ContentNode.Create(space.Space.Id, request.ParentId, type, request.Title, position, userId, now);
         db.Nodes.Add(node);
+        db.ContentGovernance.Add(ContentGovernance.CreateForNew(node.Id, userId, node.Status, now));
         db.Closure.Add(ContentClosure.Link(node.Id, node.Id, 0));
         if (request.ParentId is { } p)
         {
@@ -456,6 +458,26 @@ public sealed class PageService(
                 .SetProperty(n => n.UpdatedAt, now)
                 .SetProperty(n => n.UpdatedBy, userId)
                 .SetProperty(n => n.Revision, n => n.Revision + 1), ct).ConfigureAwait(false);
+
+            // Keep governance lifecycle aligned with archive/trash (does not grant ACL; stewardship only).
+            var lifecycle = GovernanceLifecycles.FromContentStatus(to);
+            var affected = await db.Closure.AsNoTracking()
+                .Where(c => c.AncestorId == node.Id)
+                .Select(c => c.DescendantId)
+                .ToListAsync(ct).ConfigureAwait(false);
+            await db.ContentGovernance.Where(g => affected.Contains(g.Id))
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(g => g.LifecycleStatus, lifecycle)
+                    .SetProperty(g => g.UpdatedAt, now)
+                    .SetProperty(g => g.UpdatedBy, userId), ct).ConfigureAwait(false);
+
+            if (to == ContentStatus.Trashed)
+            {
+                // Target FK is Restrict (no multiple cascade paths): drop edges that pointed at purged/trashed nodes.
+                await db.KnowledgeRelationships.Where(r => r.TargetContentId != null && affected.Contains(r.TargetContentId.Value))
+                    .ExecuteDeleteAsync(ct).ConfigureAwait(false);
+            }
+
             await tx.CommitAsync(ct).ConfigureAwait(false);
         }
 
@@ -558,11 +580,15 @@ public sealed class PageService(
         }
 
         var normalized = Label.Normalize(name);
-        var label = await db.Labels.FirstOrDefaultAsync(l => l.Name == normalized, ct).ConfigureAwait(false);
+        var label = await db.Labels.FirstOrDefaultAsync(l => l.Name == normalized || l.Slug == normalized, ct).ConfigureAwait(false);
         if (label is null)
         {
-            label = Label.Create(normalized, clock.UtcNow);
+            label = Label.Create(normalized, current.UserId, clock.UtcNow);
             db.Labels.Add(label);
+        }
+        else if (label.ArchivedAt is not null)
+        {
+            return Result<IReadOnlyList<string>>.Failure(new Error("label.archived", "Restore the label before assigning it.", ErrorKind.Conflict));
         }
 
         if (!await db.ContentLabels.AnyAsync(cl => cl.ContentId == id && cl.LabelId == label.Id, ct).ConfigureAwait(false))
@@ -573,6 +599,7 @@ public sealed class PageService(
             }
 
             db.ContentLabels.Add(ContentLabel.Create(id, label.Id, current.UserId, clock.UtcNow));
+            db.Publish(WikiEventTypes.ContentLabelAdded, new WikiEvent(loaded.Value.Space.Space.Id, id, current.UserId, loaded.Value.Node.Title, null), clock.UtcNow);
             await db.SaveChangesAsync(ct).ConfigureAwait(false);
         }
 
@@ -600,6 +627,7 @@ public sealed class PageService(
         if (link is not null)
         {
             db.ContentLabels.Remove(link);
+            db.Publish(WikiEventTypes.ContentLabelRemoved, new WikiEvent(loaded.Value.Space.Space.Id, id, current.UserId, loaded.Value.Node.Title, null), clock.UtcNow);
             await db.SaveChangesAsync(ct).ConfigureAwait(false);
         }
 
@@ -610,7 +638,7 @@ public sealed class PageService(
         await (from cl in db.ContentLabels.AsNoTracking()
                join l in db.Labels.AsNoTracking() on cl.LabelId equals l.Id
                where cl.ContentId == id
-               orderby l.Name
+               orderby l.DisplayName
                select l.Name).ToListAsync(ct).ConfigureAwait(false);
 
     // ── Helpers ────────────────────────────────────────────────────────────────────────────────
@@ -740,15 +768,138 @@ public sealed class PageService(
                                 join r in db.Restrictions.AsNoTracking() on cl.AncestorId equals r.ContentId
                                 where cl.DescendantId == node.Id
                                 select r.Id).AnyAsync(ct).ConfigureAwait(false);
-        var names = await directory.GetUserNamesAsync([node.CreatedBy, node.UpdatedBy], ct).ConfigureAwait(false);
+        var gov = await EnsureGovernanceAsync(node, ct).ConfigureAwait(false);
+        var nameIds = new List<Guid> { node.CreatedBy, node.UpdatedBy, gov.OwnerUserId };
+        if (gov.ReviewOwnerUserId is { } ro)
+        {
+            nameIds.Add(ro);
+        }
+        var names = await directory.GetUserNamesAsync(nameIds, ct).ConfigureAwait(false);
         var draft = await db.Drafts.AsNoTracking().Where(d => d.ContentId == node.Id).Select(d => new { d.UpdatedAt, d.ScheduledPublishAt }).FirstOrDefaultAsync(ct).ConfigureAwait(false);
         var pending = await db.PublishRequests.AsNoTracking().AnyAsync(r => r.ContentId == node.Id && r.Status == PublishRequestStatus.Pending, ct).ConfigureAwait(false);
         var rights = c.Rights;
+        var now = clock.UtcNow;
+        var governance = new ContentGovernanceDto(
+            gov.OwnerUserId, names.GetValueOrDefault(gov.OwnerUserId), gov.ReviewOwnerUserId,
+            gov.ReviewOwnerUserId is { } roid ? names.GetValueOrDefault(roid) : null,
+            gov.ReviewAt, gov.LastReviewedAt, gov.Classification, gov.LifecycleStatus,
+            gov.ReviewAt is { } due && due <= now);
         return new PageDto(
             node.Id, space.Id, space.Key, space.Name, node.ParentId, node.ContentType, node.Title, node.Slug, node.Status, body,
             node.CurrentVersionNumber, await LabelsOfAsync(node.Id, ct).ConfigureAwait(false), crumbs, restricted,
             node.CreatedBy, names.GetValueOrDefault(node.CreatedBy), node.CreatedAt, node.UpdatedBy, names.GetValueOrDefault(node.UpdatedBy),
             node.UpdatedAt, node.Revision, new ContentRightsDto(rights.CanEdit, rights.CanCreateChild, rights.CanMove, rights.CanArchive, rights.CanDelete, rights.CanRestrict, rights.CanPublish, rights.CanApprove, rights.CanComment, rights.CanModerateComments),
-            node.PublishedAt, draft is not null && rights.CanEdit, rights.CanEdit ? draft?.UpdatedAt : null, rights.CanEdit ? draft?.ScheduledPublishAt : null, pending, space.RequirePublishApproval);
+            node.PublishedAt, draft is not null && rights.CanEdit, rights.CanEdit ? draft?.UpdatedAt : null, rights.CanEdit ? draft?.ScheduledPublishAt : null, pending, space.RequirePublishApproval,
+            governance);
+    }
+
+    public async Task<Result<PageDto>> UpdateGovernanceAsync(Guid id, UpdateGovernanceRequest request, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var loaded = await LoadAsync(id, track: false, ct).ConfigureAwait(false);
+        if (!loaded.IsSuccess)
+        {
+            return Result<PageDto>.Failure(loaded.Error!);
+        }
+
+        if (!loaded.Value.Rights.CanEdit)
+        {
+            return Result<PageDto>.Failure(WikiErrors.Forbidden);
+        }
+
+        var node = await db.Nodes.FirstAsync(n => n.Id == id, ct).ConfigureAwait(false);
+        var gov = await db.ContentGovernance.FirstOrDefaultAsync(g => g.Id == id, ct).ConfigureAwait(false);
+        if (gov is null)
+        {
+            gov = ContentGovernance.CreateForNew(node.Id, node.CreatedBy, node.Status, clock.UtcNow);
+            db.ContentGovernance.Add(gov);
+        }
+
+        var beforeOwner = gov.OwnerUserId;
+        var beforeClass = gov.Classification;
+        var beforeReview = gov.ReviewAt;
+        try
+        {
+            gov.Apply(
+                request.OwnerUserId,
+                request.ReviewOwnerUserId,
+                request.ClearReviewOwner == true,
+                request.ReviewAt,
+                request.ClearReviewAt == true,
+                request.Classification,
+                request.LifecycleStatus,
+                request.MarkReviewed == true,
+                current.UserId,
+                clock.UtcNow);
+        }
+        catch (DomainException ex)
+        {
+            return Result<PageDto>.Failure(new Error(ex.Code, ex.Message, ErrorKind.Validation));
+        }
+
+        var spaceId = loaded.Value.Space.Space.Id;
+        var title = node.Title;
+        var now = clock.UtcNow;
+        if (gov.OwnerUserId != beforeOwner)
+        {
+            db.Publish(WikiEventTypes.ContentOwnerChanged, new WikiEvent(spaceId, id, current.UserId, title, null), now);
+        }
+
+        if (gov.Classification != beforeClass)
+        {
+            db.Publish(WikiEventTypes.ContentClassificationChanged, new WikiEvent(spaceId, id, current.UserId, title, null), now);
+        }
+
+        if (gov.ReviewAt != beforeReview && gov.ReviewAt is not null)
+        {
+            db.Publish(WikiEventTypes.ContentReviewScheduled, new WikiEvent(spaceId, id, current.UserId, title, null), now);
+        }
+
+        if (request.MarkReviewed == true)
+        {
+            db.Publish(WikiEventTypes.ContentReviewed, new WikiEvent(spaceId, id, current.UserId, title, null), now);
+        }
+
+        db.Publish(WikiEventTypes.ContentGovernanceUpdated, new WikiEvent(spaceId, id, current.UserId, title, null), now);
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
+        return await GetAsync(id, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Pages the caller can view that need review (ReviewAt ≤ now), optionally filtered by owner.</summary>
+    public async Task<IReadOnlyList<ContentListItemDto>> ReviewDueAsync(Guid? ownerUserId, int take, CancellationToken ct)
+    {
+        take = Math.Clamp(take, 1, 100);
+        var now = clock.UtcNow;
+        var q = from g in db.ContentGovernance.AsNoTracking()
+                join n in db.Nodes.AsNoTracking() on g.Id equals n.Id
+                where n.Status == ContentStatus.Current && g.ReviewAt != null && g.ReviewAt <= now
+                select new { g, n };
+        if (ownerUserId is { } oid)
+        {
+            q = q.Where(x => x.g.OwnerUserId == oid || x.g.ReviewOwnerUserId == oid);
+        }
+
+        var rows = await q.OrderBy(x => x.g.ReviewAt).Take(200).ToListAsync(ct).ConfigureAwait(false);
+        var viewable = await authz.FilterViewableAsync(rows.Select(r => (r.n.Id, r.n.SpaceId)).ToList(), ct).ConfigureAwait(false);
+        var visible = rows.Where(r => viewable.Contains(r.n.Id)).Take(take).ToList();
+        var spaceIds = visible.Select(r => r.n.SpaceId).Distinct().ToList();
+        var spaces = await db.Spaces.AsNoTracking().Where(s => spaceIds.Contains(s.Id)).ToDictionaryAsync(s => s.Id, ct).ConfigureAwait(false);
+        return visible.Select(r => new ContentListItemDto(
+            r.n.Id, r.n.ContentType, r.n.Title, r.n.Slug, r.n.SpaceId, spaces[r.n.SpaceId].Key, spaces[r.n.SpaceId].Name, r.n.UpdatedAt,
+            r.g.OwnerUserId, r.g.Classification, r.g.LifecycleStatus, r.g.ReviewAt, true)).ToList();
+    }
+
+    private async Task<ContentGovernance> EnsureGovernanceAsync(ContentNode node, CancellationToken ct)
+    {
+        var gov = await db.ContentGovernance.AsNoTracking().FirstOrDefaultAsync(g => g.Id == node.Id, ct).ConfigureAwait(false);
+        if (gov is not null)
+        {
+            return gov;
+        }
+
+        var created = ContentGovernance.CreateForNew(node.Id, node.CreatedBy, node.Status, clock.UtcNow);
+        db.ContentGovernance.Add(created);
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
+        return created;
     }
 }

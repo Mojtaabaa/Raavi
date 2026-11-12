@@ -18,6 +18,7 @@ const auth = useAuthStore()
 const spaces = ref<SpaceSummary[]>([])
 const activity = ref<Activity[]>([])
 const drafts = ref<ContentListItem[]>([])
+const reviewDue = ref<ContentListItem[]>([])
 const loading = ref(true)
 
 /** Tenant welcome message — plain text, rendered with interpolation (never v-html). */
@@ -29,10 +30,16 @@ const welcome = computed(() => {
 
 onMounted(async () => {
   try {
-    ;[spaces.value, activity.value, drafts.value] = await Promise.all([wikiApi.spaces(), wikiApi.activity(), wikiApi.myDrafts().catch(() => [])])
+    ;[spaces.value, activity.value, drafts.value, reviewDue.value] = await Promise.all([
+      wikiApi.spaces(),
+      wikiApi.activity(),
+      wikiApi.myDrafts().catch(() => []),
+      wikiApi.reviewDue({ ownerUserId: auth.me?.id, take: 20 }).catch(() => []),
+    ])
   } catch {
     spaces.value = []
     activity.value = []
+    reviewDue.value = []
   } finally {
     loading.value = false
   }
@@ -77,6 +84,18 @@ onMounted(async () => {
             <li v-for="d in drafts" :key="d.id">
               <RouterLink :to="{ name: 'page-edit', params: { key: d.spaceKey, id: d.id } }" dir="auto">{{ d.title }}</RouterLink>
               <small class="muted"> · {{ d.spaceName }}</small>
+            </li>
+          </ul>
+        </template>
+      </Card>
+
+      <Card v-if="reviewDue.length" data-testid="review-due">
+        <template #title>{{ t('wiki.home.reviewDue') }}</template>
+        <template #content>
+          <ul class="spaces">
+            <li v-for="r in reviewDue" :key="r.id">
+              <RouterLink :to="{ name: 'page', params: { key: r.spaceKey, id: r.id, slug: r.slug || undefined } }" dir="auto">{{ r.title }}</RouterLink>
+              <small class="muted"> · {{ r.spaceName }}</small>
             </li>
           </ul>
         </template>

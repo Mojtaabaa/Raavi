@@ -24,6 +24,8 @@ import { useCrumbsStore } from '@/stores/crumbs'
 import { spaceTrail } from '@/core/navigation/trail'
 import CommentsPanel from '../comments/CommentsPanel.vue'
 import LinkedJiraPanel from '../components/LinkedJiraPanel.vue'
+import GovernancePanel from '../components/GovernancePanel.vue'
+import RelationshipsPanel from '../components/RelationshipsPanel.vue'
 import PageApprovals from '@/modules/approvals/PageApprovals.vue'
 import PageAssistant from '@/modules/ai/PageAssistant.vue'
 import PagePromptsDialog from '@/modules/prompts/PagePromptsDialog.vue'
@@ -48,6 +50,7 @@ const moveOpen = ref(false)
 const restrictOpen = ref(false)
 const newLabel = ref('')
 const labelSuggestions = ref<string[]>([])
+const pageLabelSuggestions = ref<{ slug: string; displayName: string }[]>([])
 const menu = ref<InstanceType<typeof Menu> | null>(null)
 
 // ── Comments and watching (Phase 7a) ───────────────────────────────────────────────
@@ -147,6 +150,7 @@ async function load() {
     children.value = r.value.status === 'Current' ? await wikiApi.tree(r.value.spaceKey, r.value.id).catch(() => []) : []
     // A page moved to another space is shown under its new space.
     if (r.value.spaceKey !== route.params.key) await router.replace({ name: 'page', params: { key: r.value.spaceKey, id: r.value.id, slug: r.value.slug || undefined } })
+    await loadPageLabelSuggestions()
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) notFound.value = true
     else fail(e)
@@ -230,12 +234,24 @@ async function suggest(e: { query: string }) {
   labelSuggestions.value = await wikiApi.suggestLabels(e.query.trim().toLowerCase()).catch(() => [])
 }
 
-async function addLabel() {
-  const name = newLabel.value.trim()
+async function loadPageLabelSuggestions() {
+  if (!page.value?.rights.canEdit) {
+    pageLabelSuggestions.value = []
+    return
+  }
+  const rows = await wikiApi.labelSuggestionsForPage(page.value.id).catch(() => [])
+  pageLabelSuggestions.value = rows
+    .filter((r) => !page.value!.labels.includes(r.name) && !page.value!.labels.includes(r.slug))
+    .map((r) => ({ slug: r.slug, displayName: r.displayName }))
+}
+
+async function addLabel(nameOverride?: string) {
+  const name = (nameOverride ?? newLabel.value).trim()
   if (!page.value || !name) return
   try {
     page.value = { ...page.value, labels: await wikiApi.addLabel(page.value.id, name) }
     newLabel.value = ''
+    await loadPageLabelSuggestions()
   } catch (e) {
     fail(e)
   }
@@ -245,6 +261,7 @@ async function removeLabel(name: string) {
   if (!page.value) return
   try {
     page.value = { ...page.value, labels: await wikiApi.removeLabel(page.value.id, name) }
+    await loadPageLabelSuggestions()
   } catch (e) {
     fail(e)
   }
@@ -362,12 +379,27 @@ function onMoved(p: Page, newEtag: string | null) {
         <RouterLink :to="{ name: 'label', params: { name: l } }">{{ l }}</RouterLink>
         <Button v-if="page.rights.canEdit" text rounded size="small" icon="pi pi-times" :aria-label="t('wiki.labels.remove', { name: l })" @click="removeLabel(l)" />
       </span>
-      <form v-if="page.rights.canEdit" class="add-label" @submit.prevent="addLabel">
+      <form v-if="page.rights.canEdit" class="add-label" @submit.prevent="() => addLabel()">
         <label for="new-label" class="sr-only">{{ t('wiki.labels.add') }}</label>
         <AutoComplete v-model="newLabel" input-id="new-label" :suggestions="labelSuggestions" :placeholder="t('wiki.labels.add')" size="small" @complete="suggest" />
         <Button type="submit" size="small" icon="pi pi-plus" :aria-label="t('wiki.labels.add')" />
       </form>
+      <div v-if="page.rights.canEdit && pageLabelSuggestions.length" class="suggestions" data-testid="label-suggestions">
+        <span class="muted">{{ t('wiki.labels.suggestions') }}:</span>
+        <Button
+          v-for="s in pageLabelSuggestions"
+          :key="s.slug"
+          size="small"
+          text
+          :label="s.displayName"
+          :aria-label="t('wiki.labels.applySuggestion', { name: s.displayName })"
+          @click="addLabel(s.slug)"
+        />
+      </div>
     </section>
+
+    <GovernancePanel v-if="page.governance" :page="page" :can-edit="page.rights.canEdit" @updated="(p) => (page = p)" />
+    <RelationshipsPanel :content-id="page.id" :can-edit="page.rights.canEdit" />
 
     <PageApprovals v-if="discussable" :content-id="page.id" :can-request="page.rights.canEdit" />
 

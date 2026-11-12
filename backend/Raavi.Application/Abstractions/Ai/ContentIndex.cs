@@ -25,4 +25,34 @@ public interface IContentIndexSource
 public interface IViewableContentFilter
 {
     Task<IReadOnlySet<Guid>> FilterAsync(IReadOnlyCollection<Guid> contentIds, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Same as <see cref="FilterAsync"/>, then drop content whose classification must not leave Raavi for an external model
+    /// (e.g. Restricted). Keyword search may still return these pages; Ask/RAG model context must not.
+    /// </summary>
+    Task<IReadOnlySet<Guid>> FilterForExternalModelAsync(IReadOnlyCollection<Guid> contentIds, CancellationToken cancellationToken);
+}
+
+/// <summary>Optional metadata / relationship facets applied to already viewable search hits (EKOS B3).</summary>
+public sealed record DiscoveryContentFilter(
+    Guid? OwnerUserId = null,
+    Guid? ReviewOwnerUserId = null,
+    string? Classification = null,
+    string? LifecycleStatus = null,
+    bool? ReviewDue = null,
+    string? RelationshipType = null,
+    string? ContentType = null,
+    DateTimeOffset? UpdatedFrom = null,
+    DateTimeOffset? UpdatedTo = null)
+{
+    public bool IsEmpty =>
+        OwnerUserId is null && ReviewOwnerUserId is null && string.IsNullOrWhiteSpace(Classification)
+        && string.IsNullOrWhiteSpace(LifecycleStatus) && ReviewDue is null && string.IsNullOrWhiteSpace(RelationshipType)
+        && string.IsNullOrWhiteSpace(ContentType) && UpdatedFrom is null && UpdatedTo is null;
+}
+
+/// <summary>Narrows a candidate id set using wiki governance / relationships / node fields (batch, no N+1).</summary>
+public interface IDiscoveryContentFilter
+{
+    Task<IReadOnlySet<Guid>> FilterAsync(IReadOnlyCollection<Guid> contentIds, DiscoveryContentFilter filter, CancellationToken cancellationToken);
 }

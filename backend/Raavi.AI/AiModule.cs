@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Raavi.AI.Persistence;
 using Raavi.AI.PromptHub;
+using Raavi.Application.Abstractions.Ai;
 using Raavi.Application.Abstractions.Authorization;
 using Raavi.Infrastructure.Http;
 using Raavi.Infrastructure.Persistence;
@@ -66,7 +67,13 @@ public static class AiModule
         members.MapPost("/pages/{id:guid}/ask", async (Guid id, AiAskRequest body, AiService svc, CancellationToken ct) => (await svc.AskAsync(id, body, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
 
         // Smart search works with keywords alone (no AI needed); with an embedding model it becomes hybrid. Results are filtered by the caller's own View right.
-        members.MapGet("/search", async (string? q, string? space, int? take, RagService svc, CancellationToken ct) => (await svc.SearchAsync(q, space, take ?? 10, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+        members.MapGet("/search", async (
+            string? q, string? space, int? take,
+            Guid? ownerUserId, Guid? reviewOwnerUserId, string? classification, string? lifecycleStatus, bool? reviewDue,
+            string? relationshipType, string? contentType, DateTimeOffset? updatedFrom, DateTimeOffset? updatedTo,
+            RagService svc, CancellationToken ct) =>
+            (await svc.SearchAsync(q, space, take ?? 10, new DiscoveryContentFilter(
+                ownerUserId, reviewOwnerUserId, classification, lifecycleStatus, reviewDue, relationshipType, contentType, updatedFrom, updatedTo), ct).ConfigureAwait(false)).ToHttp(Results.Ok));
         members.MapPost("/ask", async (AskRequest body, RagService svc, CancellationToken ct) => (await svc.AskAsync(body.Question, body.Space, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
 
         admin.MapGet("/index", async (RagService svc, CancellationToken ct) => Results.Ok(await svc.IndexStatusAsync(ct).ConfigureAwait(false)));

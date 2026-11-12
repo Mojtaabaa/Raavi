@@ -23,11 +23,17 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
 
     public DbSet<ContentNode> Nodes => Set<ContentNode>();
 
+    public DbSet<ContentGovernance> ContentGovernance => Set<ContentGovernance>();
+
+    public DbSet<KnowledgeRelationship> KnowledgeRelationships => Set<KnowledgeRelationship>();
+
     public DbSet<ContentClosure> Closure => Set<ContentClosure>();
 
     public DbSet<PageVersion> PageVersions => Set<PageVersion>();
 
     public DbSet<Label> Labels => Set<Label>();
+
+    public DbSet<LabelAlias> LabelAliases => Set<LabelAlias>();
 
     public DbSet<ContentLabel> ContentLabels => Set<ContentLabel>();
 
@@ -62,6 +68,9 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
     public DbSet<Calendar> Calendars => Set<Calendar>();
 
     public DbSet<CalendarAccessGrant> CalendarAccessGrants => Set<CalendarAccessGrant>();
+    public DbSet<CalendarEventReminder> CalendarEventReminders => Set<CalendarEventReminder>();
+    public DbSet<CalendarEventAttendee> CalendarEventAttendees => Set<CalendarEventAttendee>();
+    public DbSet<CalendarUserPreference> CalendarUserPreferences => Set<CalendarUserPreference>();
 
     public DbSet<CalendarEvent> CalendarEvents => Set<CalendarEvent>();
 
@@ -138,6 +147,44 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
             b.HasOne<ContentNode>().WithMany().HasForeignKey(x => new { x.TenantId, x.ParentId }).HasPrincipalKey(c => new { c.TenantId, c.Id }).OnDelete(DeleteBehavior.Restrict);
         });
 
+        modelBuilder.Entity<ContentGovernance>(b =>
+        {
+            b.ToTable("ContentGovernance", "content");
+            Keys(b);
+            b.Property(x => x.Classification).HasMaxLength(ContentClassifications.MaxLength).IsUnicode(false).UseCollation(Bin2);
+            b.Property(x => x.LifecycleStatus).HasMaxLength(GovernanceLifecycles.MaxLength).IsUnicode(false).UseCollation(Bin2);
+            b.HasIndex(x => new { x.TenantId, x.OwnerUserId });
+            b.HasIndex(x => new { x.TenantId, x.ReviewOwnerUserId });
+            b.HasIndex(x => new { x.TenantId, x.ReviewAt });
+            b.HasIndex(x => new { x.TenantId, x.Classification });
+            b.HasIndex(x => new { x.TenantId, x.LifecycleStatus });
+            b.HasOne<ContentNode>().WithMany().HasForeignKey(x => new { x.TenantId, x.Id }).HasPrincipalKey(c => new { c.TenantId, c.Id }).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<KnowledgeRelationship>(b =>
+        {
+            b.ToTable("KnowledgeRelationships", "content");
+            Keys(b);
+            b.Property(x => x.RelationshipType).HasMaxLength(KnowledgeRelationshipTypes.MaxLength).IsUnicode(false).UseCollation(Bin2);
+            b.Property(x => x.TargetKind).HasMaxLength(KnowledgeTargetKinds.MaxLength).IsUnicode(false).UseCollation(Bin2);
+            b.Property(x => x.TargetExternalKey).HasMaxLength(KnowledgeRelationship.MaxExternalKeyLength).IsUnicode(false).UseCollation(Bin2);
+            b.Property(x => x.TargetTitle).HasMaxLength(KnowledgeRelationship.MaxTitleLength);
+            b.Property(x => x.Origin).HasMaxLength(KnowledgeRelationshipOrigins.MaxLength).IsUnicode(false).UseCollation(Bin2);
+            b.Property(x => x.SourceSystem).HasMaxLength(KnowledgeRelationship.MaxSourceSystemLength).IsUnicode(false).UseCollation(Bin2);
+            b.HasIndex(x => new { x.TenantId, x.SourceContentId, x.RelationshipType });
+            b.HasIndex(x => new { x.TenantId, x.TargetContentId });
+            b.HasIndex(x => new { x.TenantId, x.RelationshipType });
+            b.HasIndex(x => new { x.TenantId, x.SourceContentId, x.RelationshipType, x.TargetKind, x.TargetContentId })
+                .IsUnique()
+                .HasFilter("[TargetContentId] IS NOT NULL");
+            b.HasIndex(x => new { x.TenantId, x.SourceContentId, x.RelationshipType, x.TargetKind, x.TargetExternalKey })
+                .IsUnique()
+                .HasFilter("[TargetExternalKey] IS NOT NULL");
+            // Cascade only on source — SQL Server forbids multiple CASCADE paths to Content; purge cleans target edges in app.
+            b.HasOne<ContentNode>().WithMany().HasForeignKey(x => new { x.TenantId, x.SourceContentId }).HasPrincipalKey(c => new { c.TenantId, c.Id }).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne<ContentNode>().WithMany().HasForeignKey(x => new { x.TenantId, x.TargetContentId }).HasPrincipalKey(c => new { c.TenantId, c.Id }).OnDelete(DeleteBehavior.Restrict);
+        });
+
         modelBuilder.Entity<ContentClosure>(b =>
         {
             b.ToTable("ContentClosure", "content");
@@ -168,7 +215,27 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
             b.ToTable("Labels", "content");
             Keys(b);
             b.Property(x => x.Name).HasMaxLength(Label.MaxLength).UseCollation(Bin2);
+            b.Property(x => x.DisplayName).HasMaxLength(Label.MaxDisplayLength);
+            b.Property(x => x.NormalizedName).HasMaxLength(Label.MaxDisplayLength).UseCollation(Bin2);
+            b.Property(x => x.Slug).HasMaxLength(Label.MaxLength).UseCollation(Bin2);
+            b.Property(x => x.Description).HasMaxLength(Label.MaxDescriptionLength);
+            b.Property(x => x.Color).HasMaxLength(Label.MaxColorLength).IsUnicode(false);
             b.HasIndex(x => new { x.TenantId, x.Name }).IsUnique();
+            b.HasIndex(x => new { x.TenantId, x.NormalizedName }).IsUnique();
+            b.HasIndex(x => new { x.TenantId, x.Slug }).IsUnique();
+            b.HasIndex(x => new { x.TenantId, x.ParentId, x.DisplayOrder });
+            b.HasOne<Label>().WithMany().HasForeignKey(x => new { x.TenantId, x.ParentId }).HasPrincipalKey(l => new { l.TenantId, l.Id }).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<LabelAlias>(b =>
+        {
+            b.ToTable("LabelAliases", "content");
+            Keys(b);
+            b.Property(x => x.Alias).HasMaxLength(LabelAlias.MaxAliasLength);
+            b.Property(x => x.NormalizedAlias).HasMaxLength(LabelAlias.MaxAliasLength).UseCollation(Bin2);
+            b.HasIndex(x => new { x.TenantId, x.NormalizedAlias }).IsUnique();
+            b.HasIndex(x => new { x.TenantId, x.LabelId });
+            b.HasOne<Label>().WithMany().HasForeignKey(x => new { x.TenantId, x.LabelId }).HasPrincipalKey(l => new { l.TenantId, l.Id }).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<ContentLabel>(b =>
@@ -357,6 +424,34 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
             b.HasOne<Calendar>().WithMany().HasForeignKey(x => new { x.TenantId, x.CalendarId }).HasPrincipalKey(c => new { c.TenantId, c.Id }).OnDelete(DeleteBehavior.Cascade);
         });
 
+        modelBuilder.Entity<CalendarEventReminder>(b =>
+        {
+            b.ToTable("CalendarEventReminders", "content");
+            Keys(b);
+            b.Property(x => x.LastDeliveredOccurrence).HasMaxLength(10).IsUnicode(false);
+            b.HasIndex(x => new { x.TenantId, x.EventId, x.MinutesBefore }).IsUnique();
+            b.HasOne<CalendarEvent>().WithMany().HasForeignKey(x => new { x.TenantId, x.EventId }).HasPrincipalKey(e => new { e.TenantId, e.Id }).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CalendarEventAttendee>(b =>
+        {
+            b.ToTable("CalendarEventAttendees", "content");
+            Keys(b);
+            b.Property(x => x.Response).HasConversion<string>().HasMaxLength(16).IsUnicode(false);
+            b.HasIndex(x => new { x.TenantId, x.EventId, x.UserId }).IsUnique();
+            b.HasIndex(x => new { x.TenantId, x.UserId, x.Response });
+            b.HasOne<CalendarEvent>().WithMany().HasForeignKey(x => new { x.TenantId, x.EventId }).HasPrincipalKey(e => new { e.TenantId, e.Id }).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CalendarUserPreference>(b =>
+        {
+            b.ToTable("CalendarUserPreferences", "content");
+            Keys(b);
+            b.Property(x => x.TtsLocale).HasMaxLength(8).IsUnicode(false);
+            b.Property(x => x.TimeZone).HasMaxLength(64).IsUnicode(false);
+            b.HasIndex(x => new { x.TenantId, x.UserId }).IsUnique();
+        });
+
         modelBuilder.Entity<CalendarEvent>(b =>
         {
             b.ToTable("CalendarEvents", "content");
@@ -384,6 +479,8 @@ public sealed class WikiDbContext(DbContextOptions<WikiDbContext> options, ITena
             b.Ignore(x => x.ExcludedDates);
             b.HasIndex(x => new { x.TenantId, x.CalendarId, x.StartDate });
             b.HasIndex(x => new { x.TenantId, x.SpaceId, x.StartDate });
+            b.HasIndex(x => new { x.TenantId, x.LinkedPageId });
+            b.HasIndex(x => new { x.TenantId, x.LinkedWhiteboardId });
             b.HasOne<Calendar>().WithMany().HasForeignKey(x => new { x.TenantId, x.CalendarId }).HasPrincipalKey(c => new { c.TenantId, c.Id }).OnDelete(DeleteBehavior.Restrict);
             b.HasOne<Space>().WithMany().HasForeignKey(x => new { x.TenantId, x.SpaceId }).HasPrincipalKey(s => new { s.TenantId, s.Id }).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
         });

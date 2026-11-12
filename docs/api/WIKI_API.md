@@ -220,22 +220,29 @@ Errors: `db.name_invalid`, `db.column_invalid`, `db.too_many_columns`, `db.colum
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/calendars?spaceKey=&includeArchived=` | List calendars the caller may see (personal own + org + viewable spaces). Archived hidden unless `includeArchived=true` |
+| GET | `/calendars?spaceKey=&includeArchived=` | List calendars the caller may see (personal own + shared grants + org + viewable spaces). Archived hidden unless `includeArchived=true` |
 | GET | `/spaces/{key}/calendars?includeArchived=` | Space calendars (View) |
 | POST | `/calendars` | `{scope: Personal\|Space\|Organization, spaceKey?, name?, description?, color?, icon?}`. Org = tenant admin; Space = Edit on active space |
 | PUT | `/calendars/{id}` | Manage: update name/description/color/icon |
 | POST | `/calendars/{id}/archive` | Manage; default delete path (hides from normal lists, keeps events) |
 | POST | `/calendars/{id}/restore` | Manage |
 | POST | `/calendars/{id}/purge` | Manage; only when archived; body `{confirmName}` must equal calendar name; deletes that calendar’s Raavi-owned events only |
-| GET | `/spaces/{key}/calendar/occurrences?from=&to=&calendarIds=` | View; `yyyy-MM-dd`, window ≤ 400 days (`calendar.window_invalid`), ≤ 2 000 occurrences, cancelled ones omitted; optional comma-separated `calendarIds` |
-| GET | `/calendar/occurrences?from=&to=&calendarIds=` | the same across every space the caller may view |
-| POST | `/spaces/{key}/calendar/events` | Edit on an active space (resolves/creates the space default calendar). `{title, description?, location?, allDay, startDate, startTime? ("HH:mm"), endDate?, endTime?, timeZone? (IANA, default UTC), recurrence?}` |
-| GET/PUT | `/calendar/events/{id}` | PUT needs **If-Match** `"r{n}"` (Edit) |
-| POST | `/calendar/events/{id}/exclusions` | `{date}` cancels one occurrence (`calendar.occurrence_invalid` if the rule does not produce it) |
+| GET/PUT | `/calendars/{id}/grants` | Manage; list or upsert `{subjectType: User\|Group, subjectId, grant: FreeBusy\|View\|Create\|EditOwn\|EditAll\|Manage}` |
+| DELETE | `/calendars/{id}/grants/{grantId}` | Manage |
+| GET/PUT | `/calendar/preferences` | Caller’s browser/TTS/quiet-hours prefs |
+| GET | `/spaces/{key}/calendar/occurrences?from=&to=&calendarIds=&q=&type=&sourceKind=` | View; window ≤ 400 days; merges Raavi events + Jira due-date overlay + Templar (empty until configured). FreeBusy strips titles; `sourceKind` / `freeBusyOnly` / `externalUrl` on rows; optional `q` / `type` / `sourceKind` filters |
+| GET | `/calendar/occurrences?from=&to=&calendarIds=&q=&type=&sourceKind=` | Same across personal/org/space calendars the caller may access |
+| POST | `/calendar/events/{id}/move` | Edit on source + Create on target; body `{targetCalendarId}` → moved event with ETag |
+| POST | `/calendar/events/{id}/rsvp` | Attendee only; body `{response: Accepted\|Declined\|Tentative}` |
+| POST | `/calendars/{id}/import` | Create+; body `{ics}` (≤ 1 MB / 200 VEVENTs); returns `{imported, skipped, warnings[]}`; sanitized SUMMARY/DESCRIPTION/LOCATION/RRULE |
+| POST | `/spaces/{key}/calendar/events` | Edit on an active space (default space calendar). Rich fields: `type`, `status`, `priority`, `color`, `onlineUrl`, `isPrivate`, `reminders[]` |
+| POST | `/calendars/{id}/events` | Create on a writable calendar (Create+) |
+| GET/PUT | `/calendar/events/{id}` | PUT needs **If-Match** `"r{n}"`; optional `editScope` (`EntireSeries` \| `ThisOccurrence` \| `ThisAndFollowing`) + `occurrenceDate` |
+| POST | `/calendar/events/{id}/exclusions` | `{date}` cancels one occurrence |
 | DELETE | `/calendar/events/{id}` | Edit |
 | GET | `/spaces/{key}/calendar/export` | `text/calendar` (.ics); Persian monthly/yearly series become `RDATE` lists |
 
-`recurrence`: `{frequency: None|Daily|Weekly|Monthly|Yearly, interval 1–99, weekDays [0=Sunday…6], calendar: Gregorian|Persian, until? (yyyy-MM-dd) | count? (1–1000)}` — never both `until` and `count`; a weekly rule must include the start's weekday. Errors: `calendar.title_invalid`, `.time_invalid`, `.range_invalid`, `.range_too_long`, `.time_zone_invalid`, `.recurrence_invalid`, `.event_not_found`.
+`recurrence`: `{frequency: None|Daily|Weekly|Monthly|Yearly, interval 1–99, weekDays [0=Sunday…6], calendar: Gregorian|Persian, until? (yyyy-MM-dd) | count? (1–1000), monthWeek? (0=day-of-month, 1–4=Nth weekday, −1/5=last)}` — never both `until` and `count`; a weekly rule must include the start's weekday. Event write also accepts `attendees[{userId,optional?}]`, `linkedPageId`, `linkedWhiteboardId`. Errors: `calendar.title_invalid`, `.time_invalid`, `.range_invalid`, `.range_too_long`, `.time_zone_invalid`, `.recurrence_invalid`, `.event_not_found`, `.rsvp_invalid`, `.link_invalid`.
 
 Occurrence DTO: `{eventId, spaceKey, spaceName, title, location, allDay, startDate, startTime, endDate (inclusive), endTime, timeZone, startUtc, endUtc, isRecurring, occurrenceDate, canEdit}`.
 
@@ -286,8 +293,12 @@ Occurrence DTO: `{eventId, spaceKey, spaceName, title, location, allDay, startDa
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/quick-find?q=&limit=` | Spaces and current content by title (full text: Phase 7) |
-| GET | `/labels?prefix=` | Labels used on at least one page the caller can view |
-| GET | `/labels/{name}/content` | |
+| GET | `/labels?prefix=` | Labels used on at least one page the caller can view (legacy string list) |
+| GET | `/labels/{slug}` | Label detail (displayName, children, related, usageCount, aliases) |
+| GET | `/labels/search?tags=&tagMode=any\|all&includeDescendants=&spaceKey=&skip=&take=` | Multi-label page search → `{items,total}` (view-filtered) |
+| GET | `/labels/{name}/content` | Single-label pages (legacy); with query params delegates to search |
+| GET | `/content/{id}/label-suggestions` | Deterministic suggestions for editors |
+| GET/POST/PUT/DELETE | `/admin/labels…` | Tenant admin: list/create/update/archive/restore/delete/move/merge/analytics |
 | GET | `/activity` | Activity across viewable spaces (projected from the outbox) |
 | GET/POST | `/templates` | Global templates (create: tenant administrators) |
 | GET/PUT/DELETE | `/templates/{id}` | PUT *If-Match* |

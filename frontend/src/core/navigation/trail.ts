@@ -23,6 +23,7 @@ const LABEL: Record<string, string> = {
   'admin-export': 'nav.export',
   'admin-migrations': 'nav.migrations',
   'admin-activity': 'activityLog.title',
+  'admin-labels': 'wiki.labels.adminTitle',
   'system-tenants': 'nav.tenants',
   'system-users': 'systemUsers.title',
   'system-email': 'email.title',

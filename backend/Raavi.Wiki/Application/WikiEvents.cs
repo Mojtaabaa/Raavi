@@ -27,8 +27,29 @@ public static class WikiEventTypes
     public const string ContentPublishApproved = "content.publish_approved";
     public const string ContentPublishRejected = "content.publish_rejected";
     public const string ContentPurged = "content.purged";
+    public const string ContentLabelAdded = "content.label_added";
+    public const string ContentLabelRemoved = "content.label_removed";
+    public const string ContentOwnerChanged = "content.owner_changed";
+    public const string ContentReviewScheduled = "content.review_scheduled";
+    public const string ContentReviewed = "content.reviewed";
+    public const string ContentClassificationChanged = "content.classification_changed";
+    public const string ContentGovernanceUpdated = "content.governance_updated";
+    public const string ContentRelationshipCreated = "content.relationship_created";
+    public const string ContentRelationshipRemoved = "content.relationship_removed";
+    public const string LabelCreated = "label.created";
+    public const string LabelUpdated = "label.updated";
+    public const string LabelArchived = "label.archived";
+    public const string LabelRestored = "label.restored";
+    public const string LabelDeleted = "label.deleted";
+    public const string LabelMerged = "label.merged";
+    public const string LabelMoved = "label.moved";
+    public const string LabelAliasAdded = "label.alias_added";
+    public const string LabelAliasRemoved = "label.alias_removed";
 
-    public static bool IsWiki(string type) => type.StartsWith("space.", StringComparison.Ordinal) || type.StartsWith("content.", StringComparison.Ordinal);
+    public static bool IsWiki(string type) =>
+        type.StartsWith("space.", StringComparison.Ordinal)
+        || type.StartsWith("content.", StringComparison.Ordinal)
+        || type.StartsWith("label.", StringComparison.Ordinal);
 }
 
 public static class WikiOutbox
@@ -58,6 +79,11 @@ public sealed class ActivityProjection(WikiDbContext db) : IOutboxHandler
         }
 
         var e = outboxEvent.Payload<WikiEvent>();
+        if (e.SpaceId == Guid.Empty)
+        {
+            return; // Tenant-scoped label governance — not projected into a space activity feed.
+        }
+
         db.Activity.Add(ActivityEntry.Create(outboxEvent.Id, e.SpaceId, e.ContentId, e.ActorId, outboxEvent.Type, e.Title, e.Version, outboxEvent.OccurredAt));
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
