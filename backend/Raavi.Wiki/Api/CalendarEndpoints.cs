@@ -38,11 +38,36 @@ public static class CalendarEndpoints
         g.MapPost("/calendars/{id:guid}/purge", async (Guid id, CalendarHardDeleteRequest body, CalendarService svc, CancellationToken ct) =>
             (await svc.HardDeleteCalendarAsync(id, body, ct).ConfigureAwait(false)).ToHttp());
 
-        g.MapGet("/calendar/occurrences", async (DateOnly from, DateOnly to, string? calendarIds, CalendarService svc, CancellationToken ct) =>
-            (await svc.OccurrencesAsync(null, from, to, ct, ParseIds(calendarIds)).ConfigureAwait(false)).ToHttp(Results.Ok));
+        g.MapGet("/calendars/{id:guid}/grants", async (Guid id, CalendarService svc, CancellationToken ct) =>
+            (await svc.ListGrantsAsync(id, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
 
-        g.MapGet("/spaces/{key}/calendar/occurrences", async (string key, DateOnly from, DateOnly to, string? calendarIds, CalendarService svc, CancellationToken ct) =>
-            (await svc.OccurrencesAsync(key, from, to, ct, ParseIds(calendarIds)).ConfigureAwait(false)).ToHttp(Results.Ok));
+        g.MapPut("/calendars/{id:guid}/grants", async (Guid id, CalendarGrantRequest body, CalendarService svc, CancellationToken ct) =>
+            (await svc.PutGrantAsync(id, body, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+
+        g.MapDelete("/calendars/{id:guid}/grants/{grantId:guid}", async (Guid id, Guid grantId, CalendarService svc, CancellationToken ct) =>
+            (await svc.DeleteGrantAsync(id, grantId, ct).ConfigureAwait(false)).ToHttp());
+
+        g.MapGet("/calendar/preferences", async (CalendarService svc, CancellationToken ct) =>
+            (await svc.GetPrefsAsync(ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+
+        g.MapPut("/calendar/preferences", async (CalendarUserPrefsRequest body, CalendarService svc, CancellationToken ct) =>
+            (await svc.UpdatePrefsAsync(body, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+
+        g.MapGet("/calendar/occurrences", async (DateOnly from, DateOnly to, string? calendarIds, string? q, string? type, string? sourceKind, CalendarService svc, CancellationToken ct) =>
+            (await svc.OccurrencesAsync(null, from, to, ct, ParseIds(calendarIds), q, type, sourceKind).ConfigureAwait(false)).ToHttp(Results.Ok));
+
+        g.MapGet("/spaces/{key}/calendar/occurrences", async (string key, DateOnly from, DateOnly to, string? calendarIds, string? q, string? type, string? sourceKind, CalendarService svc, CancellationToken ct) =>
+            (await svc.OccurrencesAsync(key, from, to, ct, ParseIds(calendarIds), q, type, sourceKind).ConfigureAwait(false)).ToHttp(Results.Ok));
+
+        g.MapPost("/calendars/{id:guid}/import", async (Guid id, CalendarImportRequest body, CalendarService svc, CancellationToken ct) =>
+            (await svc.ImportAsync(id, body, ct).ConfigureAwait(false)).ToHttp(Results.Ok));
+
+        g.MapPost("/calendars/{id:guid}/events", async (Guid id, CalendarEventRequest body, CalendarService svc, HttpContext http, CancellationToken ct) =>
+            (await svc.CreateOnCalendarAsync(id, body, ct).ConfigureAwait(false)).ToHttp(e =>
+            {
+                ETags.Set(http.Response, e.Revision);
+                return Results.Created($"/api/v1/calendar/events/{e.Id}", e);
+            }));
 
         g.MapPost("/spaces/{key}/calendar/events", async (string key, CalendarEventRequest body, CalendarService svc, HttpContext http, CancellationToken ct) =>
             (await svc.CreateAsync(key, body, ct).ConfigureAwait(false)).ToHttp(e =>
@@ -67,6 +92,12 @@ public static class CalendarEndpoints
 
         g.MapPost("/calendar/events/{id:guid}/exclusions", async (Guid id, ExcludeOccurrenceRequest body, CalendarService svc, HttpContext http, CancellationToken ct) =>
             (await svc.ExcludeAsync(id, body.Date, ct).ConfigureAwait(false)).ToHttp(e => ETags.OkWithETag(http, e, e.Revision)));
+
+        g.MapPost("/calendar/events/{id:guid}/move", async (Guid id, CalendarMoveRequest body, CalendarService svc, HttpContext http, CancellationToken ct) =>
+            (await svc.MoveAsync(id, body, ct).ConfigureAwait(false)).ToHttp(e => ETags.OkWithETag(http, e, e.Revision)));
+
+        g.MapPost("/calendar/events/{id:guid}/rsvp", async (Guid id, CalendarRsvpRequest body, CalendarService svc, HttpContext http, CancellationToken ct) =>
+            (await svc.RsvpAsync(id, body, ct).ConfigureAwait(false)).ToHttp(e => ETags.OkWithETag(http, e, e.Revision)));
 
         g.MapDelete("/calendar/events/{id:guid}", async (Guid id, CalendarService svc, CancellationToken ct) => (await svc.DeleteAsync(id, ct).ConfigureAwait(false)).ToHttp());
     }

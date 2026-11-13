@@ -28,6 +28,7 @@ import AttachmentView from './views/AttachmentView.vue'
 import UnsupportedView from './views/UnsupportedView.vue'
 import ChildrenView from './views/ChildrenView.vue'
 import ContentByLabelView from './views/ContentByLabelView.vue'
+import IncludeView from './views/IncludeView.vue'
 import { isConfiguredPathHref } from './pathRewrites'
 
 /** Same allow-list as the server (`EditorSchema.IsSafeHref`), including configured path-prefix rewrites. */
@@ -78,12 +79,27 @@ const SafeLink = Link.extend({
 
 export interface EditorEnvironment {
   t: (key: string) => string
+  /** Active UI locale (`fa`, `en`, …). Gates English-centric Typography and default list direction. */
+  locale?: string
   /** Users of the current workspace for @mentions. */
   searchUsers: (query: string) => Promise<{ id: string; label: string; detail: string | null }[]>
   placeholder?: string
   /** Real-time mode: Yjs owns history, so the local undo/redo extension is disabled (Collaboration provides it). */
   collaborative?: boolean
 }
+
+/** Zero-width non-joiner (نیم‌فاصله) for Persian composition. */
+export const ZWNJ = '\u200C'
+
+/** Keyboard shortcut + slash insert for ZWNJ; no document schema change. */
+const PersianAuthoring = Extension.create({
+  name: 'raaviPersianAuthoring',
+  addKeyboardShortcuts() {
+    return {
+      'Mod-Shift-Space': () => this.editor.commands.insertContent(ZWNJ),
+    }
+  },
+})
 
 const del = (editor: Editor, range: Range) => editor.chain().focus().deleteRange(range)
 
@@ -99,6 +115,7 @@ function custom(id: string, view?: Component, slash?: SlashItem[], tag?: string)
 /** Builds the full registry: every manifest has exactly one registration (verified by tests and at runtime). */
 export function createEditorRegistry(env?: EditorEnvironment): EditorRegistry {
   const r = new EditorRegistry()
+  const faUi = (env?.locale ?? '').toLowerCase().startsWith('fa')
   r.use(
     StarterKit.configure({ link: false, ...(env?.collaborative ? { undoRedo: false as const } : {}) }),
     SafeLink,
@@ -113,7 +130,9 @@ export function createEditorRegistry(env?: EditorEnvironment): EditorRegistry {
     Highlight.configure({ multicolor: true }),
     Subscript,
     Superscript,
-    Typography,
+    // Smart quotes/dashes are English-centric; skip them in the Persian UI.
+    ...(faUi ? [] : [Typography]),
+    PersianAuthoring,
     Focus.configure({ className: 'has-focus', mode: 'all' }),
     Selection,
     TrailingNode,
@@ -153,12 +172,13 @@ export function createEditorRegistry(env?: EditorEnvironment): EditorRegistry {
     run: insert('panel', { type }, true),
   }))))
   r.register(custom('raavi.expand', ExpandView, [{ labelKey: 'editor.slash.expand', icon: 'pi pi-angle-down', keywords: ['expand', 'collapse', 'details', 'بازشو'], run: insert('expand', { title: '' }, true) }]))
-  r.register(custom('raavi.status', StatusView, [{ labelKey: 'editor.slash.status', icon: 'pi pi-tag', keywords: ['status', 'lozenge', 'وضعیت'], run: insert('status', { text: 'TODO', color: 'neutral' }) }], 'span'))
+  r.register(custom('raavi.status', StatusView, [{ labelKey: 'editor.slash.status', icon: 'pi pi-tag', keywords: ['status', 'lozenge', 'وضعیت'], run: insert('status', { text: env?.t('editor.status.defaultText') ?? 'TODO', color: 'neutral' }) }], 'span'))
   r.register(custom('raavi.issue', IssueView, [{ labelKey: 'editor.slash.issue', icon: 'pi pi-github', keywords: ['issue', 'jira', 'github', 'gitlab', 'ticket', 'مسئله', 'تیکت'], run: insert('issue', { connector: null, reference: '' }) }], 'span'))
   r.register(custom('raavi.whiteboard', WhiteboardEmbedView, [{ labelKey: 'editor.slash.whiteboard', icon: 'pi pi-objects-column', keywords: ['whiteboard', 'board', 'وایت‌برد', 'بورد'], run: insert('whiteboard', { whiteboardId: null }) }]))
   r.register(custom('raavi.toc', TocView, [{ labelKey: 'editor.slash.toc', icon: 'pi pi-list', keywords: ['toc', 'contents', 'فهرست مطالب'], run: insert('toc', { maxLevel: 3 }) }]))
   r.register(custom('raavi.children', ChildrenView, [{ labelKey: 'editor.slash.children', icon: 'pi pi-sitemap', keywords: ['children', 'child', 'pages', 'زیرصفحه', 'فرزند'], run: insert('children', { depth: 1 }) }]))
   r.register(custom('raavi.contentByLabel', ContentByLabelView, [{ labelKey: 'editor.slash.contentByLabel', icon: 'pi pi-tags', keywords: ['label', 'labels', 'pages by label', 'برچسب'], run: insert('contentByLabel', { labels: '', maxItems: 20, currentSpaceOnly: false }) }]))
+  r.register(custom('raavi.include', IncludeView, [{ labelKey: 'editor.slash.include', icon: 'pi pi-clone', keywords: ['include', 'transclude', 'embed page', 'درج', 'شامل'], run: insert('include', { pageId: null, spaceKey: '', title: '' }) }]))
   r.register(custom('raavi.mermaid', SourceRenderView, [{ labelKey: 'editor.slash.mermaid', icon: 'pi pi-sitemap', keywords: ['mermaid', 'diagram', 'نمودار'], run: insert('mermaid', { source: '' }) }]))
   r.register(custom('raavi.mathInline', SourceRenderView, [{ labelKey: 'editor.slash.mathInline', icon: 'pi pi-percentage', keywords: ['math', 'latex', 'formula', 'فرمول'], run: insert('mathInline', { latex: '' }) }], 'span'))
   r.register(custom('raavi.mathBlock', SourceRenderView, [{ labelKey: 'editor.slash.mathBlock', icon: 'pi pi-percentage', keywords: ['math', 'latex', 'equation', 'معادله'], run: insert('mathBlock', { latex: '' }) }]))
@@ -188,11 +208,20 @@ export function createEditorRegistry(env?: EditorEnvironment): EditorRegistry {
       SlashCommand.configure({
         items: (query: string) => {
           const q = query.trim().toLowerCase()
-          return r.slashItems()
+          const zwnj = {
+            key: 'editor.slash.zwnj',
+            label: env.t('editor.slash.zwnj'),
+            icon: 'pi pi-minus',
+            keywords: ['zwnj', 'نیم فاصله', 'نیم‌فاصله', 'nimfasele'],
+            run: (editor: Editor, range: Range) => del(editor, range).insertContent(ZWNJ).run(),
+          }
+          const fromRegistry = r.slashItems()
             .map((item, i) => ({ item, label: env.t(item.labelKey), i }))
             .filter(({ item }) => !item.needsContent || uploadHook !== undefined)
             .filter(({ item, label }) => !q || label.toLowerCase().includes(q) || item.keywords.some((k) => k.toLowerCase().includes(q)))
             .map(({ item, label, i }) => ({ key: `${item.labelKey}-${i}`, label, icon: item.icon, run: (editor: Editor, range: Range) => item.run({ editor, range, upload: uploadHook }) }))
+          const zwnjHit = !q || zwnj.label.toLowerCase().includes(q) || zwnj.keywords.some((k) => k.toLowerCase().includes(q))
+          return [...(zwnjHit ? [{ key: zwnj.key, label: zwnj.label, icon: zwnj.icon, run: zwnj.run }] : []), ...fromRegistry]
         },
         labels: () => ({ empty: env.t('editor.slash.none'), aria: env.t('editor.slash.label') }),
       }),

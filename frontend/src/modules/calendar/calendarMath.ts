@@ -97,6 +97,54 @@ export function dateLabel(iso: string, cal: CalendarSystem, intlTag: string): st
   return new Intl.DateTimeFormat(`${intlTag}-u-ca-${cal}`, { timeZone: 'UTC', dateStyle: 'medium' }).format(at(iso))
 }
 
+/** Inclusive week [start, end] containing `iso`, starting on `weekStart` (0=Sun…6=Sat). */
+export function weekRange(iso: string, weekStart: number): { from: string; to: string } {
+  const lead = (weekdayOf(iso) - weekStart + 7) % 7
+  const from = addDays(iso, -lead)
+  return { from, to: addDays(from, 6) }
+}
+
+/** Monday–Friday work week containing `iso` (Gregorian weekdays). */
+export function workWeekRange(iso: string): { from: string; to: string } {
+  const day = weekdayOf(iso) // 0 Sun
+  const toMonday = day === 0 ? -6 : 1 - day
+  const from = addDays(iso, toMonday)
+  return { from, to: addDays(from, 4) }
+}
+
+export function shiftYear(iso: string, cal: CalendarSystem, delta: number): string {
+  const p = partsOf(iso, cal)
+  return isoFromParts(p.y + delta, 1, 1, cal)
+}
+
+export function yearLabel(iso: string, cal: CalendarSystem, intlTag: string): string {
+  return new Intl.DateTimeFormat(`${intlTag}-u-ca-${cal}`, { timeZone: 'UTC', year: 'numeric' }).format(at(iso))
+}
+
+/** First day of each month in the calendar year containing `iso`. */
+export function yearMonths(iso: string, cal: CalendarSystem): string[] {
+  const y = partsOf(iso, cal).y
+  return Array.from({ length: 12 }, (_, i) => isoFromParts(y, i + 1, 1, cal))
+}
+
+export function shiftByView(iso: string, cal: CalendarSystem, view: 'month' | 'day' | 'week' | 'workweek' | 'agenda' | 'year' | 'timeline', delta: number): string {
+  if (view === 'year') return shiftYear(iso, cal, delta)
+  if (view === 'month') return shiftMonth(iso, cal, delta)
+  if (view === 'day' || view === 'agenda' || view === 'timeline') return addDays(iso, delta)
+  if (view === 'workweek') return addDays(iso, delta * 7)
+  return addDays(iso, delta * 7)
+}
+
+/** Minutes from midnight for `HH:mm` / `HH:mm:ss`; null when missing. */
+export function minutesOf(time: string | null | undefined): number | null {
+  if (!time) return null
+  const [h, m] = time.split(':').map(Number)
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null
+  return h! * 60 + m!
+}
+
+export const TIMELINE_HOURS = Array.from({ length: 24 }, (_, h) => h)
+
 /** The ISO date of year/month/day in the given calendar (day is clamped to the month). Found by bisection over Intl, like the rest of this file. */
 export function isoFromParts(y: number, m: number, d: number, cal: CalendarSystem): string {
   if (cal === 'gregory') return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`

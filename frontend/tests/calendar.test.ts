@@ -9,7 +9,8 @@ import App from '@/app/App.vue'
 import { configureHttp } from '@/core/api/http'
 import { createRaaviI18n } from '@/core/i18n'
 import { createRaaviRouter, resetRouterBootstrap } from '@/router'
-import { addDays, daysInMonth, firstOfMonth, monthGrid, partsOf, shiftMonth, toIso, weekdayOf } from '@/modules/calendar/calendarMath'
+import { addDays, daysInMonth, firstOfMonth, monthGrid, partsOf, shiftMonth, shiftYear, toIso, weekdayOf, yearMonths } from '@/modules/calendar/calendarMath'
+import { CALENDAR_EVENT_LABEL_MAX, calendarEventLabel } from '@/modules/calendar/eventLabel'
 import { fakeFetch, json } from './support/fakeApi'
 
 const tenantCtx = { kind: 'tenant', tenant: { slug: 'acme', displayName: { fa: 'اکمی', en: 'Acme' }, defaultLocale: 'en', timeZone: 'Asia/Tehran', calendar: 'gregorian', branding: { primaryColor: null, secondaryColor: null, welcomeMessageFa: null, welcomeMessageEn: null } } }
@@ -18,12 +19,27 @@ const space = (canCreate: boolean) => ({ id: 's1', key: 'ENG', name: 'Engineerin
 const withEtag = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json', ETag: '"r1"' } })
 
 const occurrence = (over: Record<string, unknown> = {}) => ({
-  eventId: 'e1', spaceKey: 'ENG', spaceName: 'Engineering', title: 'Standup', location: null, allDay: false, startDate: toIso(new Date()), startTime: '09:30', endDate: toIso(new Date()), endTime: '09:45',
-  timeZone: 'Asia/Tehran', startUtc: null, endUtc: null, isRecurring: true, occurrenceDate: toIso(new Date()), canEdit: true, ...over,
+  eventId: 'e1', calendarId: 'c1', spaceKey: 'ENG', spaceName: 'Engineering', title: 'Standup', location: null, allDay: false, startDate: toIso(new Date()), startTime: '09:30', endDate: toIso(new Date()), endTime: '09:45',
+  timeZone: 'Asia/Tehran', startUtc: null, endUtc: null, isRecurring: true, occurrenceDate: toIso(new Date()), canEdit: true, sourceKind: 'Raavi', externalUrl: null, freeBusyOnly: false, type: 'Event', color: '#3b82f6', ...over,
 })
 const fullEvent = (over: Record<string, unknown> = {}) => ({
-  id: 'e1', spaceKey: 'ENG', spaceName: 'Engineering', title: 'Standup', description: null, location: null, allDay: false, startDate: toIso(new Date()), startTime: '09:30', endDate: toIso(new Date()), endTime: '09:45',
-  timeZone: 'Asia/Tehran', recurrence: { frequency: 'Weekly', interval: 1, weekDays: [weekdayOf(toIso(new Date()))], calendar: 'Gregorian', until: null, count: null }, excludedDates: [], createdByName: 'Ali', createdAt: '2026-11-07T08:00:00Z', revision: 3, canEdit: true, ...over,
+  id: 'e1', calendarId: 'c1', spaceKey: 'ENG', spaceName: 'Engineering', title: 'Standup', description: null, location: null, allDay: false, startDate: toIso(new Date()), startTime: '09:30', endDate: toIso(new Date()), endTime: '09:45',
+  timeZone: 'Asia/Tehran', recurrence: { frequency: 'Weekly', interval: 1, weekDays: [weekdayOf(toIso(new Date()))], calendar: 'Gregorian', until: null, count: null }, excludedDates: [],
+  type: 'Event', status: 'Scheduled', priority: 'Normal', color: null, onlineUrl: null, isPrivate: false, reminders: [], attendees: [], linkedPageId: null, linkedWhiteboardId: null, myResponse: null, createdByName: 'Ali', createdAt: '2026-11-07T08:00:00Z', revision: 3, canEdit: true, ...over,
+})
+const board = { id: 'c1', scope: 'Space', spaceId: 's1', ownerUserId: null, name: 'Engineering', description: null, color: '#3b82f6', icon: null, isDefault: true, archivedAt: null, revision: 1 }
+const prefs = { browserAlerts: true, ttsEnabled: false, ttsLocale: 'en', ttsRate: 1, hidePrivateTitlesInTts: true, quietStartMinutes: null, quietEndMinutes: null, timeZone: 'UTC' }
+
+describe('calendarEventLabel', () => {
+  it('returns trimmed text and crops very long titles', () => {
+    expect(calendarEventLabel('  Hi  ')).toBe('Hi')
+    expect(calendarEventLabel('')).toBe('')
+    expect(calendarEventLabel(null)).toBe('')
+    const long = 'x'.repeat(CALENDAR_EVENT_LABEL_MAX + 20)
+    expect(calendarEventLabel(long)).toHaveLength(CALENDAR_EVENT_LABEL_MAX)
+    expect(calendarEventLabel(long).endsWith('…')).toBe(true)
+    expect(calendarEventLabel('abcdef', 4)).toBe('abc…')
+  })
 })
 
 describe('calendar arithmetic', () => {
@@ -60,6 +76,14 @@ describe('calendar arithmetic', () => {
     expect(far[34]!.inMonth).toBe(false)
     expect(far.every((d, i) => i === 0 || d.iso === addDays(far[i - 1]!.iso, 1))).toBe(true)
   })
+
+  it('lists twelve months for a year and shifts by calendar year', () => {
+    const months = yearMonths('2026-07-15', 'gregory')
+    expect(months).toHaveLength(12)
+    expect(months[0]).toBe('2026-01-01')
+    expect(months[11]).toBe('2026-12-01')
+    expect(shiftYear('2026-03-21', 'persian', 1)).toBe('2027-03-21') // 1 Farvardin 1406
+  })
 })
 
 describe('calendar view', () => {
@@ -82,6 +106,9 @@ describe('calendar view', () => {
     'GET /api/v1/auth/antiforgery': () => json({ token: 'xsrf' }),
     'GET /api/v1/notifications/unread-count': () => json({ count: 0 }),
     'GET /api/v1/spaces/ENG/tree': () => json([]),
+    'GET /api/v1/calendars': () => json([board]),
+    'GET /api/v1/spaces/ENG/calendars': () => json([board]),
+    'GET /api/v1/calendar/preferences': () => json(prefs),
   }
 
   async function open(path: string, f: ReturnType<typeof fakeFetch>) {
@@ -113,11 +140,149 @@ describe('calendar view', () => {
     for (let i = 0; i < 3; i++) await flushPromises()
     expect(w.get('[data-testid="month-title"]').text()).not.toBe(gregorianTitle)
     expect(f.calls.filter((c) => c.url.startsWith('/api/v1/calendar/occurrences')).length).toBeGreaterThan(1)
+    expect(w.get('[data-testid="occurrence"]').text()).toContain('Standup')
 
     const before = w.get('[data-testid="month-title"]').text()
     await w.get('[data-testid="next-month"]').trigger('click')
     await flushPromises()
     expect(w.get('[data-testid="month-title"]').text()).not.toBe(before)
+  })
+
+  it('opens edit on occurrence click and never posts create; event buttons stop day double-click', async () => {
+    const f = fakeFetch({
+      ...base,
+      'GET /api/v1/spaces/ENG': () => withEtag(space(true)),
+      'GET /api/v1/spaces/ENG/calendar/occurrences': () => json([occurrence()]),
+      'GET /api/v1/calendar/events/e1': () => json(fullEvent()),
+    })
+    const w = await open('/spaces/ENG/calendar', f)
+    await w.get('[data-testid="occurrence"]').trigger('click')
+    for (let i = 0; i < 3; i++) await flushPromises()
+    expect((document.body.querySelector('[data-testid="event-title"]') as HTMLInputElement).value).toBe('Standup')
+    const creates = f.calls.filter((c) => c.method === 'POST' && c.url.includes('/calendar/events'))
+    expect(creates).toHaveLength(0)
+    await w.get('[data-testid="occurrence"]').trigger('dblclick')
+    for (let i = 0; i < 2; i++) await flushPromises()
+    expect(creates).toHaveLength(0)
+    const titleAfter = document.body.querySelector('[data-testid="event-title"]') as HTMLInputElement | null
+    if (titleAfter) expect(titleAfter.value).toBe('Standup')
+  })
+
+  async function selectView(w: VueWrapper, label: string) {
+    const btn = w.findAll('[data-testid="calendar-view"] [role="radio"], [data-testid="calendar-view"] .p-togglebutton').find((b) => b.text() === label)!
+    await btn.trigger('click')
+    for (let i = 0; i < 3; i++) await flushPromises()
+  }
+
+  it('opens create from double-click in week and day views', async () => {
+    const f = fakeFetch({
+      ...base,
+      'GET /api/v1/spaces/ENG': () => withEtag(space(true)),
+      'GET /api/v1/spaces/ENG/calendar/occurrences': () => json([]),
+    })
+    const w = await open('/spaces/ENG/calendar', f)
+
+    await selectView(w, 'Week')
+    expect(w.find('[data-testid="week-view"]').exists()).toBe(true)
+    let day = w.get('[data-testid="calendar-day"]')
+    let iso = day.attributes('data-date')!
+    await day.trigger('dblclick')
+    await flushPromises()
+    expect((document.body.querySelector('[data-testid="event-start"]') as HTMLInputElement).value).toBe(iso)
+
+    await selectView(w, 'Day')
+    expect(w.find('[data-testid="day-view"]').exists()).toBe(true)
+    day = w.get('[data-testid="calendar-day"]')
+    await day.trigger('dblclick')
+    await flushPromises()
+    expect((document.body.querySelector('[data-testid="event-start"]') as HTMLInputElement).value).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
+
+  it('refetches occurrences only once when switching Jalali/Gregorian', async () => {
+    const f = fakeFetch({
+      ...base,
+      'GET /api/v1/spaces/ENG': () => withEtag(space(true)),
+      'GET /api/v1/spaces/ENG/calendar/occurrences': () => json([occurrence()]),
+    })
+    const w = await open('/spaces/ENG/calendar', f)
+    const before = f.calls.filter((c) => c.url.includes('/calendar/occurrences')).length
+
+    const jalali = w.findAll('[data-testid="calendar-system"] [role="radio"], [data-testid="calendar-system"] .p-togglebutton').find((b) => b.text() === 'Jalali')!
+    await jalali.trigger('click')
+    for (let i = 0; i < 3; i++) await flushPromises()
+    const after = f.calls.filter((c) => c.url.includes('/calendar/occurrences')).length
+    expect(after - before).toBe(1)
+    expect(w.find('[data-testid="calendar-kpis"]').exists()).toBe(true)
+  })
+
+  it('opens create via Enter on a focused day and via the day add control', async () => {
+    const f = fakeFetch({
+      ...base,
+      'GET /api/v1/spaces/ENG': () => withEtag(space(true)),
+      'GET /api/v1/spaces/ENG/calendar/occurrences': () => json([]),
+    })
+    const w = await open('/spaces/ENG/calendar', f)
+    const day = w.get('[data-testid="calendar-day"]')
+    const iso = day.attributes('data-date')!
+    await day.trigger('keydown', { key: 'Enter' })
+    await flushPromises()
+    expect((document.body.querySelector('[data-testid="event-start"]') as HTMLInputElement).value).toBe(iso)
+    await w.get('[data-testid="day-add-event"]').trigger('click')
+    await flushPromises()
+    expect((document.body.querySelector('[data-testid="event-start"]') as HTMLInputElement).value).toBe(iso)
+  })
+
+  it('exposes localized add labels in English and Persian', async () => {
+    const f = fakeFetch({
+      ...base,
+      'GET /api/v1/spaces/ENG': () => withEtag(space(true)),
+      'GET /api/v1/spaces/ENG/calendar/occurrences': () => json([]),
+    })
+    vi.stubGlobal('fetch', f.fn)
+    configureHttp(f.fn)
+    resetRouterBootstrap()
+    const routerEn = createRaaviRouter(createMemoryHistory())
+    await routerEn.push('/spaces/ENG/calendar')
+    const wEn = mount(App, { attachTo: document.body, global: { plugins: [createRaaviI18n('en'), PrimeVue, routerEn, ToastService, ConfirmationService] } })
+    for (let i = 0; i < 4; i++) await flushPromises()
+    expect(wEn.get('[data-testid="day-add-event"]').attributes('aria-label')).toContain('Add an event')
+    wEn.unmount()
+    resetRouterBootstrap()
+    localStorage.setItem('raavi.locale', 'fa')
+    const tenantFa = { ...tenantCtx, tenant: { ...tenantCtx.tenant, defaultLocale: 'fa' } }
+    const fFa = fakeFetch({
+      ...base,
+      'GET /api/v1/host/context': () => json(tenantFa),
+      'GET /api/v1/auth/me': () => json({ ...me, preferredLocale: 'fa' }),
+      'GET /api/v1/spaces/ENG': () => withEtag(space(true)),
+      'GET /api/v1/spaces/ENG/calendar/occurrences': () => json([]),
+    })
+    configureHttp(fFa.fn)
+    vi.stubGlobal('fetch', fFa.fn)
+    const routerFa = createRaaviRouter(createMemoryHistory())
+    await routerFa.push('/spaces/ENG/calendar')
+    const wFa = mount(App, { attachTo: document.body, global: { plugins: [createRaaviI18n('fa'), PrimeVue, routerFa, ToastService, ConfirmationService] } })
+    for (let i = 0; i < 4; i++) await flushPromises()
+    expect(wFa.get('[data-testid="day-add-event"]').attributes('aria-label')).toContain('افزودن')
+    wFa.unmount()
+    vi.unstubAllGlobals()
+  })
+
+  it('opens the create dialog when double-clicking a day cell', async () => {
+    const f = fakeFetch({
+      ...base,
+      'GET /api/v1/spaces/ENG': () => withEtag(space(true)),
+      'GET /api/v1/spaces/ENG/calendar/occurrences': () => json([]),
+    })
+    const w = await open('/spaces/ENG/calendar', f)
+    expect(w.find('[data-testid="calendar-kpis"]').exists()).toBe(true)
+    const day = w.get('[data-testid="calendar-day"]')
+    const iso = day.attributes('data-date')!
+    expect(iso).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    await day.trigger('dblclick')
+    await flushPromises()
+    expect(document.body.querySelector('[data-testid="event-title"]')).not.toBeNull()
+    expect((document.body.querySelector('[data-testid="event-start"]') as HTMLInputElement).value).toBe(iso)
   })
 
   it('creates a weekly event that always repeats on its own weekday, in the space of the calendar', async () => {
@@ -126,6 +291,7 @@ describe('calendar view', () => {
       'GET /api/v1/spaces/ENG': () => withEtag(space(true)),
       'GET /api/v1/spaces/ENG/calendar/occurrences': () => json([]),
       'POST /api/v1/spaces/ENG/calendar/events': () => json(fullEvent(), 201),
+      'POST /api/v1/calendars/c1/events': () => json(fullEvent(), 201),
     })
     const w = await open('/spaces/ENG/calendar', f)
     expect(w.get('[data-testid="no-events"]').text()).toContain('No events')
@@ -152,7 +318,7 @@ describe('calendar view', () => {
 
     document.body.querySelector<HTMLButtonElement>('[data-testid="save-event"]')!.click()
     for (let i = 0; i < 3; i++) await flushPromises()
-    const post = f.calls.find((c) => c.method === 'POST' && c.url === '/api/v1/spaces/ENG/calendar/events')!
+    const post = f.calls.find((c) => c.method === 'POST' && (c.url === '/api/v1/spaces/ENG/calendar/events' || c.url === '/api/v1/calendars/c1/events'))!
     expect(post.body).toMatchObject({ title: 'Planning', allDay: false, startDate: '2026-07-06', startTime: '09:00', endDate: '2026-07-06', endTime: '10:00', timeZone: 'Asia/Tehran' })
     const rec = (post.body as { recurrence: { frequency: string; weekDays: number[]; until: null; count: null } }).recurrence
     expect(rec.frequency).toBe('Weekly')
@@ -195,5 +361,71 @@ describe('calendar view', () => {
     expect(document.body.querySelector('[data-testid="delete-event"]')).toBeNull()
     expect(document.body.querySelector('[data-testid="cancel-occurrence"]')).toBeNull()
     expect((document.body.querySelector('[data-testid="event-title"]') as HTMLInputElement).disabled).toBe(true)
+  })
+
+  it('switches to year view, searches occurrences, and opens share/import actions', async () => {
+    const f = fakeFetch({
+      ...base,
+      'GET /api/v1/spaces/ENG': () => withEtag(space(true)),
+      'GET /api/v1/spaces/ENG/calendar/occurrences': () => json([occurrence()]),
+      'GET /api/v1/calendars/c1/grants': () => json([{ id: 'g1', subjectType: 'User', subjectId: 'u2', grant: 'View', createdAt: '2026-11-07T08:00:00Z' }]),
+      'GET /api/v1/directory': () => json([]),
+    })
+    const w = await open('/spaces/ENG/calendar', f)
+
+    const yearBtn = w.findAll('[data-testid="calendar-view"] [role="radio"], [data-testid="calendar-view"] .p-togglebutton').find((b) => b.text() === 'Year')!
+    await yearBtn.trigger('click')
+    for (let i = 0; i < 3; i++) await flushPromises()
+    expect(w.find('[data-testid="year-view"]').exists()).toBe(true)
+    expect(w.findAll('[data-testid="year-month"]').length).toBe(12)
+
+    await w.get('[data-testid="calendar-search"]').setValue('Standup')
+    for (let i = 0; i < 5; i++) await flushPromises()
+    await new Promise((r) => setTimeout(r, 350))
+    for (let i = 0; i < 3; i++) await flushPromises()
+    expect(f.calls.some((c) => c.url.includes('/calendar/occurrences') && c.url.includes('q=Standup'))).toBe(true)
+
+    await w.get('[data-testid="share-calendar"]').trigger('click')
+    for (let i = 0; i < 3; i++) await flushPromises()
+    expect(document.body.querySelector('[data-testid="share-dialog"]')).not.toBeNull()
+    expect(document.body.querySelector('[data-testid="grant-list"]')!.textContent).toContain('View')
+
+    await w.get('[data-testid="import-calendar"]').trigger('click')
+    for (let i = 0; i < 3; i++) await flushPromises()
+    expect(document.body.querySelector('[data-testid="import-dialog"]')).not.toBeNull()
+  })
+
+  it('opens timeline view, filters by type, and creates a personal calendar', async () => {
+    const f = fakeFetch({
+      ...base,
+      'GET /api/v1/spaces/ENG': () => withEtag(space(true)),
+      'GET /api/v1/spaces/ENG/calendar/occurrences': () => json([occurrence()]),
+      'POST /api/v1/calendars': () => json({ ...board, id: 'c2', name: 'Desk', scope: 'Personal' }, 201),
+    })
+    const w = await open('/spaces/ENG/calendar', f)
+
+    const timelineBtn = w.findAll('[data-testid="calendar-view"] [role="radio"], [data-testid="calendar-view"] .p-togglebutton').find((b) => b.text() === 'Timeline')!
+    await timelineBtn.trigger('click')
+    for (let i = 0; i < 3; i++) await flushPromises()
+    expect(w.find('[data-testid="timeline-view"]').exists()).toBe(true)
+
+    const typeSelect = w.findComponent('[data-testid="filter-type"]')
+    ;(typeSelect as VueWrapper).vm.$emit('update:modelValue', 'Meeting')
+    for (let i = 0; i < 5; i++) await flushPromises()
+    await new Promise((r) => setTimeout(r, 350))
+    for (let i = 0; i < 3; i++) await flushPromises()
+    expect(f.calls.some((c) => c.url.includes('/calendar/occurrences') && c.url.includes('type=Meeting'))).toBe(true)
+
+    await w.get('[data-testid="new-calendar"]').trigger('click')
+    for (let i = 0; i < 2; i++) await flushPromises()
+    expect(document.body.querySelector('[data-testid="board-dialog"]')).not.toBeNull()
+    const nameInput = w.findAllComponents({ name: 'InputText' }).find((c) => c.attributes('data-testid') === 'board-name')
+      ?? w.findComponent('[data-testid="board-name"]')
+    ;(nameInput as VueWrapper).vm.$emit('update:modelValue', 'Desk')
+    await flushPromises()
+    document.body.querySelector<HTMLButtonElement>('[data-testid="save-board"]')!.click()
+    for (let i = 0; i < 4; i++) await flushPromises()
+    const post = f.calls.find((c) => c.method === 'POST' && c.url === '/api/v1/calendars')
+    expect(post?.body).toMatchObject({ name: 'Desk', scope: 'Space', spaceKey: 'ENG' })
   })
 })

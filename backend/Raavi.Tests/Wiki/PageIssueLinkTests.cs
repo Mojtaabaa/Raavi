@@ -86,6 +86,13 @@ public sealed class PageIssueLinkTests(SqlServerFixture fx)
         Assert.Contains(created.GetProperty("contexts").EnumerateArray(), x => x.GetProperty("exact").GetString() == "Selected requirement text");
         Assert.Single((await admin.GetJsonAsync($"api/v1/pages/{pageId}/jira-links")).EnumerateArray());
 
+        var edges = await admin.GetJsonAsync($"api/v1/content/{pageId}/relationships");
+        Assert.Contains(edges.EnumerateArray(), r =>
+            r.GetProperty("origin").GetString() == "Integration"
+            && r.GetProperty("sourceSystem").GetString() == "jira"
+            && (r.GetProperty("targetExternalKey").GetString() ?? string.Empty).Contains("10001", StringComparison.Ordinal)
+            && !r.GetProperty("canRemove").GetBoolean());
+
         var linked = await ReadAsync(await admin.PostAsync($"api/v1/pages/{pageId}/jira-links", new { connectorId, issueKeyOrId = "WIKI-9" }));
         Assert.Equal(linkId, linked.GetProperty("id").GetGuid());
 
@@ -95,6 +102,9 @@ public sealed class PageIssueLinkTests(SqlServerFixture fx)
         }
 
         Assert.Empty((await admin.GetJsonAsync($"api/v1/pages/{pageId}/jira-links")).EnumerateArray());
+        Assert.DoesNotContain(
+            (await admin.GetJsonAsync($"api/v1/content/{pageId}/relationships")).EnumerateArray(),
+            r => r.GetProperty("origin").GetString() == "Integration" && r.GetProperty("sourceSystem").GetString() == "jira");
         Assert.Contains(fx.Tracker.Received, r => r.Method == "POST" && r.Url.AbsolutePath.EndsWith("/rest/api/2/issue", StringComparison.Ordinal));
     }
 }

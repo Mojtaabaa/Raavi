@@ -91,6 +91,7 @@ public sealed class ContentImporter(WikiDbContext db, IClock clock) : IContentIm
             node = ContentNode.Create(request.SpaceId, parentId, PageContentProvider.Type, first.Title, request.Position, request.ActorId, first.Version.CreatedAt);
             node.MarkImported(request.SourceSystem, request.SourceId, request.SourceUrl, first.Version.CreatedAt, parsed[^1].Version.CreatedAt);
             db.Nodes.Add(node);
+            db.ContentGovernance.Add(ContentGovernance.CreateForNew(node.Id, request.ActorId, node.Status, clock.UtcNow));
             db.Closure.Add(ContentClosure.Link(node.Id, node.Id, 0));
             if (parentId is { } p)
             {
@@ -426,9 +427,11 @@ public sealed class ContentImporter(WikiDbContext db, IClock clock) : IContentIm
             var versions = await db.PageVersions.Where(v => batch.Contains(v.Id)).ToListAsync(ct).ConfigureAwait(false);
             foreach (var v in versions)
             {
-                if (!v.ContentJson.Contains(LinkPlaceholder, StringComparison.Ordinal))
+                // Bodies are gzip-compressed in SQL; ContentJson decompresses on read, so filtering stays in-process.
+                if (!v.ContentJson.Contains(LinkPlaceholder, StringComparison.Ordinal)
+                    && !v.ContentJson.Contains("\"type\":\"include\"", StringComparison.Ordinal))
                 {
-                    continue; // bodies are stored compressed, so this cannot be filtered in SQL
+                    continue;
                 }
 
                 var root = JsonNode.Parse(v.ContentJson)!.AsObject();
@@ -444,6 +447,35 @@ public sealed class ContentImporter(WikiDbContext db, IClock clock) : IContentIm
                     if (node is not JsonObject o)
                     {
                         return;
+                    }
+
+                    if ((string?)o["type"] == "include" && o["attrs"] is JsonObject includeAttrs)
+                    {
+                        var existing = (string?)includeAttrs["pageId"];
+                        if (string.IsNullOrEmpty(existing) && (string?)includeAttrs["title"] is { Length: > 0 } includeTitle)
+                        {
+                            changed = true;
+                            var spaceKey = (string?)includeAttrs["spaceKey"] ?? string.Empty;
+                            Guid? targetSpace = string.IsNullOrEmpty(spaceKey)
+                                ? contentOf.TryGetValue(v.ContentId, out var own) ? own.SpaceId : null
+                                : spaceBySource.TryGetValue(spaceKey, out var sBySource)
+                                    ? sBySource.Id
+                                    : spaces.FirstOrDefault(x => string.Equals(x.Key, spaceKey, StringComparison.OrdinalIgnoreCase))?.Id;
+                            if (targetSpace is { } ts && byTitle.TryGetValue((ts, includeTitle), out var target))
+                            {
+                                includeAttrs["pageId"] = target.ToString("D");
+                                includeAttrs["spaceKey"] = spaceById[ts].Key;
+                                resolved++;
+                            }
+                            else
+                            {
+                                unresolved++;
+                                if (examples.Count < 50)
+                                {
+                                    examples.Add(new UnresolvedLink(spaceKey, includeTitle, v.ContentId));
+                                }
+                            }
+                        }
                     }
 
                     if (o["marks"] is JsonArray marks)

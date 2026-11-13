@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { Editor, getSchema } from '@tiptap/core'
 import { EditorRegistry, manifest, manifests, SCHEMA_VERSION } from '@/modules/editor/registry'
-import { createEditorRegistry, headlessExtensions, isSafeHref } from '@/modules/editor/setup'
+import { createEditorRegistry, headlessExtensions, isSafeHref, ZWNJ } from '@/modules/editor/setup'
 
 const fixtures = import.meta.glob<{ schema: string; schemaVersion: number; doc: Record<string, unknown> }>('@schema/editor/fixtures/*.json', { eager: true, import: 'default' })
 const fixtureFor = (id: string) => Object.entries(fixtures).find(([path]) => path.endsWith(`/${id}.json`))?.[1]
@@ -64,5 +64,26 @@ describe('editor registry', () => {
     expect(items.some((i) => i.keywords.includes('جدول'))).toBe(true)
     expect(items.some((i) => i.labelKey === 'editor.slash.mermaid')).toBe(true)
     expect(items.some((i) => i.labelKey.includes('unsupported'))).toBe(false) // not insertable
+  })
+
+  it('supports ZWNJ authoring and builds a Persian UI registry without English Typography', () => {
+    expect(ZWNJ).toBe('\u200C')
+    const t = (k: string) => (k === 'editor.slash.zwnj' ? 'نیم‌فاصله' : k === 'editor.status.defaultText' ? 'انجام‌شود' : k)
+    const fa = createEditorRegistry({ t, locale: 'fa', searchUsers: async () => [] })
+    const en = createEditorRegistry({ t, locale: 'en', searchUsers: async () => [] })
+    expect(fa.missing()).toEqual([])
+    expect(en.missing()).toEqual([])
+    const faNames = fa.extensions({ views: false }).map((x) => x.name)
+    const enNames = en.extensions({ views: false }).map((x) => x.name)
+    expect(faNames).toContain('raaviPersianAuthoring')
+    expect(faNames).not.toContain('typography')
+    expect(enNames).toContain('typography')
+    const editor = new Editor({ extensions: fa.extensions({ views: false }), content: { type: 'doc', content: [{ type: 'paragraph' }] } })
+    try {
+      expect(editor.commands.insertContent(ZWNJ)).toBe(true)
+      expect(editor.getText()).toContain(ZWNJ)
+    } finally {
+      editor.destroy()
+    }
   })
 })

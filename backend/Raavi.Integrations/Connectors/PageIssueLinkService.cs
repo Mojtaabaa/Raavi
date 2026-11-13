@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Raavi.Application.Abstractions.Ai;
 using Raavi.Application.Abstractions.Authorization;
+using Raavi.Application.Abstractions.Content;
 using Raavi.Application.Abstractions.Identity;
 using Raavi.Application.Abstractions.Jobs;
 using Raavi.Application.Abstractions.Tenancy;
@@ -37,6 +38,7 @@ public sealed class PageIssueLinkService(
     JiraIssueClient jira,
     IPermissionEvaluator authz,
     IPageTextReader pages,
+    IKnowledgeRelationshipProjection relationships,
     ITenantUrlResolver urls,
     IPrincipalDirectory directory,
     ITenantContext tenant,
@@ -44,6 +46,9 @@ public sealed class PageIssueLinkService(
     IClock clock,
     ITenantJobScheduler jobs)
 {
+    public const string RelationshipSourceSystem = "jira";
+
+    public static string ExternalKey(Guid connectorId, string issueId) => $"jira:{connectorId:N}/{issueId}";
     public static readonly Error NotFound = new("jira_link.not_found", "Link not found.", ErrorKind.NotFound);
     public static readonly Error PageNotFound = new("jira_link.page_not_found", "Page not found.", ErrorKind.NotFound);
     public static readonly Error Forbidden = new("jira_link.forbidden", "You are not allowed to change links on this page.", ErrorKind.Forbidden);
@@ -164,6 +169,7 @@ public sealed class PageIssueLinkService(
         var pageText = await pages.ReadAsync(contentId, ct).ConfigureAwait(false);
         PublishEvent("jira.page_issue_unlinked", link, pageText);
         await db.SaveChangesAsync(ct).ConfigureAwait(false);
+        await relationships.RemoveExternalAsync(contentId, ExternalKey(link.ConnectorId, link.IssueId), RelationshipSourceSystem, ct).ConfigureAwait(false);
 
         if (link.RemoteLinkId is not null)
         {
@@ -310,6 +316,9 @@ public sealed class PageIssueLinkService(
             // Fill SpaceId from a lightweight authorize path: re-read is expensive; store empty then update from page if we add SpaceId to PageText
             PublishEvent("jira.page_issue_linked", link, page);
             await db.SaveChangesAsync(ct).ConfigureAwait(false);
+            var title = string.IsNullOrWhiteSpace(summary) ? issueKey : $"{issueKey}: {summary}";
+            await relationships.UpsertExternalAsync(
+                page.ContentId, "RelatedTo", ExternalKey(connector.Id, issueId), title, RelationshipSourceSystem, current.UserId, ct).ConfigureAwait(false);
             jobs.Enqueue<PageIssueRemoteLinkJob, PageIssueRemoteLinkArgs>(new PageIssueRemoteLinkArgs(link.Id));
             await SyncRemoteLinkAsync(link.Id, ct).ConfigureAwait(false);
             var fresh = await db.PageIssueLinks.AsNoTracking().FirstAsync(l => l.Id == link.Id, ct).ConfigureAwait(false);

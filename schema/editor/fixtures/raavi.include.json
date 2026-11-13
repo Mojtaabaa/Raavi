@@ -1,0 +1,30 @@
+{
+  "schema": "raavi.doc",
+  "schemaVersion": 5,
+  "doc": {
+    "type": "doc",
+    "content": [
+      {
+        "type": "include",
+        "attrs": {
+          "pageId": "11111111-1111-1111-1111-111111111111",
+          "spaceKey": "ENG",
+          "title": "Shared policy"
+        }
+      },
+      {
+        "type": "paragraph",
+        "attrs": {
+          "textAlign": null,
+          "dir": null
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "end"
+          }
+        ]
+      }
+    ]
+  }
+}

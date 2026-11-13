@@ -9,6 +9,8 @@ import { ApiError } from '@/core/api/http'
 import { errorMessage } from '@/core/api/errors'
 import { wikiApi, type SpaceSummary } from '@/core/api/wiki'
 import { normalizeSearchText } from '@/core/runtime/textNormalize'
+import { useAuthStore } from '@/stores/auth'
+import { storeToRefs } from 'pinia'
 
 /**
  * Smart search: finds passages by words (and by meaning when the workspace has an embedding model) among the pages the person may read,
@@ -17,15 +19,26 @@ import { normalizeSearchText } from '@/core/runtime/textNormalize'
 const { t, te } = useI18n()
 const route = useRoute()
 const router = useRouter()
+const { me } = storeToRefs(useAuthStore())
 
 const mode = ref<'search' | 'ask'>(route.query.mode === 'ask' ? 'ask' : 'search')
 const q = ref(typeof route.query.q === 'string' ? route.query.q : '')
 const space = ref(typeof route.query.space === 'string' ? route.query.space : '')
+const labelFilter = ref(typeof route.query.tags === 'string' ? route.query.tags : '')
+const tagMode = ref<'any' | 'all'>(route.query.tagMode === 'all' ? 'all' : 'any')
+const includeDescendants = ref(route.query.includeDescendants === 'true')
+const classification = ref(typeof route.query.classification === 'string' ? route.query.classification : '')
+const lifecycleStatus = ref(typeof route.query.lifecycle === 'string' ? route.query.lifecycle : '')
+const reviewDue = ref(route.query.reviewDue === 'true')
+const relationshipType = ref(typeof route.query.relationshipType === 'string' ? route.query.relationshipType : '')
+const ownedByMe = ref(route.query.ownedByMe === 'true')
+const reviewOwnerMe = ref(route.query.reviewOwnerMe === 'true')
 const spaces = ref<SpaceSummary[]>([])
 const aiAvailable = ref(false)
 const hits = ref<SearchHit[]>([])
 const searchMode = ref<'keyword' | 'hybrid' | null>(null)
 const answer = ref<AskAnswer | null>(null)
+const activeSource = ref<number | null>(null)
 const busy = ref(false)
 const searched = ref(false)
 const error = ref<unknown>(null)
@@ -61,18 +74,53 @@ async function run() {
   if (text.length < 2) return
   const mine = ++seq
   busy.value = true
-  void router.replace({ query: { q: text, mode: mode.value, ...(space.value ? { space: space.value } : {}) } })
+  void router.replace({
+    query: {
+      q: text,
+      mode: mode.value,
+      ...(space.value ? { space: space.value } : {}),
+      ...(labelFilter.value.trim() ? { tags: labelFilter.value.trim(), tagMode: tagMode.value, ...(includeDescendants.value ? { includeDescendants: 'true' } : {}) } : {}),
+      ...(classification.value ? { classification: classification.value } : {}),
+      ...(lifecycleStatus.value ? { lifecycle: lifecycleStatus.value } : {}),
+      ...(reviewDue.value ? { reviewDue: 'true' } : {}),
+      ...(relationshipType.value ? { relationshipType: relationshipType.value } : {}),
+      ...(ownedByMe.value ? { ownedByMe: 'true' } : {}),
+      ...(reviewOwnerMe.value ? { reviewOwnerMe: 'true' } : {}),
+    },
+  })
   try {
     if (mode.value === 'search') {
-      const r = await aiApi.search(text, space.value || undefined)
+      const r = await aiApi.search(text, {
+        space: space.value || undefined,
+        classification: classification.value || undefined,
+        lifecycleStatus: lifecycleStatus.value || undefined,
+        reviewDue: reviewDue.value ? true : undefined,
+        relationshipType: relationshipType.value || undefined,
+        ownerUserId: ownedByMe.value && me.value?.id ? me.value.id : undefined,
+        reviewOwnerUserId: reviewOwnerMe.value && me.value?.id ? me.value.id : undefined,
+      })
       if (mine !== seq) return
-      hits.value = r.hits
+      let next = r.hits
+      const tags = labelFilter.value.trim()
+      if (tags) {
+        const labeled = await wikiApi.labelSearch({
+          tags,
+          tagMode: tagMode.value,
+          includeDescendants: includeDescendants.value,
+          spaceKey: space.value || undefined,
+          take: 100,
+        }).catch(() => ({ items: [], total: 0 }))
+        const allow = new Set(labeled.items.map((i) => i.id))
+        next = next.filter((h) => allow.has(h.contentId))
+      }
+      hits.value = next
       searchMode.value = r.mode
       answer.value = null
     } else {
       const r = await aiApi.askWiki(text, space.value || undefined)
       if (mine !== seq) return
       answer.value = r
+      activeSource.value = null
       hits.value = []
     }
     searched.value = true
@@ -81,7 +129,10 @@ async function run() {
       error.value = e
       searched.value = true
       if (mode.value === 'search') hits.value = []
-      else answer.value = null
+      else {
+        answer.value = null
+        activeSource.value = null
+      }
     }
   } finally {
     if (mine === seq) busy.value = false
@@ -94,8 +145,9 @@ watch(q, () => {
   clearTimeout(timer)
   timer = setTimeout(run, 350)
 })
-watch([mode, space], () => {
+watch([mode, space, classification, lifecycleStatus, relationshipType, reviewDue, ownedByMe, reviewOwnerMe], () => {
   answer.value = null
+  activeSource.value = null
   hits.value = []
   searched.value = false
   if (q.value.trim().length >= 2 && mode.value === 'search') void run()
@@ -112,10 +164,30 @@ onMounted(async () => {
 
 const known = computed(() => (error.value instanceof ApiError ? errorMessage(error.value, t, te) : error.value ? t('errors.generic') : ''))
 const pageLink = (h: { contentId: string; spaceKey: string }) => ({ name: 'page', params: { key: h.spaceKey, id: h.contentId } })
+const sourceByNumber = computed(() => {
+  const map = new Map<number, NonNullable<AskAnswer['sources']>[number]>()
+  for (const s of answer.value?.sources ?? []) map.set(s.number, s)
+  return map
+})
+const anyCited = computed(() => (answer.value?.sources ?? []).some((s) => s.cited))
 
-/** [1] [2] in an answer become links to the matching source (text pieces again, not HTML). */
+/** [n] becomes a cite control only when that number exists in the returned sources (EKOS-10). */
 function answerParts(text: string): { text: string; n?: number }[] {
-  return text.split(/(\[\d{1,2}\])/g).filter(Boolean).map((p) => (/^\[\d{1,2}\]$/.test(p) ? { text: p, n: Number(p.slice(1, -1)) } : { text: p }))
+  const max = answer.value?.sources.length ?? 0
+  return text.split(/(\[\d{1,2}\])/g).filter(Boolean).map((p) => {
+    const m = /^\[(\d{1,2})\]$/.exec(p)
+    if (!m) return { text: p }
+    const n = Number(m[1])
+    return n >= 1 && n <= max && sourceByNumber.value.has(n) ? { text: p, n } : { text: p }
+  })
+}
+
+function focusSource(n: number, ev?: Event) {
+  ev?.preventDefault()
+  activeSource.value = n
+  const el = document.getElementById(`source-${n}`)
+  el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  el?.querySelector<HTMLElement>('a')?.focus({ preventScroll: true })
 }
 </script>
 
@@ -136,6 +208,39 @@ function answerParts(text: string): { text: string; n?: number }[] {
         <option value="">{{ t('smartSearch.allSpaces') }}</option>
         <option v-for="s in spaces" :key="s.key" :value="s.key">{{ s.name }}</option>
       </select>
+      <input v-if="mode === 'search'" v-model="labelFilter" type="text" class="tags" maxlength="200" :placeholder="t('smartSearch.tagsPlaceholder')" :aria-label="t('smartSearch.tags')" dir="ltr" data-testid="smart-tags" />
+      <select v-if="mode === 'search' && labelFilter.trim()" v-model="tagMode" :aria-label="t('wiki.labels.matchAny')" data-testid="smart-tag-mode">
+        <option value="any">{{ t('wiki.labels.matchAny') }}</option>
+        <option value="all">{{ t('wiki.labels.matchAll') }}</option>
+      </select>
+      <label v-if="mode === 'search' && labelFilter.trim()" class="desc">
+        <input v-model="includeDescendants" type="checkbox" data-testid="smart-descendants" />
+        {{ t('wiki.labels.includeDescendants') }}
+      </label>
+      <select v-if="mode === 'search'" v-model="classification" :aria-label="t('wiki.governance.classification')" data-testid="smart-class">
+        <option value="">{{ t('smartSearch.anyClassification') }}</option>
+        <option v-for="c in ['Public', 'Internal', 'Confidential', 'Restricted']" :key="c" :value="c">{{ t(`wiki.governance.class.${c}`) }}</option>
+      </select>
+      <select v-if="mode === 'search'" v-model="lifecycleStatus" :aria-label="t('wiki.governance.lifecycle')" data-testid="smart-life">
+        <option value="">{{ t('smartSearch.anyLifecycle') }}</option>
+        <option v-for="c in ['Draft', 'Current', 'InReview', 'Approved', 'Archived', 'Expired']" :key="c" :value="c">{{ t(`wiki.governance.life.${c}`) }}</option>
+      </select>
+      <select v-if="mode === 'search'" v-model="relationshipType" :aria-label="t('wiki.relationships.type')" data-testid="smart-rel">
+        <option value="">{{ t('smartSearch.anyRelationship') }}</option>
+        <option v-for="c in ['RelatedTo', 'References', 'DependsOn', 'Documents', 'Implements', 'Supersedes']" :key="c" :value="c">{{ t(`wiki.relationships.types.${c}`) }}</option>
+      </select>
+      <label v-if="mode === 'search'" class="desc">
+        <input v-model="reviewDue" type="checkbox" data-testid="smart-review-due" />
+        {{ t('smartSearch.reviewDueOnly') }}
+      </label>
+      <label v-if="mode === 'search'" class="desc">
+        <input v-model="ownedByMe" type="checkbox" data-testid="smart-owned-by-me" />
+        {{ t('smartSearch.ownedByMe') }}
+      </label>
+      <label v-if="mode === 'search'" class="desc">
+        <input v-model="reviewOwnerMe" type="checkbox" data-testid="smart-review-owner-me" />
+        {{ t('smartSearch.reviewOwnerMe') }}
+      </label>
       <Button v-if="mode === 'ask'" type="submit" icon="pi pi-send" :label="t('smartSearch.send')" :loading="busy" :disabled="q.trim().length < 2" data-testid="smart-send" />
     </form>
 
@@ -149,13 +254,35 @@ function answerParts(text: string): { text: string; n?: number }[] {
 
     <!-- Answer -->
     <article v-if="answer" class="answer" aria-live="polite" data-testid="answer">
-      <p class="text" dir="auto"><template v-for="(p, i) in answerParts(answer.text)" :key="i"><a v-if="p.n" :href="`#source-${p.n}`" class="cite">{{ p.text }}</a><template v-else>{{ p.text }}</template></template></p>
+      <p class="text" dir="auto">
+        <template v-for="(p, i) in answerParts(answer.text)" :key="i">
+          <a
+            v-if="p.n"
+            :href="`#source-${p.n}`"
+            class="cite"
+            :aria-label="t('smartSearch.jumpToSource', { n: p.n })"
+            data-testid="cite"
+            @click="focusSource(p.n!, $event)"
+          >{{ p.text }}</a>
+          <template v-else>{{ p.text }}</template>
+        </template>
+      </p>
       <p class="muted small"><i class="pi pi-info-circle" aria-hidden="true" /> {{ t('smartSearch.check') }}</p>
+      <p v-if="answer.sources.length && !anyCited" class="muted small" data-testid="uncited-note">{{ t('smartSearch.uncitedNote') }}</p>
       <h2>{{ t('smartSearch.sources') }}</h2>
       <ol class="sources">
-        <li v-for="s in answer.sources" :id="`source-${s.number}`" :key="s.contentId">
+        <li
+          v-for="s in answer.sources"
+          :id="`source-${s.number}`"
+          :key="s.contentId"
+          :class="{ active: activeSource === s.number, cited: s.cited, uncited: s.cited === false }"
+          :data-testid="`source-${s.number}`"
+        >
+          <span class="num" aria-hidden="true">[{{ s.number }}]</span>
           <RouterLink :to="pageLink(s)" dir="auto">{{ s.title }}</RouterLink>
           <span class="space"><code dir="ltr">{{ s.spaceKey }}</code></span>
+          <span v-if="s.cited" class="badge" data-testid="cited-badge">{{ t('smartSearch.cited') }}</span>
+          <span v-else class="badge muted-badge">{{ t('smartSearch.notCited') }}</span>
           <p class="snippet" dir="auto">{{ s.snippet }}</p>
         </li>
       </ol>
@@ -186,6 +313,8 @@ h2 { margin: var(--raavi-space-3) 0 var(--raavi-space-1); font-size: 0.95rem; }
 .seg button.on { background: var(--p-primary-color); color: var(--p-primary-contrast-color, #fff); }
 .seg button:disabled { opacity: 0.45; cursor: not-allowed; }
 .q { flex: 1; min-inline-size: 14rem; font: inherit; padding: 0.5rem 0.75rem; border: 1px solid var(--raavi-border); border-radius: var(--raavi-radius-sm); background: var(--raavi-surface); color: inherit; }
+.tags { min-inline-size: 12rem; font: inherit; padding: 0.5rem 0.75rem; border: 1px solid var(--raavi-border); border-radius: var(--raavi-radius-sm); background: var(--raavi-surface); color: inherit; }
+.desc { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.9rem; }
 .bar select { font: inherit; padding: 0.45rem 0.5rem; border: 1px solid var(--raavi-border); border-radius: var(--raavi-radius-sm); background: var(--raavi-surface); color: inherit; max-inline-size: 12rem; }
 .hits { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--raavi-space-3); }
 .hit { padding: var(--raavi-space-3) var(--raavi-space-4); background: var(--raavi-surface); border: 1px solid var(--raavi-border); border-radius: var(--raavi-radius-md); }
@@ -197,8 +326,15 @@ h2 { margin: var(--raavi-space-3) 0 var(--raavi-space-1); font-size: 0.95rem; }
 mark { background: color-mix(in srgb, #f5c400 40%, transparent); color: inherit; border-radius: 2px; padding: 0 1px; }
 .answer { padding: var(--raavi-space-4); background: var(--raavi-surface); border: 1px solid var(--p-primary-color); border-radius: var(--raavi-radius-md); }
 .answer .text { margin: 0 0 var(--raavi-space-2); white-space: pre-wrap; line-height: 1.8; }
-.cite { font-weight: 700; color: var(--p-primary-color); text-decoration: none; padding: 0 1px; }
+.cite { font-weight: 700; color: var(--p-primary-color); text-decoration: none; padding: 0 1px; border-radius: 2px; }
+.cite:hover, .cite:focus-visible { outline: 2px solid var(--p-primary-color); outline-offset: 1px; }
 .sources { margin: 0; padding-inline-start: 1.4rem; display: grid; gap: var(--raavi-space-2); }
+.sources li { padding: var(--raavi-space-2); border-radius: var(--raavi-radius-sm); border: 1px solid transparent; }
+.sources li.active { border-color: var(--p-primary-color); background: color-mix(in srgb, var(--p-primary-color) 8%, transparent); }
+.sources li.uncited { opacity: 0.78; }
+.sources .num { margin-inline-end: var(--raavi-space-1); font-weight: 600; color: var(--raavi-text-muted); }
+.sources .badge { margin-inline-start: var(--raavi-space-2); font-size: 0.75rem; padding: 0 0.35rem; border: 1px solid var(--raavi-border); border-radius: 2px; }
+.sources .muted-badge { color: var(--raavi-text-muted); }
 .sources .snippet { margin: 2px 0 0; font-size: 0.88rem; }
 .mode { display: flex; gap: 6px; align-items: center; margin: 0; }
 .muted { color: var(--raavi-text-muted); }

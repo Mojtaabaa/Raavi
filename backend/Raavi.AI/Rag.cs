@@ -22,7 +22,7 @@ public sealed record SearchHitDto(Guid ContentId, string Title, string SpaceKey,
 
 public sealed record SearchResultDto(IReadOnlyList<SearchHitDto> Hits, string Mode);
 
-public sealed record AskSourceDto(int Number, Guid ContentId, string Title, string SpaceKey, string Snippet);
+public sealed record AskSourceDto(int Number, Guid ContentId, string Title, string SpaceKey, string Snippet, bool Cited = false);
 
 public sealed record AskAnswerDto(string Text, string Model, int PromptTokens, int CompletionTokens, IReadOnlyList<AskSourceDto> Sources);
 
@@ -195,6 +195,7 @@ public sealed class RagIndexer(AiDbContext db, IContentIndexSource source, IAiEm
 public sealed class RagService(
     AiDbContext db,
     IViewableContentFilter viewable,
+    IDiscoveryContentFilter discovery,
     IContentIndexSource source,
     IAiEmbedder embedder,
     IAiChat chat,
@@ -273,7 +274,7 @@ public sealed class RagService(
 
     private sealed record Scored(Guid Id, Guid ContentId, string Title, string SpaceKey, string Text, double Keyword, double Vector);
 
-    public async Task<Result<SearchResultDto>> SearchAsync(string? query, string? spaceKey, int take, CancellationToken ct)
+    public async Task<Result<SearchResultDto>> SearchAsync(string? query, string? spaceKey, int take, DiscoveryContentFilter? facets, CancellationToken ct)
     {
         var q = (query ?? string.Empty).Trim();
         if (q.Length is < 2 or > MaxQueryLength || q.Any(c => char.IsControl(c)))
@@ -281,9 +282,23 @@ public sealed class RagService(
             return Result<SearchResultDto>.Failure(QueryInvalid);
         }
 
-        var ranked = await RetrieveAsync(q, spaceKey, Math.Clamp(take, 1, 30), allowSemantic: true, ct).ConfigureAwait(false);
+        // Over-fetch slightly when facets are present so post-filter still yields up to `take`.
+        var facet = facets ?? new DiscoveryContentFilter();
+        var pool = facet.IsEmpty ? Math.Clamp(take, 1, 30) : Math.Clamp(take * 4, 20, 80);
+        var ranked = await RetrieveAsync(q, spaceKey, pool, allowSemantic: true, ct).ConfigureAwait(false);
+        var pages = ranked.Pages;
+        if (!facet.IsEmpty)
+        {
+            var allowed = await discovery.FilterAsync(pages.Select(p => p.ContentId).ToList(), facet, ct).ConfigureAwait(false);
+            pages = pages.Where(p => allowed.Contains(p.ContentId)).Take(Math.Clamp(take, 1, 30)).ToList();
+        }
+        else
+        {
+            pages = pages.Take(Math.Clamp(take, 1, 30)).ToList();
+        }
+
         var tokens = Tokens(q);
-        var hits = ranked.Pages.Select(p => new SearchHitDto(p.ContentId, p.Title, p.SpaceKey, Snippet(p.Text, tokens), Math.Round(p.Score, 4), p.Semantic)).ToList();
+        var hits = pages.Select(p => new SearchHitDto(p.ContentId, p.Title, p.SpaceKey, Snippet(p.Text, tokens), Math.Round(p.Score, 4), p.Semantic)).ToList();
         return Result<SearchResultDto>.Success(new SearchResultDto(hits, ranked.Semantic ? "hybrid" : "keyword"));
     }
 
@@ -531,14 +546,17 @@ public sealed class RagService(
         }
 
         // Retrieval happens (with the caller's own rights) BEFORE any model call; no readable source means no call and no usage row.
+        // Restricted classification is dropped again for external-model context (classification ≠ ACL; viewable search may still list them).
         var retrieved = await RetrieveAsync(q, spaceKey, 5, allowSemantic: true, ct).ConfigureAwait(false);
-        var passages = retrieved.Pages.SelectMany(p => p.Passages.Take(2).Select(x => (Page: p, x.Text))).Take(options.Value.MaxRagPassages).ToList();
+        var modelSafe = await viewable.FilterForExternalModelAsync(retrieved.Pages.Select(p => p.ContentId).ToList(), ct).ConfigureAwait(false);
+        var safePages = retrieved.Pages.Where(p => modelSafe.Contains(p.ContentId)).ToList();
+        var passages = safePages.SelectMany(p => p.Passages.Take(2).Select(x => (Page: p, x.Text))).Take(options.Value.MaxRagPassages).ToList();
         if (passages.Count == 0)
         {
             return Result<AskAnswerDto>.Failure(NoSources);
         }
 
-        var numbering = retrieved.Pages.Select((p, i) => (p.ContentId, Number: i + 1)).ToDictionary(x => x.ContentId, x => x.Number);
+        var numbering = safePages.Select((p, i) => (p.ContentId, Number: i + 1)).ToDictionary(x => x.ContentId, x => x.Number);
         var context = new StringBuilder();
         foreach (var (page, text) in passages.OrderBy(p => numbering[p.Page.ContentId]))
         {
@@ -569,8 +587,14 @@ public sealed class RagService(
             db.Usage.Add(AiUsage.Record(current.UserId, "rag", settings.Model, result.PromptTokens, result.CompletionTokens, AiOutcome.Succeeded, null, now));
             await db.SaveChangesAsync(ct).ConfigureAwait(false);
             var tokens = Tokens(q);
-            var sources = retrieved.Pages.Select((p, i) => new AskSourceDto(i + 1, p.ContentId, p.Title, p.SpaceKey, Snippet(p.Text, tokens))).ToList();
-            return Result<AskAnswerDto>.Success(new AskAnswerDto(result.Text, settings.Model, result.PromptTokens, result.CompletionTokens, sources));
+            var text = CitationRefs.StripInvalid(result.Text, safePages.Count);
+            var cited = CitationRefs.CitedIn(text, safePages.Count);
+            var sources = safePages.Select((p, i) =>
+            {
+                var n = i + 1;
+                return new AskSourceDto(n, p.ContentId, p.Title, p.SpaceKey, Snippet(p.Text, tokens), cited.Contains(n));
+            }).ToList();
+            return Result<AskAnswerDto>.Success(new AskAnswerDto(text, settings.Model, result.PromptTokens, result.CompletionTokens, sources));
         }
         catch (AiProviderException ex)
         {

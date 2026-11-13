@@ -70,6 +70,97 @@ export interface ContentRights {
   canComment: boolean
   canModerateComments: boolean
 }
+export interface LabelInfo {
+  id: string
+  name: string
+  displayName: string
+  slug: string
+  description: string | null
+  color: string | null
+  parentId: string | null
+  displayOrder: number
+  isActive: boolean
+  archivedAt: string | null
+  usageCount: number
+  aliases: string[]
+  createdAt: string
+  updatedAt: string
+}
+export interface LabelDetail extends LabelInfo {
+  parentSlug: string | null
+  parentDisplayName: string | null
+  children: LabelInfo[]
+  related: LabelInfo[]
+}
+export interface LabelPageSearch {
+  items: ContentListItem[]
+  total: number
+}
+export interface LabelWrite {
+  displayName: string
+  description?: string | null
+  color?: string | null
+  parentId?: string | null
+  displayOrder?: number
+  aliases?: string[]
+}
+export interface LabelMergePreview {
+  sourceId: string
+  sourceDisplayName: string
+  destinationId: string
+  destinationDisplayName: string
+  pageLinks: number
+  aliasesToMove: number
+  duplicateLinks: number
+}
+export interface LabelAnalytics {
+  totalActive: number
+  archived: number
+  unused: number
+  pagesWithoutLabels: number
+  mostUsed: LabelInfo[]
+  recentlyCreated: LabelInfo[]
+}
+/** EKOS-8 maintenance suggestion (tenant admin). */
+export interface KnowledgeMaintenanceSuggestion {
+  kind: string
+  contentId: string
+  title: string
+  spaceKey: string
+  spaceName: string
+  updatedAt: string
+  reviewAt: string | null
+  relatedContentId: string | null
+  relatedTitle: string | null
+  score: number | null
+  reason: string
+}
+export interface KnowledgeRelationship {
+  id: string
+  relationshipType: string
+  direction: 'Outgoing' | 'Incoming'
+  origin: string
+  sourceSystem: string | null
+  targetKind: string
+  targetContentId: string | null
+  targetExternalKey: string | null
+  title: string | null
+  spaceKey: string | null
+  slug: string | null
+  canRemove: boolean
+  createdAt: string
+}
+export interface PageGovernance {
+  ownerUserId: string
+  ownerName: string | null
+  reviewOwnerUserId: string | null
+  reviewOwnerName: string | null
+  reviewAt: string | null
+  lastReviewedAt: string | null
+  classification: string
+  lifecycleStatus: string
+  reviewDue: boolean
+}
 export interface Page {
   id: string
   spaceId: string
@@ -99,6 +190,7 @@ export interface Page {
   scheduledPublishAt: string | null
   pendingApproval: boolean
   requirePublishApproval: boolean
+  governance: PageGovernance | null
 }
 export type VersionType = 'Published' | 'Restore' | 'Import' | 'Draft'
 export interface VersionSummary {
@@ -184,6 +276,11 @@ export interface ContentListItem {
   spaceKey: string
   spaceName: string
   updatedAt: string
+  ownerUserId?: string | null
+  classification?: string | null
+  lifecycleStatus?: string | null
+  reviewAt?: string | null
+  reviewDue?: boolean
 }
 export interface Template {
   id: string
@@ -194,6 +291,8 @@ export interface Template {
   updatedAt: string
   revision: number
   canManage: boolean
+  isSystem?: boolean
+  systemKey?: string | null
 }
 export interface Activity {
   id: string
@@ -269,8 +368,65 @@ export const wikiApi = {
     }),
   addLabel: (id: string, name: string) => api<string[]>('POST', `/content/${enc(id)}/labels`, { name }),
   removeLabel: (id: string, name: string) => api<string[]>('DELETE', `/content/${enc(id)}/labels/${enc(name)}`),
+  updateGovernance: (id: string, body: {
+    ownerUserId?: string | null
+    reviewOwnerUserId?: string | null
+    clearReviewOwner?: boolean
+    reviewAt?: string | null
+    clearReviewAt?: boolean
+    classification?: string | null
+    lifecycleStatus?: string | null
+    markReviewed?: boolean
+  }) => api<Page>('PUT', `/content/${enc(id)}/governance`, body),
+  reviewDue: (opts: { ownerUserId?: string; take?: number } = {}) => {
+    const p = new URLSearchParams()
+    if (opts.ownerUserId) p.set('ownerUserId', opts.ownerUserId)
+    if (opts.take != null) p.set('take', String(opts.take))
+    const qs = p.toString()
+    return api<ContentListItem[]>('GET', `/content/review-due${qs ? `?${qs}` : ''}`)
+  },
+  relationships: (id: string) => api<KnowledgeRelationship[]>('GET', `/content/${enc(id)}/relationships`),
+  createRelationship: (id: string, body: { relationshipType: string; targetContentId: string }) =>
+    api<KnowledgeRelationship>('POST', `/content/${enc(id)}/relationships`, body),
+  removeRelationship: (id: string, relationshipId: string) =>
+    api<void>('DELETE', `/content/${enc(id)}/relationships/${enc(relationshipId)}`),
   suggestLabels: (prefix: string) => api<string[]>('GET', `/labels?prefix=${enc(prefix)}`),
   labelContent: (name: string) => api<ContentListItem[]>('GET', `/labels/${enc(name)}/content`),
+  labelDetail: (slug: string) => api<LabelDetail>('GET', `/labels/${enc(slug)}`),
+  labelSearch: (q: { tags: string; tagMode?: 'any' | 'all'; includeDescendants?: boolean; spaceKey?: string; skip?: number; take?: number }) => {
+    const p = new URLSearchParams()
+    p.set('tags', q.tags)
+    if (q.tagMode) p.set('tagMode', q.tagMode)
+    if (q.includeDescendants) p.set('includeDescendants', 'true')
+    if (q.spaceKey) p.set('spaceKey', q.spaceKey)
+    if (q.skip != null) p.set('skip', String(q.skip))
+    if (q.take != null) p.set('take', String(q.take))
+    return api<LabelPageSearch>('GET', `/labels/search?${p}`)
+  },
+  /** Heuristic suggestions (EKOS-9); AI suggestions come from `aiApi.labelSuggestions`. */
+  labelSuggestionsForPage: (id: string) =>
+    api<{ slug: string; displayName: string; source: string }[]>('GET', `/content/${enc(id)}/label-suggestions`),
+  adminLabels: (q?: { q?: string; archived?: boolean; skip?: number; take?: number }) => {
+    const p = new URLSearchParams()
+    if (q?.q) p.set('q', q.q)
+    if (q?.archived != null) p.set('archived', String(q.archived))
+    if (q?.skip != null) p.set('skip', String(q.skip))
+    if (q?.take != null) p.set('take', String(q.take))
+    const qs = p.toString()
+    return api<LabelInfo[]>('GET', `/admin/labels${qs ? `?${qs}` : ''}`)
+  },
+  adminCreateLabel: (body: LabelWrite) => api<LabelInfo>('POST', '/admin/labels', body),
+  adminUpdateLabel: (id: string, body: LabelWrite) => api<LabelInfo>('PUT', `/admin/labels/${enc(id)}`, body),
+  adminArchiveLabel: (id: string) => api<LabelInfo>('POST', `/admin/labels/${enc(id)}/archive`),
+  adminRestoreLabel: (id: string) => api<LabelInfo>('POST', `/admin/labels/${enc(id)}/restore`),
+  adminDeleteLabel: (id: string) => api<void>('DELETE', `/admin/labels/${enc(id)}`),
+  adminMergeLabelsPreview: (sourceId: string, destinationId: string) =>
+    api<LabelMergePreview>('POST', '/admin/labels/merge/preview', { sourceId, destinationId }),
+  adminMergeLabels: (sourceId: string, destinationId: string) =>
+    api<LabelInfo>('POST', '/admin/labels/merge', { sourceId, destinationId }),
+  adminLabelAnalytics: () => api<LabelAnalytics>('GET', '/admin/labels/analytics'),
+  knowledgeMaintenance: (take = 50) =>
+    api<KnowledgeMaintenanceSuggestion[]>('GET', `/admin/knowledge-maintenance?take=${take}`),
   quickFind: (q: string) => api<{ spaces: SpaceSummary[]; content: ContentListItem[] }>('GET', `/quick-find?q=${enc(q)}&limit=10`),
   spaceTemplates: (key: string) => api<Template[]>('GET', `/spaces/${enc(key)}/templates`),
   createSpaceTemplate: (key: string, body: { name: string; description: string | null; body: RaaviDoc }) => api<Template>('POST', `/spaces/${enc(key)}/templates`, body),

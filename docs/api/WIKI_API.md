@@ -54,19 +54,35 @@ Paths under `/api/v1`, **tenant host only**, signed-in members (`AuthenticatedUs
 
 Page DTO `rights` gained `canComment`, `canModerateComments`. Push: WebSocket `/hubs/events` (SignalR, tenant host, same-origin only); the server sends the content-free message `notifications`, clients then call the REST endpoints above.
 
-## Tasks (Phase 9a, ADR-026)
+## Tasks (Phase 9a + ADR-056)
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/spaces/{key}/tasks?status=&assignee=` | View on the space; open first, by due date, undated last (max 500) |
-| POST | `/spaces/{key}/tasks` | `{title, notes?, assigneeId?, dueDate? (yyyy-MM-dd), contentId?}`; Edit on an active space. `task.assignee_invalid`, `task.assignee_no_access`, `task.content_invalid`, `task.title_invalid` |
-| GET | `/spaces/{key}/tasks/export` | CSV (UTF-8 BOM, formula-safe) |
-| GET | `/tasks/mine?status=` | tasks assigned to the caller in spaces they can still view |
-| GET/PUT | `/tasks/{id}` | PUT needs **If-Match** `"r{n}"` (Edit) |
-| POST | `/tasks/{id}/complete` · `/reopen` | Edit, or the assignee |
-| DELETE | `/tasks/{id}` | Edit |
+| GET | `/spaces/{key}/tasks?status=&assignee=&archived=` | View on the space; open first, then by priority/due (max 500). `archived=true` includes soft-archived |
+| POST | `/spaces/{key}/tasks` | `{title, notes?, assigneeId?, assignees?[{userId,role,isPrimary}], priority?, dueDate?, startDate?, parentTaskId?, estimates?, contentId?}`; Edit on an active space. Dual-write: `assigneeId` ↔ primary Responsible. Errors: `task.assignee_invalid`, `task.assignee_no_access`, `task.content_invalid`, `task.title_invalid`, `task.priority_invalid`, `task.parent_invalid`, `task.role_invalid` |
+| GET | `/spaces/{key}/tasks/export` | CSV (UTF-8 BOM, formula-safe; includes priority/start/estimate) |
+| GET | `/tasks/mine?status=` | tasks where the caller is AssigneeId or an active TaskAssignee, in spaces they can still view (excludes archived) |
+| GET/PUT | `/tasks/{id}` | PUT needs **If-Match** `"r{n}"` (Edit). Assignees: at most one Responsible; role change soft-removes prior row (history). `task.multiple_responsible`, `task.assignee_conflict` |
+| GET | `/tasks/{id}/assignees?history=` | View: active; `history=true` needs Edit (includes RemovedAt rows) |
+| GET | `/tasks/{id}/children` | Direct non-archived children |
+| POST | `/tasks/{id}/promote` | Clear parent (Edit); becomes independent root |
+| GET/POST | `/tasks/{id}/checklists` | Task checklists (TipTap taskList unrelated) |
+| PUT/DELETE | `/task-checklists/{id}` | Rename/sort/delete checklist |
+| POST | `/task-checklists/{id}/items` · PUT/DELETE `/task-checklist-items/{id}` | Items; required items can block complete (`task.mandatory_incomplete`) |
+| PUT | `/task-checklists/{id}/reorder` | Body: ordered item id array |
+| GET/POST | `/tasks/{id}/comments?skip=&take=&sort=&includeDeleted=` | Paginated Raavi-doc comments; soft-deleted hidden unless `includeDeleted=true` (**Edit**). Mentions filtered to workspace members with View |
+| PUT/DELETE | `/task-comments/{id}` | Author (Comment) or Edit; **If-Match** on PUT; soft-delete cascades comment-linked attachments |
+| GET/POST | `/tasks/{id}/attachments` | List / multipart upload (sniff + size limit); View / Comment\|Edit |
+| GET/DELETE | `/task-attachments/{id}` | Download bytes (View) / soft-delete (owner or Edit); soft-deleted → 404 |
+| GET | `/tasks/{id}/watchers` · PUT `/tasks/{id}/watch` · POST `/tasks/{id}/watchers` | Watch state; add-watcher needs Edit + View on space for target |
+| GET | `/tasks/{id}/activity?limit=` | Task-scoped activity feed (View) |
+| GET/POST | `/tasks/{id}/time?userId=&from=&to=` | Time summary + entries; POST logs effort minutes. Summary includes `actualSpentMatchesEntries` (cache vs sum) |
+| PUT/DELETE | `/task-time/{id}` | Own entry or Edit; opening-balance edit needs Edit; **If-Match** on PUT; soft-delete recomputes `ActualSpentMinutes` |
+| POST | `/tasks/{id}/complete` · `/reopen` | Edit, or Responsible/Contributor assignee |
+| POST | `/tasks/{id}/archive` · `/restore` | Soft archive (Edit) |
+| DELETE | `/tasks/{id}` | Edit; `task.has_children` when children remain |
 
-Task DTO: `{id, spaceKey, spaceName, contentId, title, notes, status: Open|Done, assigneeId, assigneeName, dueDate, isOverdue, completedAt, createdAt, createdByName, revision, rights{canEdit, canComplete, canDelete}}`.
+Task DTO: `{id, spaceKey, spaceName, contentId, title, notes, status, priority, assigneeId, assigneeName, assignees[{userId,name,role,isPrimary}], dueDate, startDate, parentTaskId, originalEstimateMinutes, remainingEstimateMinutes, actualSpentMinutes, progressPercent, checklistProgressPercent, blockCompleteWhenOpenChildren, blockCompleteWhenMandatoryIncomplete, childCount, openChildCount, isOverdue, completedAt, archivedAt, createdAt, createdByName, revision, rights{canEdit, canComplete, canDelete}}`. One active role per user; complete may return `task.open_children` / `task.mandatory_incomplete` (409). ActualSpent is denormalized sum of active time entries (incl. opening-balance rows); Remaining/Progress stay manual.
 
 ## Workspace export (Phase 12a, ADR-037)
 
@@ -127,6 +143,9 @@ Request to the receiver: `POST` JSON `{id, type, occurredAt, tenant, data}` with
 | GET | `/ai/status` | Any member: `{available}` (AI is switched on, a key is stored and the installation allows an AI host) |
 | POST | `/ai/pages/{id}/summary` | Member who can read the page. `{text, model, promptTokens, completionTokens, truncated}` |
 | POST | `/ai/pages/{id}/ask` | `{question}` (1–1000 characters); answers from that page only |
+| POST | `/ai/pages/{id}/editor/summarize` | Edit + `confirmed`; client `selection` only |
+| POST | `/ai/pages/{id}/editor/rewrite` | Edit + `confirmed`; `selection` + optional `instruction` |
+| GET | `/ai/pages/{id}/label-suggestions` | View; catalog-constrained AI label picks (`label_suggest`) |
 | GET/PUT | `/ai/settings` | **Tenant administrator.** `{enabled, baseUrl, model, apiKey?, monthlyTokenCap, maxOutputTokens}`; the key is write-only (`hasApiKey` is returned), omit it to keep it, send `""` to remove it. The first save needs no `If-Match`; later saves do |
 | GET | `/ai/usage` | Tenant administrator: tokens/requests/failures this month, by feature, top users |
 
@@ -220,22 +239,29 @@ Errors: `db.name_invalid`, `db.column_invalid`, `db.too_many_columns`, `db.colum
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/calendars?spaceKey=&includeArchived=` | List calendars the caller may see (personal own + org + viewable spaces). Archived hidden unless `includeArchived=true` |
+| GET | `/calendars?spaceKey=&includeArchived=` | List calendars the caller may see (personal own + shared grants + org + viewable spaces). Archived hidden unless `includeArchived=true` |
 | GET | `/spaces/{key}/calendars?includeArchived=` | Space calendars (View) |
 | POST | `/calendars` | `{scope: Personal\|Space\|Organization, spaceKey?, name?, description?, color?, icon?}`. Org = tenant admin; Space = Edit on active space |
 | PUT | `/calendars/{id}` | Manage: update name/description/color/icon |
 | POST | `/calendars/{id}/archive` | Manage; default delete path (hides from normal lists, keeps events) |
 | POST | `/calendars/{id}/restore` | Manage |
 | POST | `/calendars/{id}/purge` | Manage; only when archived; body `{confirmName}` must equal calendar name; deletes that calendar’s Raavi-owned events only |
-| GET | `/spaces/{key}/calendar/occurrences?from=&to=&calendarIds=` | View; `yyyy-MM-dd`, window ≤ 400 days (`calendar.window_invalid`), ≤ 2 000 occurrences, cancelled ones omitted; optional comma-separated `calendarIds` |
-| GET | `/calendar/occurrences?from=&to=&calendarIds=` | the same across every space the caller may view |
-| POST | `/spaces/{key}/calendar/events` | Edit on an active space (resolves/creates the space default calendar). `{title, description?, location?, allDay, startDate, startTime? ("HH:mm"), endDate?, endTime?, timeZone? (IANA, default UTC), recurrence?}` |
-| GET/PUT | `/calendar/events/{id}` | PUT needs **If-Match** `"r{n}"` (Edit) |
-| POST | `/calendar/events/{id}/exclusions` | `{date}` cancels one occurrence (`calendar.occurrence_invalid` if the rule does not produce it) |
+| GET/PUT | `/calendars/{id}/grants` | Manage; list or upsert `{subjectType: User\|Group, subjectId, grant: FreeBusy\|View\|Create\|EditOwn\|EditAll\|Manage}` |
+| DELETE | `/calendars/{id}/grants/{grantId}` | Manage |
+| GET/PUT | `/calendar/preferences` | Caller’s browser/TTS/quiet-hours prefs |
+| GET | `/spaces/{key}/calendar/occurrences?from=&to=&calendarIds=&q=&type=&sourceKind=` | View; window ≤ 400 days; merges Raavi events + Jira due-date overlay + Templar (empty until configured). FreeBusy strips titles; `sourceKind` / `freeBusyOnly` / `externalUrl` on rows; optional `q` / `type` / `sourceKind` filters |
+| GET | `/calendar/occurrences?from=&to=&calendarIds=&q=&type=&sourceKind=` | Same across personal/org/space calendars the caller may access |
+| POST | `/calendar/events/{id}/move` | Edit on source + Create on target; body `{targetCalendarId}` → moved event with ETag |
+| POST | `/calendar/events/{id}/rsvp` | Attendee only; body `{response: Accepted\|Declined\|Tentative}` |
+| POST | `/calendars/{id}/import` | Create+; body `{ics}` (≤ 1 MB / 200 VEVENTs); returns `{imported, skipped, warnings[]}`; sanitized SUMMARY/DESCRIPTION/LOCATION/RRULE |
+| POST | `/spaces/{key}/calendar/events` | Edit on an active space (default space calendar). Rich fields: `type`, `status`, `priority`, `color`, `onlineUrl`, `isPrivate`, `reminders[]` |
+| POST | `/calendars/{id}/events` | Create on a writable calendar (Create+) |
+| GET/PUT | `/calendar/events/{id}` | PUT needs **If-Match** `"r{n}"`; optional `editScope` (`EntireSeries` \| `ThisOccurrence` \| `ThisAndFollowing`) + `occurrenceDate` |
+| POST | `/calendar/events/{id}/exclusions` | `{date}` cancels one occurrence |
 | DELETE | `/calendar/events/{id}` | Edit |
 | GET | `/spaces/{key}/calendar/export` | `text/calendar` (.ics); Persian monthly/yearly series become `RDATE` lists |
 
-`recurrence`: `{frequency: None|Daily|Weekly|Monthly|Yearly, interval 1–99, weekDays [0=Sunday…6], calendar: Gregorian|Persian, until? (yyyy-MM-dd) | count? (1–1000)}` — never both `until` and `count`; a weekly rule must include the start's weekday. Errors: `calendar.title_invalid`, `.time_invalid`, `.range_invalid`, `.range_too_long`, `.time_zone_invalid`, `.recurrence_invalid`, `.event_not_found`.
+`recurrence`: `{frequency: None|Daily|Weekly|Monthly|Yearly, interval 1–99, weekDays [0=Sunday…6], calendar: Gregorian|Persian, until? (yyyy-MM-dd) | count? (1–1000), monthWeek? (0=day-of-month, 1–4=Nth weekday, −1/5=last)}` — never both `until` and `count`; a weekly rule must include the start's weekday. Event write also accepts `attendees[{userId,optional?}]`, `linkedPageId`, `linkedWhiteboardId`. Errors: `calendar.title_invalid`, `.time_invalid`, `.range_invalid`, `.range_too_long`, `.time_zone_invalid`, `.recurrence_invalid`, `.event_not_found`, `.rsvp_invalid`, `.link_invalid`.
 
 Occurrence DTO: `{eventId, spaceKey, spaceName, title, location, allDay, startDate, startTime, endDate (inclusive), endTime, timeZone, startUtc, endUtc, isRecurring, occurrenceDate, canEdit}`.
 
@@ -286,8 +312,14 @@ Occurrence DTO: `{eventId, spaceKey, spaceName, title, location, allDay, startDa
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/quick-find?q=&limit=` | Spaces and current content by title (full text: Phase 7) |
-| GET | `/labels?prefix=` | Labels used on at least one page the caller can view |
-| GET | `/labels/{name}/content` | |
+| GET | `/labels?prefix=` | Labels used on at least one page the caller can view (legacy string list) |
+| GET | `/labels/{slug}` | Label detail (displayName, children, related, usageCount, aliases) |
+| GET | `/labels/search?tags=&tagMode=any\|all&includeDescendants=&spaceKey=&skip=&take=` | Multi-label page search → `{items,total}` (view-filtered) |
+| GET | `/labels/{name}/content` | Single-label pages (legacy); with query params delegates to search |
+| GET | `/content/{id}/label-suggestions` | Heuristic suggestions for editors → `[{slug,displayName,source:"heuristic"}]` |
+| GET | `/ai/pages/{id}/label-suggestions` | AI suggestions (View); slugs only from the assignable catalog → `[{slug,displayName,source:"ai"}]` (409 if AI off) |
+| GET/POST/PUT/DELETE | `/admin/labels…` | Tenant admin: list/create/update/archive/restore/delete/move/merge/analytics |
+| GET | `/admin/knowledge-maintenance?take=` | Tenant admin: stale / review-due / near-duplicate suggestions (View-filtered) |
 | GET | `/activity` | Activity across viewable spaces (projected from the outbox) |
 | GET/POST | `/templates` | Global templates (create: tenant administrators) |
 | GET/PUT/DELETE | `/templates/{id}` | PUT *If-Match* |

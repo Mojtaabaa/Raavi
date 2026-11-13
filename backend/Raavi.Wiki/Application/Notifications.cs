@@ -49,7 +49,8 @@ public sealed class NotificationFanOut(
     public const int MaxRecipients = 500;
 
     public bool CanHandle(string eventType) =>
-        eventType is CommentEventTypes.Created or CommentEventTypes.Resolved or WikiEventTypes.ContentPublished or WikiEventTypes.ContentCreated;
+        eventType is CommentEventTypes.Created or CommentEventTypes.Resolved or WikiEventTypes.ContentPublished or WikiEventTypes.ContentCreated
+            or TaskCommentEventTypes.Created or TaskCommentEventTypes.MentionsAdded or TaskCommentEventTypes.AttachmentAdded;
 
     public async Task HandleAsync(OutboxEvent outboxEvent, CancellationToken cancellationToken)
     {
@@ -57,6 +58,12 @@ public sealed class NotificationFanOut(
         var ct = cancellationToken;
         if (await db.Notifications.AnyAsync(n => n.EventId == outboxEvent.Id, ct).ConfigureAwait(false))
         {
+            return;
+        }
+
+        if (outboxEvent.Type is TaskCommentEventTypes.Created or TaskCommentEventTypes.MentionsAdded or TaskCommentEventTypes.AttachmentAdded)
+        {
+            await HandleTaskAsync(outboxEvent, ct).ConfigureAwait(false);
             return;
         }
 
@@ -172,13 +179,117 @@ public sealed class NotificationFanOut(
         await db.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Task collaboration notify (ADR-056): only when the task has a linked page (ContentId) so Notification.ContentId stays valid.
+    /// Mentions always notify; watchers get comment/attachment kinds. View is re-checked on the linked page + space.
+    /// </summary>
+    private async Task HandleTaskAsync(OutboxEvent outboxEvent, CancellationToken ct)
+    {
+        var e = outboxEvent.Payload<TaskCommentEvent>();
+        if (e.ContentId is not { } contentId)
+        {
+            return;
+        }
+
+        var now = clock.UtcNow;
+        var recipients = new Dictionary<Guid, string>();
+        var direct = new HashSet<Guid>();
+        if (outboxEvent.Type is TaskCommentEventTypes.Created or TaskCommentEventTypes.MentionsAdded)
+        {
+            foreach (var m in e.Mentions)
+            {
+                recipients.TryAdd(m, NotificationKinds.Mention);
+                direct.Add(m);
+            }
+        }
+
+        if (outboxEvent.Type == TaskCommentEventTypes.Created)
+        {
+            if (e.IsReply && e.ThreadId != Guid.Empty)
+            {
+                foreach (var p in await TaskParticipantsAsync(e.ThreadId, ct).ConfigureAwait(false))
+                {
+                    recipients.TryAdd(p, NotificationKinds.Reply);
+                }
+            }
+
+            foreach (var w in await TaskWatchersAsync(e.TaskId, ct).ConfigureAwait(false))
+            {
+                recipients.TryAdd(w, NotificationKinds.Comment);
+            }
+        }
+        else if (outboxEvent.Type == TaskCommentEventTypes.AttachmentAdded)
+        {
+            foreach (var w in await TaskWatchersAsync(e.TaskId, ct).ConfigureAwait(false))
+            {
+                recipients.TryAdd(w, NotificationKinds.Comment);
+            }
+        }
+
+        recipients.Remove(e.ActorId);
+        var node = await db.Nodes.AsNoTracking().FirstOrDefaultAsync(n => n.Id == contentId, ct).ConfigureAwait(false);
+        if (node is null || node.Status != ContentStatus.Current || recipients.Count == 0)
+        {
+            return;
+        }
+
+        var muted = await db.TaskWatchers.AsNoTracking()
+            .Where(w => w.TaskId == e.TaskId && w.State == WatchState.Muted).Select(w => w.UserId).ToListAsync(ct).ConfigureAwait(false);
+        foreach (var m in muted.Where(m => !direct.Contains(m)))
+        {
+            recipients.Remove(m);
+        }
+
+        var space = await db.Spaces.AsNoTracking().FirstAsync(s => s.Id == node.SpaceId, ct).ConfigureAwait(false);
+        var provider = providers.Get(node.ContentType);
+        var candidates = recipients.Keys.Take(MaxRecipients).ToList();
+        var contacts = await directory.GetContactsAsync(candidates, ct).ConfigureAwait(false);
+        var prefs = await db.NotificationPreferences.AsNoTracking().Where(p => candidates.Contains(p.UserId)).ToDictionaryAsync(p => p.UserId, p => p.EmailEnabled, ct).ConfigureAwait(false);
+        var anyEmail = false;
+        var commentId = e.CommentId == Guid.Empty ? (Guid?)null : e.CommentId;
+        foreach (var userId in candidates.Where(contacts.ContainsKey))
+        {
+            var principal = await directory.GetPrincipalAsync(userId, fresh: true, ct).ConfigureAwait(false);
+            var spaceRights = await authz.GetSpaceRightsAsync(space, principal, ct).ConfigureAwait(false);
+            if (!spaceRights.CanView)
+            {
+                continue;
+            }
+
+            var rights = await authz.GetContentRightsAsync(node, spaceRights, provider, principal, ct).ConfigureAwait(false);
+            if (!rights.CanView)
+            {
+                continue;
+            }
+
+            var sendEmail = email.IsEnabled && prefs.GetValueOrDefault(userId, true) && contacts[userId].VerifiedEmail is not null;
+            anyEmail |= sendEmail;
+            db.Notifications.Add(Notification.Create(outboxEvent.Id, userId, recipients[userId], e.SpaceId, contentId, commentId, e.ActorId, e.Title, e.Excerpt, sendEmail, now));
+        }
+
+        if (anyEmail)
+        {
+            db.Outbox.Add(OutboxMessage.Create(db.CurrentTenantId, NotificationEventTypes.Email, new NotificationEmailEvent(outboxEvent.Id), now));
+        }
+
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
+    }
+
     private async Task<List<Guid>> WatchersAsync(Guid contentId, CancellationToken ct) =>
         await db.Watches.AsNoTracking().Where(w => w.ContentId == contentId && w.State == WatchState.Watching)
+            .Select(w => w.UserId).Take(MaxRecipients).ToListAsync(ct).ConfigureAwait(false);
+
+    private async Task<List<Guid>> TaskWatchersAsync(Guid taskId, CancellationToken ct) =>
+        await db.TaskWatchers.AsNoTracking().Where(w => w.TaskId == taskId && w.State == WatchState.Watching)
             .Select(w => w.UserId).Take(MaxRecipients).ToListAsync(ct).ConfigureAwait(false);
 
     private async Task<List<Guid>> ParticipantsAsync(Guid threadId, CancellationToken ct) =>
         await db.Comments.AsNoTracking().Where(c => c.ThreadId == threadId && c.DeletedAt == null)
             .Where(c => c.AuthorId != null).Select(c => c.AuthorId!.Value).Distinct().Take(MaxRecipients).ToListAsync(ct).ConfigureAwait(false);
+
+    private async Task<List<Guid>> TaskParticipantsAsync(Guid threadId, CancellationToken ct) =>
+        await db.TaskComments.AsNoTracking().Where(c => c.ThreadId == threadId && c.DeletedAt == null)
+            .Select(c => c.AuthorId).Distinct().Take(MaxRecipients).ToListAsync(ct).ConfigureAwait(false);
 }
 
 /// <summary>

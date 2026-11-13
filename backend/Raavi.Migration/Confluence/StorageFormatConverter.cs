@@ -404,6 +404,42 @@ public static partial class StorageFormatConverter
                 }
 
                 return [UnsupportedMacro(e, name, state)];
+            case "include":
+                {
+                    // Full-page include only. Excerpt-include needs raavi.excerpt first.
+                    var page = e.Descendants(Ri + "page").FirstOrDefault();
+                    var title = page?.Attribute(Ri + "content-title")?.Value?.Trim()
+                        ?? Param("contentTitle")?.Trim()
+                        ?? Param("page")?.Trim();
+                    var space = page?.Attribute(Ri + "space-key")?.Value?.Trim()
+                        ?? Param("space")?.Trim()
+                        ?? Param("spaceKey")?.Trim();
+                    // "SPACE:Title" form used by some Confluence versions in the page parameter.
+                    if (title is { Length: > 0 } && title.Contains(':', StringComparison.Ordinal) && string.IsNullOrEmpty(space))
+                    {
+                        var colon = title.IndexOf(':', StringComparison.Ordinal);
+                        space = title[..colon].Trim();
+                        title = title[(colon + 1)..].Trim();
+                    }
+
+                    if (string.IsNullOrEmpty(title) || e.Elements(Ac + "parameter").Any(x => Attr(x, "name") is { Length: > 0 } n && n is not ("" or "page" or "space" or "spaceKey" or "contentTitle")))
+                    {
+                        return [UnsupportedMacro(e, name, state)];
+                    }
+
+                    space ??= state.Context?.SpaceKey ?? string.Empty;
+                    state.References.Add(new SourceReference(ReferenceKind.Page, string.IsNullOrEmpty(space) ? null : space, title, null, null));
+                    return [new JsonObject
+                    {
+                        ["type"] = "include",
+                        ["attrs"] = new JsonObject
+                        {
+                            ["pageId"] = null,
+                            ["spaceKey"] = Cut(space, 50),
+                            ["title"] = Cut(title, 500),
+                        },
+                    }];
+                }
             case "contentbylabel":
                 {
                     var labels = ParseLabels(Param("labels"), Param("cql"));

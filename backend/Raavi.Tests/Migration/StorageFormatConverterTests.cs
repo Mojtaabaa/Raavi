@@ -207,6 +207,31 @@ public sealed class StorageFormatConverterTests
     }
 
     [Fact]
+    public void Include_macro_becomes_include_node_with_space_and_title()
+    {
+        var link = "<ac:structured-macro ac:name=\"include\"><ac:parameter ac:name=\"\"><ac:link><ri:page ri:content-title=\"Shared policy\" ri:space-key=\"ENG\"/></ac:link></ac:parameter></ac:structured-macro>";
+        var (a, _) = Convert(link);
+        Assert.Equal("include", (string)a.Doc["content"]![0]!["type"]!);
+        Assert.Null((string?)a.Doc["content"]![0]!["attrs"]!["pageId"]);
+        Assert.Equal("ENG", (string)a.Doc["content"]![0]!["attrs"]!["spaceKey"]!);
+        Assert.Equal("Shared policy", (string)a.Doc["content"]![0]!["attrs"]!["title"]!);
+        Assert.Empty(a.UnsupportedMacros);
+
+        var (b, _) = Convert(Macro("include", ("page", "OPS:Runbook")), new ConversionContext(Guid.NewGuid(), "confluence:x", "1", "in"));
+        Assert.Equal("include", (string)b.Doc["content"]![0]!["type"]!);
+        Assert.Equal("OPS", (string)b.Doc["content"]![0]!["attrs"]!["spaceKey"]!);
+        Assert.Equal("Runbook", (string)b.Doc["content"]![0]!["attrs"]!["title"]!);
+
+        var (same, _) = Convert(Macro("include", ("page", "Only title")), new ConversionContext(Guid.NewGuid(), "confluence:x", "1", "in"));
+        Assert.Equal("in", (string)same.Doc["content"]![0]!["attrs"]!["spaceKey"]!);
+        Assert.Equal("Only title", (string)same.Doc["content"]![0]!["attrs"]!["title"]!);
+
+        var (bad, _) = Convert(Macro("include") + Macro("include", ("page", "X"), ("bogus", "1")));
+        Assert.All(bad.Doc["content"]!.AsArray(), n => Assert.Equal("unsupported", (string)n!["type"]!));
+        Assert.Equal(2, bad.UnsupportedMacros["include"]);
+    }
+
+    [Fact]
     public void Layouts_are_flattened_and_comment_markers_keep_their_text()
     {
         var (r, v) = Convert("<ac:layout><ac:layout-section ac:type=\"two_equal\"><ac:layout-cell><p>left <ac:inline-comment-marker ac:ref=\"1\">marked</ac:inline-comment-marker></p></ac:layout-cell><ac:layout-cell><p>right</p></ac:layout-cell></ac:layout-section></ac:layout>");

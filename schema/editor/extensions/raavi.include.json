@@ -1,0 +1,28 @@
+{
+  "id": "raavi.include",
+  "name": "include",
+  "version": 1,
+  "kind": "node",
+  "group": "block",
+  "atom": true,
+  "attributes": {
+    "pageId": {
+      "type": "string",
+      "nullable": true,
+      "format": "guid",
+      "default": null
+    },
+    "spaceKey": {
+      "type": "string",
+      "maxLength": 50,
+      "default": ""
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 500,
+      "default": ""
+    }
+  },
+  "search": "none",
+  "migrations": []
+}

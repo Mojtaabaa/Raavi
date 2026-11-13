@@ -17,6 +17,16 @@ Phase 11 covers AI providers, embeddings, RAG with ACL, summarisation/writing an
 7. **Failures** are mapped to stable codes (`ai.provider_auth|rate_limited|not_found|unavailable|rejected|bad_response`, HTTP 503) without the provider's body. Timeouts: 60 s per call. No automatic retry or fallback provider in 11a.
 8. **Module layout.** `Raavi.AI` owns its DbContext (schema `ai`, RLS, migrations applied by the Migrator like the Migration module) and endpoints (`/ai/status`, `/ai/pages/{id}/summary`, `/ai/pages/{id}/ask`, `/ai/settings`, `/ai/usage`). A new `ErrorKind.TooManyRequests` maps to HTTP 429.
 
+## Addendum — Editor AI (EKOS Phase 2, 2026-11-12)
+
+Summarise/rewrite of an **editor selection** is allowed: `POST /ai/pages/{id}/editor/summarize|rewrite` with client-supplied `selection` + `confirmed`. **Edit** is required (`IPageEditGate`); the server never loads draft JSON for the prompt. Apply stays client-side on the shared draft (no auto-publish).
+
+## Addendum — Label suggestions (EKOS-9, 2026-11-12)
+
+`GET /ai/pages/{id}/label-suggestions` may propose labels only from `ILabelCatalog` (View-filtered assignable slugs). The model must not invent labels; inventions are dropped server-side. Heuristic suggestions remain on `GET /content/{id}/label-suggestions` via `ILabelSuggestionProvider`.
+
+Maintenance scanners (EKOS-8) are separate: `IKnowledgeMaintenanceScanner` / `GET /admin/knowledge-maintenance` — suggestions only, optional manual tasks; no model writes.
+
 ## Deferred
 
-11b embeddings and retrieval-augmented answers across a space (needs a vector store; SQL Server 2016 compatibility level 130 has none, OpenSearch is deferred) with ACL-filtered retrieval and leakage tests across chunks; writing assistance inside the editor (rewrite/translate selection), streaming answers, retry/fallback and several providers per tenant, per-user quotas, prompt/answer audit option, Claude and other non-OpenAI protocols, cost estimation in currency, AI-triggered workflow actions.
+Streaming answers, translate presets, retry/fallback and several providers per tenant, per-user quotas, prompt/answer audit option, Claude and other non-OpenAI protocols, cost estimation in currency, AI-triggered workflow actions.

@@ -47,7 +47,7 @@ public sealed class RaaviDocumentTests
     public void Registry_loads_every_manifest_and_every_manifest_has_a_fixture()
     {
         var schema = EditorSchema.Current;
-        Assert.Equal(4, schema.Info.SchemaVersion);
+        Assert.Equal(5, schema.Info.SchemaVersion);
         Assert.True(schema.Manifests.Count >= 36);
         var onDisk = Directory.GetFiles(Path.Combine(RepoRoot, "schema", "editor", "extensions"), "*.json").Select(f => Path.GetFileNameWithoutExtension(f)!).Order().ToList();
         Assert.Equal(onDisk, schema.Manifests.Select(m => m.Id).Order().ToList()); // embedded == repository
@@ -115,7 +115,7 @@ public sealed class RaaviDocumentTests
         var v1 = """{"schema":"raavi.doc","schemaVersion":1,"doc":{"type":"doc","content":[{"type":"paragraph","attrs":{"dir":"rtl"},"content":[{"type":"text","text":"سلام"}]}]}}""";
         var doc = RaaviDocument.Parse(v1);
         var root = JsonNode.Parse(doc.Json)!;
-        Assert.Equal(4, root["schemaVersion"]!.GetValue<int>());
+        Assert.Equal(5, root["schemaVersion"]!.GetValue<int>());
         var attrs = root["doc"]!["content"]![0]!["attrs"]!;
         Assert.Equal("rtl", attrs["dir"]!.GetValue<string>());
         Assert.Null(attrs["textAlign"]);
@@ -246,7 +246,7 @@ public sealed class RaaviDocumentTests
     [Fact]
     public void Json_options_are_irrelevant_to_canonical_form()
     {
-        using var a = JsonDocument.Parse("""{ "schemaVersion": 4, "doc": { "content": [ { "type": "paragraph" } ], "type": "doc" }, "schema": "raavi.doc" }""");
+        using var a = JsonDocument.Parse("""{ "schemaVersion": 5, "doc": { "content": [ { "type": "paragraph" } ], "type": "doc" }, "schema": "raavi.doc" }""");
         Assert.Equal(RaaviDocument.Empty.Json, RaaviDocument.Parse(a.RootElement).Json);
     }
 }

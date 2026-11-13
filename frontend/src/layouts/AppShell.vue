@@ -70,7 +70,7 @@ const brandName = computed(() => {
 const isSystemHost = computed(() => host.context?.kind === 'system')
 
 /** Items used every day stay in the bar; the rest sit behind "More" (on narrow screens everything is in the folded menu anyway). */
-const RARELY = new Set(['calendar', 'approvals', 'prompts'])
+const RARELY = new Set(['calendar', 'approvals', 'prompts', 'status'])
 const allNav = computed<NavItem[]>(() => {
   const me = auth.me
   if (!me) return []
@@ -92,6 +92,7 @@ const allNav = computed<NavItem[]>(() => {
     { to: { name: 'approvals' }, label: t('nav.approvals'), icon: 'pi pi-verified' },
     { to: { name: 'search' }, label: t('smartSearch.nav'), icon: 'pi pi-sparkles' },
     { to: { name: 'prompts' }, label: t('prompts.title'), icon: 'pi pi-bookmark' },
+    { to: { name: 'status' }, label: t('status.title'), icon: 'pi pi-heart' },
   ]
 })
 
@@ -112,6 +113,8 @@ const adminNav = computed<NavItem[]>(() => {
     { to: { name: 'admin-connectors' }, label: t('nav.connectors'), icon: 'pi pi-github' },
     { to: { name: 'admin-webhooks' }, label: t('nav.webhooks'), icon: 'pi pi-link' },
     { to: { name: 'admin-activity' }, label: t('activityLog.title'), icon: 'pi pi-history' },
+    { to: { name: 'admin-labels' }, label: t('wiki.labels.adminTitle'), icon: 'pi pi-tags' },
+    { to: { name: 'admin-knowledge-maintenance' }, label: t('nav.knowledgeMaintenance'), icon: 'pi pi-wrench' },
     { to: { name: 'admin-export' }, label: t('nav.export'), icon: 'pi pi-download' },
     { to: { name: 'admin-migrations' }, label: t('nav.migrations'), icon: 'pi pi-cloud-download' },
   ]

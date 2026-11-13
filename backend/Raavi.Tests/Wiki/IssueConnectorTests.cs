@@ -6,6 +6,7 @@ using Raavi.Application.Abstractions.Tenancy;
 using Raavi.Infrastructure.Tenancy;
 using Raavi.Integrations.Connectors;
 using Raavi.Integrations.Persistence;
+using Raavi.Integrations.Webhooks;
 using Raavi.Tests.Identity;
 using Raavi.Tests.Infrastructure;
 using static Raavi.Tests.Wiki.WikiTestKit;
@@ -40,6 +41,10 @@ public sealed class IssueReferenceTests
     [InlineData(IssueConnectorKind.Jira, "")]
     public void Hostile_or_malformed_references_are_refused(IssueConnectorKind kind, string reference) =>
         Assert.Null(IssueReference.ApiPath(kind, reference));
+
+    [Fact]
+    public void AllowHttpConnectorTokens_defaults_to_false() =>
+        Assert.False(new IntegrationsOptions().AllowHttpConnectorTokens);
 
     [Fact]
     public void The_connector_host_policy_has_its_own_allow_list_and_codes()

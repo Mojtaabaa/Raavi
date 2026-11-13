@@ -84,6 +84,7 @@ public sealed class SpaceService(WikiDbContext db, WikiAuthorizer authz, IPrinci
         // Home page (Confluence semantics): the landing page of the space, titled like the space.
         var home = ContentNode.Create(space.Id, null, PageContentProvider.Type, space.Name, 0, userId, now);
         db.Nodes.Add(home);
+        db.ContentGovernance.Add(ContentGovernance.CreateForNew(home.Id, userId, home.Status, now));
         db.Closure.Add(ContentClosure.Link(home.Id, home.Id, 0));
         var version = PageVersion.Create(home.Id, 1, home.Title, RaaviDocument.Empty, null, userId, now);
         db.PageVersions.Add(version);

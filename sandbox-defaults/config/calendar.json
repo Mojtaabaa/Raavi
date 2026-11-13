@@ -1,0 +1,11 @@
+{
+  "Raavi": {
+    "Calendar": {
+      "Templar": {
+        "Enabled": false,
+        "BaseUrl": "",
+        "ApiKey": ""
+      }
+    }
+  }
+}

@@ -3,6 +3,7 @@
     "Integrations": {
       "AllowedWebhookHosts": [],
       "AllowedConnectorHosts": [],
+      "AllowHttpConnectorTokens": false,
       "TimeoutSeconds": 10
     }
   }

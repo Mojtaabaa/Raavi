@@ -7,6 +7,19 @@ using static Raavi.Tests.Wiki.WikiTestKit;
 
 namespace Raavi.Tests.Wiki;
 
+/// <summary>EKOS-10: citation marker parsing — no SQL.</summary>
+public sealed class CitationRefsTests
+{
+    [Fact]
+    public void Cited_numbers_ignore_out_of_range_and_strip_invalid_markers()
+    {
+        Assert.Equal(new[] { 1, 2 }, CitationRefs.CitedIn("See [1] then [2] and [99] and [0].", 3).OrderBy(x => x).ToArray());
+        Assert.Equal("See [1] then 99.", CitationRefs.StripInvalid("See [1] then [99].", 2));
+        Assert.Empty(CitationRefs.CitedIn("", 3));
+        Assert.Equal("plain", CitationRefs.StripInvalid("plain", 0));
+    }
+}
+
 /// <summary>Phase 11a: host policy and wire format of the OpenAI-compatible client — no SQL needed.</summary>
 public sealed class AiClientTests
 {
@@ -365,5 +378,106 @@ public sealed class AiTests(SqlServerFixture fx)
         var content = CallsWith(key).Single().Body.GetProperty("messages")[1].GetProperty("content").GetString()!;
         Assert.Contains("The document was cut", content, StringComparison.Ordinal);
         Assert.True(content.Length < 25_500);
+    }
+
+    [Fact]
+    public async Task Editor_actions_require_edit_consent_and_send_only_the_selection()
+    {
+        fx.Ai.Reset();
+        var (tenant, admin, key) = await TenantWithAiAsync("sk-" + Guid.NewGuid().ToString("N"));
+        var (reader, _, _) = await _kit.Identity.AddMemberAsync(tenant, admin);
+        var adminId = (await admin.GetJsonAsync("api/v1/auth/me")).GetProperty("id").GetGuid();
+        var readerId = (await reader.GetJsonAsync("api/v1/auth/me")).GetProperty("id").GetGuid();
+        var space = (await CreateSpaceAsync(admin, visibility: "Private")).GetProperty("key").GetString()!;
+        var grants = new List<object>
+        {
+            new { subjectType = "User", subjectId = (Guid?)adminId, action = "View", effect = "Allow" },
+            new { subjectType = "User", subjectId = (Guid?)adminId, action = "ManagePermissions", effect = "Allow" },
+            new { subjectType = "User", subjectId = (Guid?)adminId, action = "Edit", effect = "Allow" },
+            new { subjectType = "User", subjectId = (Guid?)adminId, action = "Create", effect = "Allow" },
+            new { subjectType = "User", subjectId = (Guid?)adminId, action = "Publish", effect = "Allow" },
+            new { subjectType = "User", subjectId = (Guid?)readerId, action = "View", effect = "Allow" },
+        };
+        using (var put = await admin.PutAsync($"api/v1/spaces/{space}/permissions", new { grants }))
+        {
+            await ReadAsync(put);
+        }
+
+        var page = Id(await CreatePageAsync(admin, space, "Draftable", body: Doc("Secret paragraph that must not leave the server as page body.")));
+        const string selection = "Only this clause should reach the model.";
+
+        using (var noConfirm = await admin.PostAsync($"api/v1/ai/pages/{page}/editor/summarize", new { selection, confirmed = false }))
+        {
+            await Browser.AssertStatusAsync(noConfirm, HttpStatusCode.BadRequest, "ai.confirm_required");
+        }
+
+        using (var asReader = await reader.PostAsync($"api/v1/ai/pages/{page}/editor/summarize", new { selection, confirmed = true }))
+        {
+            await Browser.AssertStatusAsync(asReader, HttpStatusCode.NotFound, "ai.page_not_found");
+        }
+
+        Assert.Empty(CallsWith(key));
+
+        fx.Ai.Reply = "Shorter clause.";
+        using (var ok = await admin.PostAsync($"api/v1/ai/pages/{page}/editor/summarize", new { selection, confirmed = true }))
+        {
+            Assert.Equal("Shorter clause.", (await ReadAsync(ok)).GetProperty("text").GetString());
+        }
+
+        var call = Assert.Single(CallsWith(key));
+        var userMsg = call.Body.GetProperty("messages")[1].GetProperty("content").GetString()!;
+        Assert.Contains(selection, userMsg, StringComparison.Ordinal);
+        Assert.Contains("<<<SELECTION", userMsg, StringComparison.Ordinal);
+        Assert.DoesNotContain("Secret paragraph", userMsg, StringComparison.Ordinal);
+
+        fx.Ai.Reply = "Rewritten.";
+        using (var rewrite = await admin.PostAsync($"api/v1/ai/pages/{page}/editor/rewrite", new { selection, instruction = "Make it clearer", confirmed = true }))
+        {
+            Assert.Equal("Rewritten.", (await ReadAsync(rewrite)).GetProperty("text").GetString());
+        }
+
+        Assert.Contains("Make it clearer", CallsWith(key).Last().Body.GetProperty("messages")[1].GetProperty("content").GetString(), StringComparison.Ordinal);
+        var features = (await admin.GetJsonAsync("api/v1/ai/usage")).GetProperty("byFeature").EnumerateArray().Select(f => f.GetProperty("feature").GetString()).ToHashSet();
+        Assert.Contains("editor_summarize", features);
+        Assert.Contains("editor_rewrite", features);
+    }
+
+    [Fact]
+    public async Task Label_suggestions_only_return_catalog_slugs_and_drop_inventions()
+    {
+        fx.Ai.Reset();
+        var (_, admin, key) = await TenantWithAiAsync("sk-" + Guid.NewGuid().ToString("N"));
+        var space = (await CreateSpaceAsync(admin)).GetProperty("key").GetString()!;
+        var peer = Id(await CreatePageAsync(admin, space, "Peer", body: Doc("Peer body.")));
+        foreach (var name in new[] { "Docs", "Security", "Release" })
+        {
+            await ReadAsync(await admin.PostAsync("api/v1/admin/labels", new { displayName = name }));
+        }
+
+        foreach (var slug in new[] { "docs", "security" })
+        {
+            await ReadAsync(await admin.PostAsync($"api/v1/content/{peer}/labels", new { name = slug }));
+        }
+
+        var page = Id(await CreatePageAsync(admin, space, "Handbook", body: Doc("Security handbook for documentation release process.")));
+
+        var heuristic = await admin.GetJsonAsync($"api/v1/content/{page}/label-suggestions");
+        Assert.Equal(JsonValueKind.Array, heuristic.ValueKind);
+        Assert.All(heuristic.EnumerateArray(), row => Assert.Equal("heuristic", row.GetProperty("source").GetString()));
+
+        fx.Ai.Reply = "docs, invented-slug, security, docs";
+        var ai = await admin.GetJsonAsync($"api/v1/ai/pages/{page}/label-suggestions");
+        var slugs = ai.EnumerateArray().Select(r => r.GetProperty("slug").GetString()!).ToList();
+        Assert.Equal(["docs", "security"], slugs);
+        Assert.All(ai.EnumerateArray(), row => Assert.Equal("ai", row.GetProperty("source").GetString()));
+        Assert.DoesNotContain(slugs, s => s.Contains("invented", StringComparison.OrdinalIgnoreCase));
+
+        var userMsg = Assert.Single(CallsWith(key)).Body.GetProperty("messages")[1].GetProperty("content").GetString()!;
+        Assert.Contains("Catalog slugs:", userMsg, StringComparison.Ordinal);
+        Assert.Contains("docs", userMsg, StringComparison.Ordinal);
+        Assert.DoesNotContain("invented-slug", userMsg, StringComparison.Ordinal);
+
+        var features = (await admin.GetJsonAsync("api/v1/ai/usage")).GetProperty("byFeature").EnumerateArray().Select(f => f.GetProperty("feature").GetString()).ToHashSet();
+        Assert.Contains("label_suggest", features);
     }
 }

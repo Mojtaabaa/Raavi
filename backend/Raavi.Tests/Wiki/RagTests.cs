@@ -235,11 +235,12 @@ public sealed class RagTests(SqlServerFixture fx)
         }
 
         Assert.DoesNotContain(fx.Ai.Calls, c => c.Authorization == $"Bearer {apiKey}");
-        fx.Ai.Reply = "It is public knowledge [1].";
+        fx.Ai.Reply = "It is public knowledge [1] and invents [9].";
         using var answered = await member.PostAsync("api/v1/ai/ask", new { question = "What do we know about the zebrafish project?" });
         var answer = await ReadAsync(answered);
-        Assert.Equal("It is public knowledge [1].", answer.GetProperty("text").GetString());
+        Assert.Equal("It is public knowledge [1] and invents 9.", answer.GetProperty("text").GetString());
         Assert.Equal(1, answer.GetProperty("sources").GetArrayLength());
+        Assert.True(answer.GetProperty("sources")[0].GetProperty("cited").GetBoolean());
         var prompt = fx.Ai.Calls.Single(c => c.Authorization == $"Bearer {apiKey}").Body.GetProperty("messages").EnumerateArray().Last().GetProperty("content").GetString()!;
         Assert.Contains("zebrafish project is public", prompt, StringComparison.Ordinal);
         Assert.DoesNotContain("confidential", prompt, StringComparison.OrdinalIgnoreCase); // nothing the member may not read reached the model

@@ -24,9 +24,12 @@ import { useCrumbsStore } from '@/stores/crumbs'
 import { spaceTrail } from '@/core/navigation/trail'
 import CommentsPanel from '../comments/CommentsPanel.vue'
 import LinkedJiraPanel from '../components/LinkedJiraPanel.vue'
+import GovernancePanel from '../components/GovernancePanel.vue'
+import RelationshipsPanel from '../components/RelationshipsPanel.vue'
 import PageApprovals from '@/modules/approvals/PageApprovals.vue'
 import PageAssistant from '@/modules/ai/PageAssistant.vue'
 import PagePromptsDialog from '@/modules/prompts/PagePromptsDialog.vue'
+import { aiApi } from '@/core/api/ai'
 import { textToDoc } from '@/core/api/prompts'
 import { commentsApi } from '@/core/api/comments'
 import type { AnchorHighlight, TextQuote } from '@/modules/editor/extensions/commentAnchors'
@@ -48,6 +51,7 @@ const moveOpen = ref(false)
 const restrictOpen = ref(false)
 const newLabel = ref('')
 const labelSuggestions = ref<string[]>([])
+const pageLabelSuggestions = ref<{ slug: string; displayName: string; source: string }[]>([])
 const menu = ref<InstanceType<typeof Menu> | null>(null)
 
 // ── Comments and watching (Phase 7a) ───────────────────────────────────────────────
@@ -147,6 +151,7 @@ async function load() {
     children.value = r.value.status === 'Current' ? await wikiApi.tree(r.value.spaceKey, r.value.id).catch(() => []) : []
     // A page moved to another space is shown under its new space.
     if (r.value.spaceKey !== route.params.key) await router.replace({ name: 'page', params: { key: r.value.spaceKey, id: r.value.id, slug: r.value.slug || undefined } })
+    await loadPageLabelSuggestions()
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) notFound.value = true
     else fail(e)
@@ -230,12 +235,38 @@ async function suggest(e: { query: string }) {
   labelSuggestions.value = await wikiApi.suggestLabels(e.query.trim().toLowerCase()).catch(() => [])
 }
 
-async function addLabel() {
-  const name = newLabel.value.trim()
+async function loadPageLabelSuggestions() {
+  if (!page.value?.rights.canEdit) {
+    pageLabelSuggestions.value = []
+    return
+  }
+  const id = page.value.id
+  const assigned = new Set(page.value.labels.map((l) => l.toLowerCase()))
+  const [heuristic, ai] = await Promise.all([
+    wikiApi.labelSuggestionsForPage(id).catch(() => []),
+    aiApi.labelSuggestions(id).catch(() => []),
+  ])
+  const bySlug = new Map<string, { slug: string; displayName: string; source: string }>()
+  for (const r of heuristic) {
+    if (!assigned.has(r.slug.toLowerCase())) {
+      bySlug.set(r.slug.toLowerCase(), { slug: r.slug, displayName: r.displayName, source: r.source || 'heuristic' })
+    }
+  }
+  for (const r of ai) {
+    if (!assigned.has(r.slug.toLowerCase())) {
+      bySlug.set(r.slug.toLowerCase(), { slug: r.slug, displayName: r.displayName, source: 'ai' })
+    }
+  }
+  pageLabelSuggestions.value = [...bySlug.values()]
+}
+
+async function addLabel(nameOverride?: string) {
+  const name = (nameOverride ?? newLabel.value).trim()
   if (!page.value || !name) return
   try {
     page.value = { ...page.value, labels: await wikiApi.addLabel(page.value.id, name) }
     newLabel.value = ''
+    await loadPageLabelSuggestions()
   } catch (e) {
     fail(e)
   }
@@ -245,6 +276,7 @@ async function removeLabel(name: string) {
   if (!page.value) return
   try {
     page.value = { ...page.value, labels: await wikiApi.removeLabel(page.value.id, name) }
+    await loadPageLabelSuggestions()
   } catch (e) {
     fail(e)
   }
@@ -362,12 +394,29 @@ function onMoved(p: Page, newEtag: string | null) {
         <RouterLink :to="{ name: 'label', params: { name: l } }">{{ l }}</RouterLink>
         <Button v-if="page.rights.canEdit" text rounded size="small" icon="pi pi-times" :aria-label="t('wiki.labels.remove', { name: l })" @click="removeLabel(l)" />
       </span>
-      <form v-if="page.rights.canEdit" class="add-label" @submit.prevent="addLabel">
+      <form v-if="page.rights.canEdit" class="add-label" @submit.prevent="() => addLabel()">
         <label for="new-label" class="sr-only">{{ t('wiki.labels.add') }}</label>
         <AutoComplete v-model="newLabel" input-id="new-label" :suggestions="labelSuggestions" :placeholder="t('wiki.labels.add')" size="small" @complete="suggest" />
         <Button type="submit" size="small" icon="pi pi-plus" :aria-label="t('wiki.labels.add')" />
       </form>
+      <div v-if="page.rights.canEdit && pageLabelSuggestions.length" class="suggestions" data-testid="label-suggestions">
+        <span class="muted">{{ t('wiki.labels.suggestions') }}:</span>
+        <Button
+          v-for="s in pageLabelSuggestions"
+          :key="s.slug"
+          size="small"
+          text
+          :aria-label="s.source === 'ai' ? t('wiki.labels.aiSuggestion', { name: s.displayName }) : t('wiki.labels.applySuggestion', { name: s.displayName })"
+          @click="addLabel(s.slug)"
+        >
+          {{ s.displayName }}
+          <Tag v-if="s.source === 'ai'" class="ai-badge" severity="info" :value="t('wiki.labels.aiBadge')" />
+        </Button>
+      </div>
     </section>
+
+    <GovernancePanel v-if="page.governance" :page="page" :can-edit="page.rights.canEdit" @updated="(p) => (page = p)" />
+    <RelationshipsPanel :content-id="page.id" :can-edit="page.rights.canEdit" />
 
     <PageApprovals v-if="discussable" :content-id="page.id" :can-request="page.rights.canEdit" />
 
@@ -411,6 +460,8 @@ h1 { margin: 0; font-size: 1.8rem; overflow-wrap: anywhere; }
 .labels { display: flex; flex-wrap: wrap; align-items: center; gap: var(--raavi-space-2); border-block-start: 1px solid var(--raavi-border); padding-block-start: var(--raavi-space-3); }
 .label { display: inline-flex; align-items: center; padding-inline: var(--raavi-space-2); border: 1px solid var(--raavi-border); border-radius: 999px; }
 .add-label { display: inline-flex; gap: var(--raavi-space-1); }
+.suggestions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--raavi-space-1); }
+.suggestions :deep(.ai-badge) { margin-inline-start: var(--raavi-space-1); font-size: 0.7rem; }
 .history { padding-inline-start: var(--raavi-space-4); display: grid; gap: var(--raavi-space-2); }
 .history li { display: grid; }
 .selection-bar { position: sticky; inset-block-end: var(--raavi-space-3); z-index: 6; display: flex; gap: var(--raavi-space-2); align-items: center; padding: var(--raavi-space-2); background: var(--raavi-surface, #fff); border: 1px solid var(--raavi-border); border-radius: var(--raavi-radius-sm); box-shadow: 0 4px 16px rgb(0 0 0 / 0.12); overflow: hidden; }

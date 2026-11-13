@@ -30,6 +30,7 @@ Format: Context · Decision · Alternatives considered · Consequences. Status v
 | [024](ADR-024-comments-and-notifications.md) | Comments, Watching and Notifications | Accepted |
 | [025](ADR-025-confluence-import.md) | Confluence Import (REST source, idempotent importer, jobs) | Accepted |
 | [026](ADR-026-tasks.md) | Tasks (Phase 9a) | Accepted |
+| [056](ADR-056-enterprise-task-foundation.md) | Enterprise Task foundation (multi-assignee, archive, outbox) — Stage B | Accepted |
 | [027](ADR-027-calendar.md) | Calendar (Phase 9b) | Accepted |
 | [028](ADR-028-databases.md) | Databases (Phase 9c) | Accepted |
 | [029](ADR-029-slides.md) | Slides (Phase 9d) | Accepted |
@@ -40,6 +41,8 @@ Format: Context · Decision · Alternatives considered · Consequences. Status v
 | [049](ADR-049-smart-search-and-rag.md) | Smart search and retrieval-augmented answers (Phase 11b) | Accepted |
 | [050](ADR-050-workspace-deletion.md) | Workspace deletion with a grace period and purge | Accepted |
 | [051](ADR-051-operations-users-space-transfer-workers.md) | Accounts without a workspace, space export/import, worker status | Accepted |
+| [055](ADR-055-knowledge-relationships.md) | Knowledge relationship edge store (SQL) — EKOS B2 | Accepted |
+| [054](ADR-054-content-governance-metadata.md) | Content governance side table (owner, review, classification, lifecycle) — EKOS B1 | Accepted |
 | [053](ADR-053-quotes-email-time-display.md) | Comment quotes, e-mail settings in the app, workspace time zone and calendar | Accepted |
 | [052](ADR-052-prompt-hub.md) | Prompt Hub: library, categories, templates, context, execution, ratings, versions, forks | Accepted |
 | [048](ADR-048-operations-status-logs-compression.md) | Operations: status page, error log, activity log, compressed page bodies (Phase 15) | Accepted |

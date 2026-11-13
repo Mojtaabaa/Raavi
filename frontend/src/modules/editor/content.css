@@ -4,12 +4,14 @@
 .raavi-doc p { margin: 0; }
 .raavi-doc h1, .raavi-doc h2, .raavi-doc h3, .raavi-doc h4, .raavi-doc h5, .raavi-doc h6 { line-height: 1.35; margin-block: 1em 0.3em; }
 .raavi-doc ul, .raavi-doc ol { padding-inline-start: 1.5em; margin: 0; list-style-position: outside; }
-/* List chrome follows the first paragraph's direction so RTL bullets indent on the correct side. */
-.raavi-doc li:has(> p[dir='rtl']) { direction: rtl; unicode-bidi: isolate; }
-.raavi-doc li:has(> p[dir='ltr']) { direction: ltr; unicode-bidi: isolate; }
+/* List chrome follows the first block's used direction (incl. dir=auto) so RTL bullets indent on the correct side. */
+.raavi-doc li:has(> :dir(rtl)) { direction: rtl; unicode-bidi: isolate; }
+.raavi-doc li:has(> :dir(ltr)) { direction: ltr; unicode-bidi: isolate; }
 .raavi-doc li > p { margin: 0; }
 .raavi-doc blockquote { border-inline-start: 3px solid var(--raavi-border); margin: 0; padding-inline-start: 1em; color: var(--raavi-text-muted); }
-.raavi-doc pre { direction: ltr; text-align: left; background: #0f172a; color: #e2e8f0; padding: 0.8em 1em; border-radius: var(--raavi-radius-sm); overflow-x: auto; font-size: 0.875em; }
+.raavi-doc blockquote:has(> :dir(rtl)) { direction: rtl; unicode-bidi: isolate; }
+.raavi-doc blockquote:has(> :dir(ltr)) { direction: ltr; unicode-bidi: isolate; }
+.raavi-doc pre { direction: ltr; text-align: start; background: #0f172a; color: #e2e8f0; padding: 0.8em 1em; border-radius: var(--raavi-radius-sm); overflow-x: auto; font-size: 0.875em; }
 .raavi-doc code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .raavi-doc :not(pre) > code { background: rgba(127, 127, 127, 0.15); padding: 0.1em 0.3em; border-radius: 3px; font-size: 0.9em; }
 .raavi-doc hr { border: 0; border-block-start: 1px solid var(--raavi-border); margin-block: 1.2em; }
