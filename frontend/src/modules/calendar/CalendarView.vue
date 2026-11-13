@@ -56,6 +56,7 @@ import {
   yearMonths,
   type CalendarSystem,
 } from './calendarMath'
+import { buildOccurrencesByDay, computeCalendarRangeStats } from './calendarRangeStats'
 import { calendarEventLabel } from './eventLabel'
 
 const { t, te } = useI18n()
@@ -178,51 +179,13 @@ const recurrencePresets = computed(() => [
   { id: 'biweekly', label: t('calendar.presetBiweekly') },
 ])
 
-const byDay = computed(() => {
-  const map = new Map<string, Occurrence[]>()
-  for (const o of occurrences.value) {
-    for (let d = o.startDate < range.value.from ? range.value.from : o.startDate; d <= o.endDate && d <= range.value.to; d = addDays(d, 1)) {
-      const list = map.get(d) ?? []
-      list.push(o)
-      map.set(d, list)
-    }
-  }
-  return map
-})
+const byDay = computed(() => buildOccurrencesByDay(occurrences.value, range.value.from, range.value.to))
 
 const agendaList = computed(() =>
   [...occurrences.value].sort((a, b) => a.startDate.localeCompare(b.startDate) || (a.startTime ?? '').localeCompare(b.startTime ?? '')),
 )
 
-const rangeStats = computed(() => {
-  const list = occurrences.value
-  const todayCount = (byDay.value.get(today) ?? []).length
-  let allDay = 0
-  let recurring = 0
-  let raavi = 0
-  let jira = 0
-  for (const o of list) {
-    if (o.allDay) allDay++
-    if (o.isRecurring) recurring++
-    if (o.sourceKind === 'Jira') jira++
-    else if (o.sourceKind === 'Raavi') raavi++
-  }
-  let busiestIso = ''
-  let busiestN = 0
-  for (const [iso, arr] of byDay.value) {
-    if (arr.length > busiestN) {
-      busiestN = arr.length
-      busiestIso = iso
-    }
-  }
-  const bars: { iso: string; n: number; pct: number }[] = []
-  const maxN = busiestN || 1
-  for (let d = range.value.from; d <= range.value.to; d = addDays(d, 1)) {
-    const n = (byDay.value.get(d) ?? []).length
-    bars.push({ iso: d, n, pct: Math.round((100 * n) / maxN) })
-  }
-  return { total: list.length, todayCount, allDay, timed: list.length - allDay, recurring, raavi, jira, busiestIso, busiestN, bars }
-})
+const rangeStats = computed(() => computeCalendarRangeStats(occurrences.value, range.value.from, range.value.to, today))
 
 const fail = (e: unknown) => toast.add({ severity: 'error', summary: errorMessage(e, t, te), life: 6000 })
 const timeLabel = (o: Occurrence) => (o.freeBusyOnly ? t('calendar.freeBusy') : o.allDay ? t('calendar.allDay') : (o.startTime ?? ''))
@@ -427,10 +390,25 @@ function newEvent(date: string = anchor.value) {
   editing.value = 'new'
 }
 
-/** Double-click an empty day (month / week / timeline) to open the create dialog for that date. */
-function onDayDblClick(date: string) {
+/** Open the create dialog for a calendar day (double-click, Enter, or the day add control). */
+function onDayCreate(date: string) {
   if (!canCreate.value) return
   newEvent(date)
+}
+
+function onDayDblClick(date: string) {
+  onDayCreate(date)
+}
+
+function onDayCellKeydown(e: KeyboardEvent, date: string) {
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    onDayCreate(date)
+  }
+}
+
+function dayCellTabIndex(active: boolean) {
+  return canCreate.value && active ? 0 : undefined
 }
 
 function jumpMonth(iso: string) {
@@ -1128,8 +1106,9 @@ function timelineHeight(o: Occurrence): string {
             class="year-month"
             data-testid="year-month"
             :title="canCreate ? t('calendar.dblClickCreate', { date: preview(m) }) : undefined"
+            :aria-label="canCreate ? t('calendar.addOn', { date: preview(m) }) : monthLabel(m, calendar, intlTag)"
             @click="jumpMonth(m)"
-            @dblclick.stop="onDayDblClick(m)"
+            @dblclick.stop="onDayCreate(m)"
           >
             <strong>{{ monthLabel(m, calendar, intlTag) }}</strong>
             <span class="muted">{{ t('calendar.yearCount', { count: num(countInMonth(m)) }) }}</span>
@@ -1144,13 +1123,30 @@ function timelineHeight(o: Occurrence): string {
             :class="['day', { muted: !day.inMonth, today: day.iso === today, drop: !!dragging, create: canCreate }]"
             role="gridcell"
             :data-date="day.iso"
-            :data-testid="canCreate ? 'calendar-day' : undefined"
+            :data-testid="canCreate && day.inMonth ? 'calendar-day' : undefined"
+            :tabindex="dayCellTabIndex(day.inMonth)"
+            :aria-label="preview(day.iso)"
             :title="canCreate ? t('calendar.dblClickCreate', { date: preview(day.iso) }) : undefined"
             @dragover="onDayDragOver"
             @drop="onDayDrop($event, day.iso)"
-            @dblclick="onDayDblClick(day.iso)"
+            @dblclick="onDayCreate(day.iso)"
+            @keydown="onDayCellKeydown($event, day.iso)"
           >
-            <span class="num" :aria-label="preview(day.iso)">{{ num(day.day) }}</span>
+            <div class="day-head">
+              <span class="num">{{ num(day.day) }}</span>
+              <Button
+                v-if="canCreate && day.inMonth"
+                type="button"
+                class="day-add"
+                icon="pi pi-plus"
+                text
+                rounded
+                size="small"
+                :aria-label="t('calendar.addOn', { date: preview(day.iso) })"
+                data-testid="day-add-event"
+                @click.stop="onDayCreate(day.iso)"
+              />
+            </div>
             <ul class="events">
               <li v-for="o in (byDay.get(day.iso) ?? []).slice(0, 5)" :key="occKey(o)">
                 <button
@@ -1185,11 +1181,26 @@ function timelineHeight(o: Occurrence): string {
             class="timeline-track"
             :class="{ create: canCreate }"
             :data-testid="canCreate ? 'calendar-day' : undefined"
+            :tabindex="dayCellTabIndex(true)"
+            :aria-label="preview(anchor)"
             :title="canCreate ? t('calendar.dblClickCreate', { date: preview(anchor) }) : undefined"
             @dragover="onDayDragOver"
             @drop="onDayDrop($event, anchor)"
-            @dblclick="onDayDblClick(anchor)"
+            @dblclick="onDayCreate(anchor)"
+            @keydown="onDayCellKeydown($event, anchor)"
           >
+            <Button
+              v-if="canCreate"
+              type="button"
+              class="day-add timeline-add"
+              icon="pi pi-plus"
+              text
+              rounded
+              size="small"
+              :aria-label="t('calendar.addOn', { date: preview(anchor) })"
+              data-testid="day-add-event"
+              @click.stop="onDayCreate(anchor)"
+            />
             <div v-if="anchor === today" class="now-line" data-testid="now-line" :style="{ insetBlockStart: `${(nowMinutes / (24 * 60)) * 100}%` }" />
             <button
               v-for="o in byDay.get(anchor) ?? []"
@@ -1217,8 +1228,22 @@ function timelineHeight(o: Occurrence): string {
             class="agenda-row"
             :class="{ create: canCreate }"
             :title="canCreate ? t('calendar.dblClickCreate', { date: preview(o.startDate) }) : undefined"
-            @dblclick="canCreate && onDayDblClick(o.startDate)"
+            :tabindex="dayCellTabIndex(true)"
+            @dblclick="canCreate && onDayCreate(o.startDate)"
+            @keydown="(e) => onDayCellKeydown(e, o.startDate)"
           >
+            <Button
+              v-if="canCreate"
+              type="button"
+              class="day-add agenda-add"
+              icon="pi pi-plus"
+              text
+              rounded
+              size="small"
+              :aria-label="t('calendar.addOn', { date: preview(o.startDate) })"
+              data-testid="day-add-event"
+              @click.stop="onDayCreate(o.startDate)"
+            />
             <button type="button" class="event wide" data-testid="occurrence" @click="openOccurrence(o)" @dblclick.stop @contextmenu="openContext($event, o)">
               <strong>{{ preview(o.startDate) }}</strong>
               <span>{{ timeLabel(o) }}</span>
@@ -1238,9 +1263,26 @@ function timelineHeight(o: Occurrence): string {
             :title="canCreate ? t('calendar.dblClickCreate', { date: preview(d) }) : undefined"
             @dragover="onDayDragOver"
             @drop="onDayDrop($event, d)"
-            @dblclick="onDayDblClick(d)"
+            :tabindex="dayCellTabIndex(true)"
+            :aria-label="preview(d)"
+            @dblclick="onDayCreate(d)"
+            @keydown="onDayCellKeydown($event, d)"
           >
-            <h3>{{ preview(d) }}</h3>
+            <div class="day-head week-head">
+              <h3>{{ preview(d) }}</h3>
+              <Button
+                v-if="canCreate"
+                type="button"
+                class="day-add"
+                icon="pi pi-plus"
+                text
+                rounded
+                size="small"
+                :aria-label="t('calendar.addOn', { date: preview(d) })"
+                data-testid="day-add-event"
+                @click.stop="onDayCreate(d)"
+              />
+            </div>
             <div v-if="d === today" class="week-now" data-testid="week-now" :aria-label="t('calendar.now')" />
             <button
               v-for="o in byDay.get(d) ?? []"
@@ -1529,6 +1571,19 @@ h2 { margin: 0 0 var(--raavi-space-2); font-size: 1rem; }
 .bars { display: flex; align-items: flex-end; gap: 2px; block-size: 3.5rem; padding-block-start: var(--raavi-space-1); }
 .bar { flex: 1 1 0; min-inline-size: 3px; block-size: var(--h); max-block-size: 100%; border-radius: 2px 2px 0 0; background: color-mix(in srgb, var(--raavi-primary, #2563eb) 35%, transparent); transition: block-size 0.2s ease; }
 .bar.hot { background: var(--raavi-primary, #2563eb); }
+.day-head { display: flex; justify-content: space-between; align-items: center; gap: 2px; min-block-size: 1.5rem; }
+.day-head h3 { margin: 0; font-size: 0.85rem; font-weight: 600; }
+.week-head { margin-block-end: var(--raavi-space-1); }
+.day-add { flex: none; min-inline-size: 1.75rem; min-block-size: 1.75rem; opacity: 0.35; transition: opacity 0.15s ease; }
+.day:focus-within .day-add, .week-col:focus-within .day-add, .timeline-track:focus-within .day-add, .agenda-row:focus-within .day-add,
+.day:hover .day-add, .week-col:hover .day-add, .timeline-track:hover .day-add, .agenda-row:hover .day-add { opacity: 1; }
+@media (pointer: coarse) {
+  .day-add { opacity: 1; }
+}
+.timeline-add { position: absolute; inset-block-start: 0.25rem; inset-inline-end: 0.25rem; z-index: 2; }
+.agenda-add { justify-self: end; margin-block-end: var(--raavi-space-1); }
+.agenda-row.create { display: grid; }
+.day:focus-visible, .week-col:focus-visible, .timeline-track:focus-visible, .agenda-row:focus-visible { outline: 2px solid var(--raavi-primary, #2563eb); outline-offset: -2px; }
 .day.create, .week-col.create, .timeline-track.create, .agenda-row.create { cursor: cell; }
 .day:hover:not(.muted) { background: color-mix(in srgb, var(--raavi-primary, #2563eb) 5%, transparent); }
 .day.muted { color: var(--raavi-text-muted); background: var(--raavi-surface-muted, transparent); }

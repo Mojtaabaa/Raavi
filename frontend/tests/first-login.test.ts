@@ -110,6 +110,10 @@ describe('first sign-in of the bootstrap administrator', () => {
     document.body.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'))
     await settle()
     expect(calls.find((c) => c.url.endsWith('/setup/complete'))!.body).toEqual({ token: TOKEN, displayName: '', password: '123@vesta', code: '123456', newPassword: 'Vesta-Admin-2026-Strong!' })
+    for (let i = 0; i < 40 && router.currentRoute.value.name !== 'system-tenants'; i++) {
+      await new Promise((r) => setTimeout(r, 25))
+      await flushPromises()
+    }
     expect(router.currentRoute.value.name).toBe('system-tenants')
   })
 

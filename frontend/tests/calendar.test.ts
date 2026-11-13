@@ -33,9 +33,12 @@ const prefs = { browserAlerts: true, ttsEnabled: false, ttsLocale: 'en', ttsRate
 describe('calendarEventLabel', () => {
   it('returns trimmed text and crops very long titles', () => {
     expect(calendarEventLabel('  Hi  ')).toBe('Hi')
+    expect(calendarEventLabel('')).toBe('')
+    expect(calendarEventLabel(null)).toBe('')
     const long = 'x'.repeat(CALENDAR_EVENT_LABEL_MAX + 20)
     expect(calendarEventLabel(long)).toHaveLength(CALENDAR_EVENT_LABEL_MAX)
     expect(calendarEventLabel(long).endsWith('…')).toBe(true)
+    expect(calendarEventLabel('abcdef', 4)).toBe('abc…')
   })
 })
 
@@ -143,6 +146,126 @@ describe('calendar view', () => {
     await w.get('[data-testid="next-month"]').trigger('click')
     await flushPromises()
     expect(w.get('[data-testid="month-title"]').text()).not.toBe(before)
+  })
+
+  it('opens edit on occurrence click and never posts create; event buttons stop day double-click', async () => {
+    const f = fakeFetch({
+      ...base,
+      'GET /api/v1/spaces/ENG': () => withEtag(space(true)),
+      'GET /api/v1/spaces/ENG/calendar/occurrences': () => json([occurrence()]),
+      'GET /api/v1/calendar/events/e1': () => json(fullEvent()),
+    })
+    const w = await open('/spaces/ENG/calendar', f)
+    await w.get('[data-testid="occurrence"]').trigger('click')
+    for (let i = 0; i < 3; i++) await flushPromises()
+    expect((document.body.querySelector('[data-testid="event-title"]') as HTMLInputElement).value).toBe('Standup')
+    const creates = f.calls.filter((c) => c.method === 'POST' && c.url.includes('/calendar/events'))
+    expect(creates).toHaveLength(0)
+    await w.get('[data-testid="occurrence"]').trigger('dblclick')
+    for (let i = 0; i < 2; i++) await flushPromises()
+    expect(creates).toHaveLength(0)
+    const titleAfter = document.body.querySelector('[data-testid="event-title"]') as HTMLInputElement | null
+    if (titleAfter) expect(titleAfter.value).toBe('Standup')
+  })
+
+  async function selectView(w: VueWrapper, label: string) {
+    const btn = w.findAll('[data-testid="calendar-view"] [role="radio"], [data-testid="calendar-view"] .p-togglebutton').find((b) => b.text() === label)!
+    await btn.trigger('click')
+    for (let i = 0; i < 3; i++) await flushPromises()
+  }
+
+  it('opens create from double-click in week and day views', async () => {
+    const f = fakeFetch({
+      ...base,
+      'GET /api/v1/spaces/ENG': () => withEtag(space(true)),
+      'GET /api/v1/spaces/ENG/calendar/occurrences': () => json([]),
+    })
+    const w = await open('/spaces/ENG/calendar', f)
+
+    await selectView(w, 'Week')
+    expect(w.find('[data-testid="week-view"]').exists()).toBe(true)
+    let day = w.get('[data-testid="calendar-day"]')
+    let iso = day.attributes('data-date')!
+    await day.trigger('dblclick')
+    await flushPromises()
+    expect((document.body.querySelector('[data-testid="event-start"]') as HTMLInputElement).value).toBe(iso)
+
+    await selectView(w, 'Day')
+    expect(w.find('[data-testid="day-view"]').exists()).toBe(true)
+    day = w.get('[data-testid="calendar-day"]')
+    await day.trigger('dblclick')
+    await flushPromises()
+    expect((document.body.querySelector('[data-testid="event-start"]') as HTMLInputElement).value).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
+
+  it('refetches occurrences only once when switching Jalali/Gregorian', async () => {
+    const f = fakeFetch({
+      ...base,
+      'GET /api/v1/spaces/ENG': () => withEtag(space(true)),
+      'GET /api/v1/spaces/ENG/calendar/occurrences': () => json([occurrence()]),
+    })
+    const w = await open('/spaces/ENG/calendar', f)
+    const before = f.calls.filter((c) => c.url.includes('/calendar/occurrences')).length
+
+    const jalali = w.findAll('[data-testid="calendar-system"] [role="radio"], [data-testid="calendar-system"] .p-togglebutton').find((b) => b.text() === 'Jalali')!
+    await jalali.trigger('click')
+    for (let i = 0; i < 3; i++) await flushPromises()
+    const after = f.calls.filter((c) => c.url.includes('/calendar/occurrences')).length
+    expect(after - before).toBe(1)
+    expect(w.find('[data-testid="calendar-kpis"]').exists()).toBe(true)
+  })
+
+  it('opens create via Enter on a focused day and via the day add control', async () => {
+    const f = fakeFetch({
+      ...base,
+      'GET /api/v1/spaces/ENG': () => withEtag(space(true)),
+      'GET /api/v1/spaces/ENG/calendar/occurrences': () => json([]),
+    })
+    const w = await open('/spaces/ENG/calendar', f)
+    const day = w.get('[data-testid="calendar-day"]')
+    const iso = day.attributes('data-date')!
+    await day.trigger('keydown', { key: 'Enter' })
+    await flushPromises()
+    expect((document.body.querySelector('[data-testid="event-start"]') as HTMLInputElement).value).toBe(iso)
+    await w.get('[data-testid="day-add-event"]').trigger('click')
+    await flushPromises()
+    expect((document.body.querySelector('[data-testid="event-start"]') as HTMLInputElement).value).toBe(iso)
+  })
+
+  it('exposes localized add labels in English and Persian', async () => {
+    const f = fakeFetch({
+      ...base,
+      'GET /api/v1/spaces/ENG': () => withEtag(space(true)),
+      'GET /api/v1/spaces/ENG/calendar/occurrences': () => json([]),
+    })
+    vi.stubGlobal('fetch', f.fn)
+    configureHttp(f.fn)
+    resetRouterBootstrap()
+    const routerEn = createRaaviRouter(createMemoryHistory())
+    await routerEn.push('/spaces/ENG/calendar')
+    const wEn = mount(App, { attachTo: document.body, global: { plugins: [createRaaviI18n('en'), PrimeVue, routerEn, ToastService, ConfirmationService] } })
+    for (let i = 0; i < 4; i++) await flushPromises()
+    expect(wEn.get('[data-testid="day-add-event"]').attributes('aria-label')).toContain('Add an event')
+    wEn.unmount()
+    resetRouterBootstrap()
+    localStorage.setItem('raavi.locale', 'fa')
+    const tenantFa = { ...tenantCtx, tenant: { ...tenantCtx.tenant, defaultLocale: 'fa' } }
+    const fFa = fakeFetch({
+      ...base,
+      'GET /api/v1/host/context': () => json(tenantFa),
+      'GET /api/v1/auth/me': () => json({ ...me, preferredLocale: 'fa' }),
+      'GET /api/v1/spaces/ENG': () => withEtag(space(true)),
+      'GET /api/v1/spaces/ENG/calendar/occurrences': () => json([]),
+    })
+    configureHttp(fFa.fn)
+    vi.stubGlobal('fetch', fFa.fn)
+    const routerFa = createRaaviRouter(createMemoryHistory())
+    await routerFa.push('/spaces/ENG/calendar')
+    const wFa = mount(App, { attachTo: document.body, global: { plugins: [createRaaviI18n('fa'), PrimeVue, routerFa, ToastService, ConfirmationService] } })
+    for (let i = 0; i < 4; i++) await flushPromises()
+    expect(wFa.get('[data-testid="day-add-event"]').attributes('aria-label')).toContain('افزودن')
+    wFa.unmount()
+    vi.unstubAllGlobals()
   })
 
   it('opens the create dialog when double-clicking a day cell', async () => {

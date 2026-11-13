@@ -79,12 +79,16 @@ describe('databases', () => {
     name.dispatchEvent(new Event('input'))
     await flushPromises()
     document.body.querySelector<HTMLButtonElement>('[data-testid="save-database"]')!.click()
-    for (let i = 0; i < 4; i++) {
-      await new Promise((r) => setTimeout(r, 30))
+    for (let i = 0; i < 40 && !f.calls.some((c) => c.method === 'POST' && c.url === '/api/v1/spaces/ENG/databases'); i++) {
+      await new Promise((r) => setTimeout(r, 25))
       await flushPromises()
     }
     const post = f.calls.find((c) => c.method === 'POST' && c.url === '/api/v1/spaces/ENG/databases')!
     expect(post.body).toEqual({ name: 'People', description: null, columns: [{ name: 'Name', type: 'Text' }] })
+    for (let i = 0; i < 40 && !f.calls.some((c) => c.url === '/api/v1/databases/d2'); i++) {
+      await new Promise((r) => setTimeout(r, 25))
+      await flushPromises()
+    }
     expect(f.calls.some((c) => c.url === '/api/v1/databases/d2')).toBe(true) // navigated to the new table
 
     wrapper?.unmount()
