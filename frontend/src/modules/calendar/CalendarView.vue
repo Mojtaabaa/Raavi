@@ -56,6 +56,7 @@ import {
   yearMonths,
   type CalendarSystem,
 } from './calendarMath'
+import { calendarEventLabel } from './eventLabel'
 
 const { t, te } = useI18n()
 const route = useRoute()
@@ -193,6 +194,36 @@ const agendaList = computed(() =>
   [...occurrences.value].sort((a, b) => a.startDate.localeCompare(b.startDate) || (a.startTime ?? '').localeCompare(b.startTime ?? '')),
 )
 
+const rangeStats = computed(() => {
+  const list = occurrences.value
+  const todayCount = (byDay.value.get(today) ?? []).length
+  let allDay = 0
+  let recurring = 0
+  let raavi = 0
+  let jira = 0
+  for (const o of list) {
+    if (o.allDay) allDay++
+    if (o.isRecurring) recurring++
+    if (o.sourceKind === 'Jira') jira++
+    else if (o.sourceKind === 'Raavi') raavi++
+  }
+  let busiestIso = ''
+  let busiestN = 0
+  for (const [iso, arr] of byDay.value) {
+    if (arr.length > busiestN) {
+      busiestN = arr.length
+      busiestIso = iso
+    }
+  }
+  const bars: { iso: string; n: number; pct: number }[] = []
+  const maxN = busiestN || 1
+  for (let d = range.value.from; d <= range.value.to; d = addDays(d, 1)) {
+    const n = (byDay.value.get(d) ?? []).length
+    bars.push({ iso: d, n, pct: Math.round((100 * n) / maxN) })
+  }
+  return { total: list.length, todayCount, allDay, timed: list.length - allDay, recurring, raavi, jira, busiestIso, busiestN, bars }
+})
+
 const fail = (e: unknown) => toast.add({ severity: 'error', summary: errorMessage(e, t, te), life: 6000 })
 const timeLabel = (o: Occurrence) => (o.freeBusyOnly ? t('calendar.freeBusy') : o.allDay ? t('calendar.allDay') : (o.startTime ?? ''))
 const occKey = (o: Occurrence) => `${o.sourceKind}-${o.eventId ?? o.externalUrl}-${o.occurrenceDate}`
@@ -313,7 +344,8 @@ onMounted(() => {
     nowMinutes.value = d.getHours() * 60 + d.getMinutes()
   }, 60_000)
 })
-watch([anchor, calendar, spaceKey, viewMode], load)
+watch([anchor, spaceKey, viewMode], () => void load())
+watch(calendar, () => void loadOccurrences().catch(fail))
 watch([searchQ, filterType, filterSource], () => {
   if (searchTimer) window.clearTimeout(searchTimer)
   searchTimer = window.setTimeout(() => void loadOccurrences().catch(fail), 300)
@@ -1040,12 +1072,53 @@ function timelineHeight(o: Occurrence): string {
       </aside>
 
       <div class="main">
-        <nav class="nav" :aria-label="t('calendar.navigate')">
+        <nav class="nav cal-nav" :aria-label="t('calendar.navigate')">
           <Button :icon="rtl ? 'pi pi-chevron-right' : 'pi pi-chevron-left'" text rounded :aria-label="t('calendar.previous')" data-testid="prev-month" @click="go(-1)" />
           <Button :icon="rtl ? 'pi pi-chevron-left' : 'pi pi-chevron-right'" text rounded :aria-label="t('calendar.next')" data-testid="next-month" @click="go(1)" />
           <strong class="month" data-testid="month-title" aria-live="polite">{{ title }}</strong>
           <Button :label="t('calendar.today')" text size="small" data-testid="today" @click="goToday" />
         </nav>
+
+        <section v-if="!loading" class="kpis" :aria-label="t('calendar.kpis')" data-testid="calendar-kpis">
+          <article class="kpi">
+            <h2>{{ t('calendar.kpiTotal') }}</h2>
+            <p class="v">{{ num(rangeStats.total) }}</p>
+            <p class="d muted">{{ t('calendar.kpiTotalHelp') }}</p>
+          </article>
+          <article class="kpi">
+            <h2>{{ t('calendar.kpiToday') }}</h2>
+            <p class="v">{{ num(rangeStats.todayCount) }}</p>
+            <p class="d muted">{{ preview(today) }}</p>
+          </article>
+          <article class="kpi">
+            <h2>{{ t('calendar.kpiAllDay') }}</h2>
+            <p class="v">{{ num(rangeStats.allDay) }}</p>
+            <p class="d muted">{{ t('calendar.kpiTimed', { n: num(rangeStats.timed) }) }}</p>
+          </article>
+          <article class="kpi">
+            <h2>{{ t('calendar.kpiSources') }}</h2>
+            <p class="v">{{ num(rangeStats.raavi) }} · {{ num(rangeStats.jira) }}</p>
+            <p class="d muted">{{ t('calendar.kpiRecurring', { n: num(rangeStats.recurring) }) }}</p>
+          </article>
+          <article class="kpi">
+            <h2>{{ t('calendar.kpiBusiest') }}</h2>
+            <p class="v">{{ rangeStats.busiestN ? num(rangeStats.busiestN) : '—' }}</p>
+            <p class="d muted">{{ rangeStats.busiestIso ? preview(rangeStats.busiestIso) : t('calendar.none') }}</p>
+          </article>
+          <article v-if="rangeStats.bars.length > 1" class="kpi chart">
+            <h2>{{ t('calendar.kpiDistribution') }}</h2>
+            <div class="bars" role="img" :aria-label="t('calendar.kpiDistribution')">
+              <span
+                v-for="b in rangeStats.bars"
+                :key="b.iso"
+                class="bar"
+                :class="{ hot: b.n > 0 && b.n >= rangeStats.busiestN && rangeStats.busiestN > 0 }"
+                :style="{ '--h': `${Math.max(b.pct, b.n ? 8 : 2)}%` }"
+                :title="`${preview(b.iso)}: ${num(b.n)}`"
+              />
+            </div>
+          </article>
+        </section>
 
         <div v-if="viewMode === 'year'" class="year" data-testid="year-view" :aria-busy="loading">
           <button
@@ -1054,7 +1127,9 @@ function timelineHeight(o: Occurrence): string {
             type="button"
             class="year-month"
             data-testid="year-month"
+            :title="canCreate ? t('calendar.dblClickCreate', { date: preview(m) }) : undefined"
             @click="jumpMonth(m)"
+            @dblclick.stop="onDayDblClick(m)"
           >
             <strong>{{ monthLabel(m, calendar, intlTag) }}</strong>
             <span class="muted">{{ t('calendar.yearCount', { count: num(countInMonth(m)) }) }}</span>
@@ -1077,31 +1152,32 @@ function timelineHeight(o: Occurrence): string {
           >
             <span class="num" :aria-label="preview(day.iso)">{{ num(day.day) }}</span>
             <ul class="events">
-              <li v-for="o in (byDay.get(day.iso) ?? []).slice(0, 3)" :key="occKey(o)">
+              <li v-for="o in (byDay.get(day.iso) ?? []).slice(0, 5)" :key="occKey(o)">
                 <button
                   type="button"
-                  class="event"
+                  class="event month-event"
                   data-testid="occurrence"
                   :draggable="o.canEdit && o.sourceKind === 'Raavi' && !offline"
                   :style="o.color ? { borderInlineStartColor: o.color } : undefined"
-                  :title="o.title"
+                  :title="o.title || t('calendar.freeBusy')"
                   @click="openOccurrence(o)"
                   @dblclick.stop
                   @contextmenu="openContext($event, o)"
                   @dragstart="onDragStart($event, o)"
                   @dragend="onDragEnd"
                 >
-                  <span class="time">{{ timeLabel(o) }}</span> <span class="name" dir="auto">{{ o.title || t('calendar.freeBusy') }}</span>
+                  <span class="time">{{ timeLabel(o) }}</span>
+                  <span class="name" dir="auto">{{ calendarEventLabel(o.title) || t('calendar.freeBusy') }}</span>
                   <span v-if="o.sourceKind === 'Jira'" class="space">· {{ t('calendar.sourceJira') }}</span>
                   <span v-else-if="!spaceKey && o.spaceName" class="space">· {{ o.spaceName }}</span>
                 </button>
               </li>
-              <li v-if="(byDay.get(day.iso)?.length ?? 0) > 3" class="more">{{ t('calendar.more', { count: num((byDay.get(day.iso)?.length ?? 0) - 3) }) }}</li>
+              <li v-if="(byDay.get(day.iso)?.length ?? 0) > 5" class="more">{{ t('calendar.more', { count: num((byDay.get(day.iso)?.length ?? 0) - 5) }) }}</li>
             </ul>
           </div>
         </div>
 
-        <div v-else-if="viewMode === 'timeline'" class="timeline" data-testid="timeline-view" :aria-busy="loading">
+        <div v-else-if="viewMode === 'day' || viewMode === 'timeline'" class="timeline" :data-testid="viewMode === 'day' ? 'day-view' : 'timeline-view'" :aria-busy="loading">
           <div class="timeline-hours" aria-hidden="true">
             <span v-for="h in TIMELINE_HOURS" :key="h" class="hour" :style="{ insetBlockStart: `${(h / 24) * 100}%` }">{{ String(h).padStart(2, '0') }}:00</span>
           </div>
@@ -1129,22 +1205,29 @@ function timelineHeight(o: Occurrence): string {
               @dragstart="onDragStart($event, o)"
               @dragend="onDragEnd"
             >
-              <span class="time">{{ timeLabel(o) }}</span> <span dir="auto">{{ o.title || t('calendar.freeBusy') }}</span>
+              <span class="time">{{ timeLabel(o) }}</span> <span class="name" dir="auto">{{ calendarEventLabel(o.title) || t('calendar.freeBusy') }}</span>
             </button>
           </div>
         </div>
 
         <div v-else-if="viewMode === 'agenda'" class="agenda" data-testid="agenda-view">
-          <article v-for="o in agendaList" :key="occKey(o)" class="agenda-row">
-            <button type="button" class="event wide" data-testid="occurrence" @click="openOccurrence(o)" @contextmenu="openContext($event, o)">
+          <article
+            v-for="o in agendaList"
+            :key="occKey(o)"
+            class="agenda-row"
+            :class="{ create: canCreate }"
+            :title="canCreate ? t('calendar.dblClickCreate', { date: preview(o.startDate) }) : undefined"
+            @dblclick="canCreate && onDayDblClick(o.startDate)"
+          >
+            <button type="button" class="event wide" data-testid="occurrence" @click="openOccurrence(o)" @dblclick.stop @contextmenu="openContext($event, o)">
               <strong>{{ preview(o.startDate) }}</strong>
               <span>{{ timeLabel(o) }}</span>
-              <span dir="auto">{{ o.title || t('calendar.freeBusy') }}</span>
+              <span class="name" dir="auto">{{ calendarEventLabel(o.title, 120) || t('calendar.freeBusy') }}</span>
             </button>
           </article>
         </div>
 
-        <div v-else class="week" data-testid="week-view">
+        <div v-else-if="viewMode === 'week' || viewMode === 'workweek'" class="week" data-testid="week-view">
           <div
             v-for="d in dayColumns"
             :key="d"
@@ -1172,7 +1255,8 @@ function timelineHeight(o: Occurrence): string {
               @dragstart="onDragStart($event, o)"
               @dragend="onDragEnd"
             >
-              <span class="time">{{ timeLabel(o) }}</span> <span dir="auto">{{ o.title || t('calendar.freeBusy') }}</span>
+              <span class="time">{{ timeLabel(o) }}</span>
+              <span class="name" dir="auto">{{ calendarEventLabel(o.title) || t('calendar.freeBusy') }}</span>
             </button>
           </div>
         </div>
@@ -1432,16 +1516,31 @@ h2 { margin: 0 0 var(--raavi-space-2); font-size: 1rem; }
 .grant-row { display: flex; justify-content: space-between; align-items: center; gap: var(--raavi-space-2); }
 .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border: 1px solid var(--raavi-border); border-radius: var(--raavi-radius-sm); overflow: hidden; }
 .weekday { padding: var(--raavi-space-2); text-align: center; font-weight: 600; font-size: 0.85rem; background: var(--raavi-surface-muted, transparent); border-block-end: 1px solid var(--raavi-border); }
-.day { min-block-size: 6.5rem; padding: var(--raavi-space-1); border-inline-end: 1px solid var(--raavi-border); border-block-end: 1px solid var(--raavi-border); min-inline-size: 0; }
-.day.create, .week-col.create, .timeline-track.create { cursor: cell; }
+.day { min-block-size: 7.25rem; padding: var(--raavi-space-1); border-inline-end: 1px solid var(--raavi-border); border-block-end: 1px solid var(--raavi-border); min-inline-size: 0; transition: background-color 0.15s ease; }
+.cal-nav :deep(.p-button) { transition: background-color 0.15s ease, color 0.15s ease; }
+.cal-nav :deep(.p-button:not(:disabled):hover) { background: color-mix(in srgb, var(--raavi-primary, #2563eb) 14%, transparent); }
+.year-month:hover { background: color-mix(in srgb, var(--raavi-primary, #2563eb) 8%, transparent); border-color: color-mix(in srgb, var(--raavi-primary, #2563eb) 35%, var(--raavi-border)); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: var(--raavi-space-2); margin-block-end: var(--raavi-space-2); }
+.kpi { border: 1px solid var(--raavi-border); border-radius: var(--raavi-radius-sm); padding: var(--raavi-space-2); display: grid; gap: 0.15rem; min-block-size: 4.5rem; }
+.kpi.chart { grid-column: 1 / -1; min-block-size: auto; }
+.kpi h2 { margin: 0; font-size: 0.75rem; font-weight: 600; color: var(--raavi-text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.kpi .v { margin: 0; font-size: 1.35rem; font-weight: 700; line-height: 1.2; }
+.kpi .d { margin: 0; font-size: 0.8rem; }
+.bars { display: flex; align-items: flex-end; gap: 2px; block-size: 3.5rem; padding-block-start: var(--raavi-space-1); }
+.bar { flex: 1 1 0; min-inline-size: 3px; block-size: var(--h); max-block-size: 100%; border-radius: 2px 2px 0 0; background: color-mix(in srgb, var(--raavi-primary, #2563eb) 35%, transparent); transition: block-size 0.2s ease; }
+.bar.hot { background: var(--raavi-primary, #2563eb); }
+.day.create, .week-col.create, .timeline-track.create, .agenda-row.create { cursor: cell; }
+.day:hover:not(.muted) { background: color-mix(in srgb, var(--raavi-primary, #2563eb) 5%, transparent); }
 .day.muted { color: var(--raavi-text-muted); background: var(--raavi-surface-muted, transparent); }
 .day.today .num { background: var(--raavi-primary, #2563eb); color: #fff; border-radius: 999px; }
 .num { display: inline-block; min-inline-size: 1.6rem; padding: 0 0.3rem; text-align: center; border: 0; background: none; color: inherit; font: inherit; cursor: default; }
 button.num { cursor: pointer; }
 .events { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-.event { inline-size: 100%; text-align: start; border: 0; border-inline-start: 3px solid var(--raavi-primary, #2563eb); border-radius: 4px; padding: 1px 4px; background: color-mix(in srgb, var(--raavi-primary, #2563eb) 15%, transparent); color: inherit; font: inherit; font-size: 0.8rem; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.event.wide { white-space: normal; display: grid; gap: 2px; margin-block-end: var(--raavi-space-1); }
-.event .time, .event .space { color: var(--raavi-text-muted); }
+.event { inline-size: 100%; text-align: start; border: 0; border-inline-start: 3px solid var(--raavi-primary, #2563eb); border-radius: 4px; padding: 1px 4px; background: color-mix(in srgb, var(--raavi-primary, #2563eb) 15%, transparent); color: inherit; font: inherit; font-size: 0.8rem; cursor: pointer; overflow: hidden; }
+.event.month-event, .event.wide { white-space: normal; display: grid; gap: 1px; }
+.event.month-event .name, .event.wide .name { overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; }
+.event.wide { margin-block-end: var(--raavi-space-1); }
+.event .time, .event .space { color: var(--raavi-text-muted); font-size: 0.72rem; }
 .more { font-size: 0.75rem; color: var(--raavi-text-muted); }
 .week { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: var(--raavi-space-2); }
 .week-col { border: 1px solid var(--raavi-border); border-radius: var(--raavi-radius-sm); padding: var(--raavi-space-2); min-block-size: 12rem; }

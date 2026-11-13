@@ -10,6 +10,7 @@ import { configureHttp } from '@/core/api/http'
 import { createRaaviI18n } from '@/core/i18n'
 import { createRaaviRouter, resetRouterBootstrap } from '@/router'
 import { addDays, daysInMonth, firstOfMonth, monthGrid, partsOf, shiftMonth, shiftYear, toIso, weekdayOf, yearMonths } from '@/modules/calendar/calendarMath'
+import { CALENDAR_EVENT_LABEL_MAX, calendarEventLabel } from '@/modules/calendar/eventLabel'
 import { fakeFetch, json } from './support/fakeApi'
 
 const tenantCtx = { kind: 'tenant', tenant: { slug: 'acme', displayName: { fa: 'اکمی', en: 'Acme' }, defaultLocale: 'en', timeZone: 'Asia/Tehran', calendar: 'gregorian', branding: { primaryColor: null, secondaryColor: null, welcomeMessageFa: null, welcomeMessageEn: null } } }
@@ -28,6 +29,15 @@ const fullEvent = (over: Record<string, unknown> = {}) => ({
 })
 const board = { id: 'c1', scope: 'Space', spaceId: 's1', ownerUserId: null, name: 'Engineering', description: null, color: '#3b82f6', icon: null, isDefault: true, archivedAt: null, revision: 1 }
 const prefs = { browserAlerts: true, ttsEnabled: false, ttsLocale: 'en', ttsRate: 1, hidePrivateTitlesInTts: true, quietStartMinutes: null, quietEndMinutes: null, timeZone: 'UTC' }
+
+describe('calendarEventLabel', () => {
+  it('returns trimmed text and crops very long titles', () => {
+    expect(calendarEventLabel('  Hi  ')).toBe('Hi')
+    const long = 'x'.repeat(CALENDAR_EVENT_LABEL_MAX + 20)
+    expect(calendarEventLabel(long)).toHaveLength(CALENDAR_EVENT_LABEL_MAX)
+    expect(calendarEventLabel(long).endsWith('…')).toBe(true)
+  })
+})
 
 describe('calendar arithmetic', () => {
   it('derives Persian months from Intl, so Jalali dates match the known conversions', () => {
@@ -127,6 +137,7 @@ describe('calendar view', () => {
     for (let i = 0; i < 3; i++) await flushPromises()
     expect(w.get('[data-testid="month-title"]').text()).not.toBe(gregorianTitle)
     expect(f.calls.filter((c) => c.url.startsWith('/api/v1/calendar/occurrences')).length).toBeGreaterThan(1)
+    expect(w.get('[data-testid="occurrence"]').text()).toContain('Standup')
 
     const before = w.get('[data-testid="month-title"]').text()
     await w.get('[data-testid="next-month"]').trigger('click')
@@ -141,6 +152,7 @@ describe('calendar view', () => {
       'GET /api/v1/spaces/ENG/calendar/occurrences': () => json([]),
     })
     const w = await open('/spaces/ENG/calendar', f)
+    expect(w.find('[data-testid="calendar-kpis"]').exists()).toBe(true)
     const day = w.get('[data-testid="calendar-day"]')
     const iso = day.attributes('data-date')!
     expect(iso).toMatch(/^\d{4}-\d{2}-\d{2}$/)

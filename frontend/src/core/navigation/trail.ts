@@ -11,6 +11,7 @@ const LABEL: Record<string, string> = {
   tasks: 'nav.tasks',
   search: 'smartSearch.title',
   calendar: 'nav.calendar',
+  status: 'status.title',
   approvals: 'nav.approvals',
   profile: 'profile.title',
   'admin-members': 'nav.members',
